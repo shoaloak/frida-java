@@ -1,8 +1,10 @@
-# Dependency directories
-frida-devkit/*
-
 # Maven build output
 target/
+*/target/
+**/target/
+
+# Dependency directories
+frida-java-core/frida-devkit/
 
 # IntelliJ IDEA
 .idea/
