@@ -1,0 +1,17 @@
+# Dependency directories
+frida-devkit/*
+
+# Maven build output
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# OS specific
+.DS_Store
+
+# Native compilation artifacts (if any)
+*.so
+*.dylib
+*.dll
