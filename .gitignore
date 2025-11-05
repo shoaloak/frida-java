@@ -1,7 +1,8 @@
-# Maven build output
+# Maven
 target/
 */target/
 **/target/
+dependency-reduced-pom.xml
 
 # Dependency directories
 frida-java-core/frida-devkit/
