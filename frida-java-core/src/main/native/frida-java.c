@@ -3,11 +3,11 @@
 #include <string.h>
 
 /*
- * Class:     nl_axelkoolhaas_FridaJava
+ * Class:     nl_axelkoolhaas_Frida
  * Method:    getVersionString
  * Signature: ()Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_nl_axelkoolhaas_FridaJava_getVersionString
+JNIEXPORT jstring JNICALL Java_nl_axelkoolhaas_Frida_getVersionString
   (JNIEnv *env, jclass cls)
 {
     const gchar *version = frida_version_string();
@@ -15,11 +15,11 @@ JNIEXPORT jstring JNICALL Java_nl_axelkoolhaas_FridaJava_getVersionString
 }
 
 /*
- * Class:     nl_axelkoolhaas_FridaJava
+ * Class:     nl_axelkoolhaas_Frida
  * Method:    getVersion
  * Signature: ()[I
  */
-JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_FridaJava_getVersion
+JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_Frida_getVersion
   (JNIEnv *env, jclass cls)
 {
     guint major, minor, micro, nano;
@@ -41,22 +41,22 @@ JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_FridaJava_getVersion
 }
 
 /*
- * Class:     nl_axelkoolhaas_FridaJava
+ * Class:     nl_axelkoolhaas_Frida
  * Method:    init
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_FridaJava_init
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_init
   (JNIEnv *env, jclass cls)
 {
     frida_init();
 }
 
 /*
- * Class:     nl_axelkoolhaas_FridaJava
+ * Class:     nl_axelkoolhaas_Frida
  * Method:    deinit
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_FridaJava_deinit
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_deinit
   (JNIEnv *env, jclass cls)
 {
     frida_deinit();

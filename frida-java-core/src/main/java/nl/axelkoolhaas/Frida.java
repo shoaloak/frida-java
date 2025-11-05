@@ -7,9 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 /**
- * Main FridaJava class providing version information and core initialization.
+ * Main Frida class providing version information and core initialization.
  */
-public class FridaJava {
+public class Frida {
 
     static {
         loadNativeLibrary();
@@ -23,7 +23,7 @@ public class FridaJava {
         String libName = getLibraryName(osName);
         
         // Try to load from JAR resources first
-        try (InputStream is = FridaJava.class.getResourceAsStream("/native/" + libName)) {
+        try (InputStream is = Frida.class.getResourceAsStream("/native/" + libName)) {
             if (is != null) {
                 // Extract library to temporary file
                 String libExtension = getLibraryExtension(osName);

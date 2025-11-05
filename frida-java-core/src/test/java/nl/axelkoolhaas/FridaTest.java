@@ -12,17 +12,17 @@ public class FridaTest {
 
     @BeforeAll
     static void setUp() {
-        FridaJava.init();
+        Frida.init();
     }
 
     @AfterAll
     static void tearDown() {
-        FridaJava.deinit();
+        Frida.deinit();
     }
 
     @Test
     void testGetVersionString() {
-        String version = FridaJava.getVersionString();
+        String version = Frida.getVersionString();
         assertNotNull(version);
         assertFalse(version.isEmpty());
         System.out.println("Frida version string: " + version);
@@ -30,7 +30,7 @@ public class FridaTest {
 
     @Test
     void testGetVersion() {
-        int[] version = FridaJava.getVersion();
+        int[] version = Frida.getVersion();
         assertNotNull(version);
         assertEquals(4, version.length);
 
@@ -45,10 +45,10 @@ public class FridaTest {
 
     @Test
     void testVersionComponents() {
-        int major = FridaJava.getMajorVersion();
-        int minor = FridaJava.getMinorVersion();
-        int micro = FridaJava.getMicroVersion();
-        int nano = FridaJava.getNanoVersion();
+        int major = Frida.getMajorVersion();
+        int minor = Frida.getMinorVersion();
+        int micro = Frida.getMicroVersion();
+        int nano = Frida.getNanoVersion();
 
         assertTrue(major >= 0);
         assertTrue(minor >= 0);
@@ -61,8 +61,8 @@ public class FridaTest {
 
     @Test
     void testVersionConsistency() {
-        String versionString = FridaJava.getVersionString();
-        int[] versionArray = FridaJava.getVersion();
+        String versionString = Frida.getVersionString();
+        int[] versionArray = Frida.getVersion();
 
         // The version string should contain the major.minor.micro components
         String expectedPrefix = String.format("%d.%d.%d",
