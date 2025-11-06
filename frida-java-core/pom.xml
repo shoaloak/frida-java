@@ -58,7 +58,7 @@
                                 <source>
                                     <directory>src/main/native</directory>
                                     <fileNames>
-                                        <fileName>frida-java.c</fileName>
+                                        <fileName>_frida_java.c</fileName>
                                     </fileNames>
                                 </source>
                             </sources>
@@ -113,7 +113,7 @@
                                 <source>
                                     <directory>src/main/native</directory>
                                     <fileNames>
-                                        <fileName>frida-java.c</fileName>
+                                        <fileName>_frida_java.c</fileName>
                                     </fileNames>
                                 </source>
                             </sources>

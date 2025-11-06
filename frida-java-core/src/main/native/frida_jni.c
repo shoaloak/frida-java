@@ -1,6 +1,4 @@
-#include <jni.h>
-#include <frida-core.h>
-#include <string.h>
+#include "frida_common.h"
 
 /*
  * Class:     nl_axelkoolhaas_Frida

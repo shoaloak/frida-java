@@ -6,9 +6,9 @@ import org.junit.jupiter.api.AfterAll;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test class for Frida JNI bindings.
+ * Test class for Frida version-related functionality.
  */
-public class FridaTest {
+public class VersionTest {
 
     @BeforeAll
     static void setUp() {
