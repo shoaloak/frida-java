@@ -35,7 +35,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Used to compile native code for x86_64 -->
+            <!-- Used to compile native code -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>native-maven-plugin</artifactId>
