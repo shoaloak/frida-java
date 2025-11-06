@@ -12,6 +12,8 @@ public class BasicExample {
         System.out.println("Frida Java Bindings - Basic Example");
         System.out.println("===================================");
 
+        FridaDeviceManager manager = null;
+
         try {
             // Initialize Frida
             Frida.init();
@@ -147,12 +149,16 @@ public class BasicExample {
                 }
             }
 
->>>>>>> 629c812 (Refactor: Changed from FridaJava to Frida name)
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
         } finally {
+            // Clean up device manager if it was created
+            if (manager != null) {
+                manager.close();
+            }
+
             // Clean up
             Frida.deinit();
             System.out.println("✓ Frida deinitialized");
