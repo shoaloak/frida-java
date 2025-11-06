@@ -49,7 +49,7 @@ Add the core library as a dependency to your Maven project:
 
 ```xml
 <dependency>
-    <groupId>nl.axelkoolhaas</groupId>
+    <groupId>nl.axelkoolhaas.frida_java</groupId>
     <artifactId>frida-java</artifactId>
     <version>1.0-SNAPSHOT</version>
 </dependency>
