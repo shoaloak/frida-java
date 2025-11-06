@@ -1,4 +1,9 @@
 #include "frida_common.h"
+#include <pthread.h>
+
+// Global variables for reference counting
+static int frida_ref_count = 0;
+static pthread_mutex_t frida_ref_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * Class:     nl_axelkoolhaas_Frida
@@ -46,7 +51,15 @@ JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_Frida_getVersion
 JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_init
   (JNIEnv *env, jclass cls)
 {
-    frida_init();
+    pthread_mutex_lock(&frida_ref_mutex);
+
+    // Only call frida_init() on the first initialization
+    if (frida_ref_count == 0) {
+        frida_init();
+    }
+    frida_ref_count++;
+
+    pthread_mutex_unlock(&frida_ref_mutex);
 }
 
 /*
@@ -57,5 +70,14 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_init
 JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_deinit
   (JNIEnv *env, jclass cls)
 {
-    frida_deinit();
+    pthread_mutex_lock(&frida_ref_mutex);
+
+    if (frida_ref_count > 0) {
+        frida_ref_count--;
+        // Don't call frida_deinit() during normal execution to avoid crashes
+        // when multiple test classes or components try to deinitialize Frida.
+        // The Frida library will clean up automatically when the JVM shuts down.
+    }
+
+    pthread_mutex_unlock(&frida_ref_mutex);
 }
