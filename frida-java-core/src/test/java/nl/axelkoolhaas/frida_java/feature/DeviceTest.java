@@ -1,11 +1,12 @@
-package nl.axelkoolhaas.frida_java;
+package nl.axelkoolhaas.frida_java.feature;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
+import nl.axelkoolhaas.frida_java.Device;
+import nl.axelkoolhaas.frida_java.DeviceManager;
+import nl.axelkoolhaas.frida_java.Frida;
+import nl.axelkoolhaas.frida_java.Process;
+import nl.axelkoolhaas.frida_java.ProcessList;
+import org.junit.jupiter.api.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**

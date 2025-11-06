@@ -1,13 +1,14 @@
-package nl.axelkoolhaas.frida_java;
+package nl.axelkoolhaas.frida_java.feature;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.AfterAll;
+import nl.axelkoolhaas.frida_java.Frida;
+import org.junit.jupiter.api.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for Frida version-related functionality.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class VersionTest {
 
     @BeforeAll
@@ -21,6 +22,7 @@ public class VersionTest {
     }
 
     @Test
+    @Order(1)
     void testGetVersionString() {
         String version = Frida.getVersionString();
         assertNotNull(version);
@@ -29,6 +31,7 @@ public class VersionTest {
     }
 
     @Test
+    @Order(2)
     void testGetVersion() {
         int[] version = Frida.getVersion();
         assertNotNull(version);
@@ -44,6 +47,7 @@ public class VersionTest {
     }
 
     @Test
+    @Order(3)
     void testVersionComponents() {
         int major = Frida.getMajorVersion();
         int minor = Frida.getMinorVersion();
@@ -60,6 +64,7 @@ public class VersionTest {
     }
 
     @Test
+    @Order(4)
     void testVersionConsistency() {
         String versionString = Frida.getVersionString();
         int[] versionArray = Frida.getVersion();

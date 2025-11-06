@@ -19,8 +19,15 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <version>5.14.0</version>
             <scope>test</scope>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.junit.platform</groupId>-->
+<!--            <artifactId>junit-platform-launcher</artifactId>-->
+<!--            <version>1.14.1</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
     </dependencies>
 
     <build>
@@ -234,6 +241,10 @@
                 <version>3.5.4</version>
                 <configuration>
                     <argLine>-Djava.library.path=${project.build.directory}</argLine>
+                    <!-- Run only ClassNameOrderTest.java for testing purposes -->
+                    <includes>
+                        <include>**/ClassNameOrderTest.java</include>
+                    </includes>
                 </configuration>
             </plugin>
         </plugins>
