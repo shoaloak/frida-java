@@ -1,6 +1,9 @@
 package nl.axelkoolhaas.examples;
 
-import nl.axelkoolhaas.*;
+import nl.axelkoolhaas.frida_java.Device;
+import nl.axelkoolhaas.frida_java.DeviceManager;
+import nl.axelkoolhaas.frida_java.Frida;
+import nl.axelkoolhaas.frida_java.ProcessList;
 
 /**
  * Basic example demonstrating Frida Java bindings usage.
@@ -44,14 +47,17 @@ public class BasicExample {
 
                 // Enumerate processes
                 System.out.println("\n--- Process Enumeration ---");
-                ProcessInfo[] processes = localDevice.enumerateProcesses();
-                System.out.println("Found " + processes.length + " running processes");
+                try (ProcessList processList = localDevice.enumerateProcesses()) {
+                    int count = processList.size();
+                    System.out.println("Found " + count + " running processes");
 
-                // Show first 5 processes as example
-                System.out.println("Sample processes:");
-                for (int i = 0; i < Math.min(5, processes.length); i++) {
-                    ProcessInfo process = processes[i];
-                    System.out.printf("  PID %d: %s%n", process.getPid(), process.getName());
+                    // Show first 5 processes as example
+                    System.out.println("Sample processes:");
+                    for (int i = 0; i < Math.min(5, count); i++) {
+                        nl.axelkoolhaas.frida_java.Process process = processList.get(i);
+                        System.out.printf("  PID %d: %s%n", process.getPid(), process.getName());
+                        process.close();
+                    }
                 }
 
                 System.out.println("Device manager closed");

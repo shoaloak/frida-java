@@ -1,4 +1,4 @@
-package nl.axelkoolhaas;
+package nl.axelkoolhaas.frida_java;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -128,5 +128,9 @@ public class Frida {
     public static int getNanoVersion() {
         int[] version = getVersion();
         return version[3];
+    }
+
+    private Frida() {
+        // Prevent instantiation
     }
 }

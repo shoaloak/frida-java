@@ -5,12 +5,12 @@
 static int frida_ref_count = 0;
 static pthread_mutex_t frida_ref_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-JNIEXPORT jstring JNICALL Java_nl_axelkoolhaas_Frida_getVersionString(JNIEnv *env, jclass cls) {
+JNIEXPORT jstring JNICALL Java_nl_axelkoolhaas_frida_1java_Frida_getVersionString(JNIEnv *env, jclass cls) {
   const gchar *version = frida_version_string();
   return (*env)->NewStringUTF(env, version);
 }
 
-JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_Frida_getVersion(JNIEnv *env, jclass cls) {
+JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_frida_1java_Frida_getVersion(JNIEnv *env, jclass cls) {
   guint major, minor, micro, nano;
   frida_version(&major, &minor, &micro, &nano);
   jintArray result = (*env)->NewIntArray(env, 4);
@@ -26,7 +26,7 @@ JNIEXPORT jintArray JNICALL Java_nl_axelkoolhaas_Frida_getVersion(JNIEnv *env, j
   return result;
 }
 
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_init(JNIEnv *env, jclass cls) {
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Frida_init(JNIEnv *env, jclass cls) {
   pthread_mutex_lock(&frida_ref_mutex);
   if (frida_ref_count == 0) {
     frida_init();
@@ -35,7 +35,7 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_init(JNIEnv *env, jclass cls) 
   pthread_mutex_unlock(&frida_ref_mutex);
 }
 
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Frida_deinit(JNIEnv *env, jclass cls) {
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Frida_deinit(JNIEnv *env, jclass cls) {
   pthread_mutex_lock(&frida_ref_mutex);
   if (frida_ref_count > 0) {
     frida_ref_count--;

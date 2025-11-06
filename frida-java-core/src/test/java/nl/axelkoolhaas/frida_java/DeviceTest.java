@@ -1,4 +1,4 @@
-package nl.axelkoolhaas;
+package nl.axelkoolhaas.frida_java;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
@@ -102,25 +102,25 @@ public class DeviceTest {
     void testEnumerateProcesses() {
         try (DeviceManager deviceManager = new DeviceManager()) {
             Device localDevice = deviceManager.getLocalDevice();
-            ProcessInfo[] processes = localDevice.enumerateProcesses();
-
-            assertNotNull(processes, "Processes array should not be null");
-            assertTrue(processes.length > 0, "Should have at least one running process");
-
-            System.out.println("Found " + processes.length + " process(es):");
-
-            // Show first 5 processes as example
-            int limit = Math.min(5, processes.length);
-            for (int i = 0; i < limit; i++) {
-                ProcessInfo process = processes[i];
-                assertNotNull(process, "Process should not be null");
-                assertTrue(process.getPid() > 0, "Process PID should be positive");
-                assertNotNull(process.getName(), "Process name should not be null");
-                System.out.println("  - " + process);
-            }
-
-            if (processes.length > 5) {
-                System.out.println("  ... and " + (processes.length - 5) + " more");
+            try (ProcessList processList = localDevice.enumerateProcesses()) {
+                assertNotNull(processList, "ProcessList should not be null");
+                int count = processList.size();
+                assertTrue(count > 0, "Should have at least one running process");
+                System.out.println("Found " + count + " process(es):");
+                int limit = Math.min(5, count);
+                for (int i = 0; i < limit; i++) {
+                    Process process = processList.get(i);
+                    assertNotNull(process, "Process should not be null");
+                    int pid = process.getPid();
+                    String name = process.getName();
+                    assertTrue(pid > 0, "Process PID should be positive");
+                    assertNotNull(name, "Process name should not be null");
+                    System.out.println("  - PID: " + pid + ", Name: " + name);
+                    process.close();
+                }
+                if (count > 5) {
+                    System.out.println("  ... and " + (count - 5) + " more");
+                }
             }
         }
     }

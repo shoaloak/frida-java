@@ -1,4 +1,4 @@
-package nl.axelkoolhaas;
+package nl.axelkoolhaas.frida_java;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;

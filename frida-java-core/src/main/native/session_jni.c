@@ -2,7 +2,7 @@
 
 // Session implementations
 
-JNIEXPORT jint JNICALL Java_nl_axelkoolhaas_Session_getPid(JNIEnv *env, jobject obj) {
+JNIEXPORT jint JNICALL Java_nl_axelkoolhaas_frida_1java_Session_getPid(JNIEnv *env, jobject obj) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -10,7 +10,7 @@ JNIEXPORT jint JNICALL Java_nl_axelkoolhaas_Session_getPid(JNIEnv *env, jobject 
   return (jint) frida_session_get_pid(session);
 }
 
-JNIEXPORT jboolean JNICALL Java_nl_axelkoolhaas_Session_isDetached(JNIEnv *env, jobject obj) {
+JNIEXPORT jboolean JNICALL Java_nl_axelkoolhaas_frida_1java_Session_isDetached(JNIEnv *env, jobject obj) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -18,7 +18,7 @@ JNIEXPORT jboolean JNICALL Java_nl_axelkoolhaas_Session_isDetached(JNIEnv *env, 
   return frida_session_is_detached(session) ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_detach(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Session_detach(JNIEnv *env, jobject obj) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -31,7 +31,7 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_detach(JNIEnv *env, jobject 
   }
 }
 
-JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_Session_createScript__Ljava_lang_String_2(JNIEnv *env, jobject obj, jstring source) {
+JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Session_createScript__Ljava_lang_String_2(JNIEnv *env, jobject obj, jstring source) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -45,12 +45,12 @@ JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_Session_createScript__Ljava_lang_
     g_error_free(error);
     return NULL;
   }
-  jclass script_class = (*env)->FindClass(env, "nl/axelkoolhaas/Script");
+  jclass script_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/Script");
   jmethodID script_constructor = (*env)->GetMethodID(env, script_class, "<init>", "(J)V");
   return (*env)->NewObject(env, script_class, script_constructor, (jlong) script);
 }
 
-JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_Session_createScript__Ljava_lang_String_2Ljava_lang_String_2(JNIEnv *env, jobject obj, jstring source, jstring name) {
+JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Session_createScript__Ljava_lang_String_2Ljava_lang_String_2(JNIEnv *env, jobject obj, jstring source, jstring name) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -69,12 +69,12 @@ JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_Session_createScript__Ljava_lang_
     g_error_free(error);
     return NULL;
   }
-  jclass script_class = (*env)->FindClass(env, "nl/axelkoolhaas/Script");
+  jclass script_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/Script");
   jmethodID script_constructor = (*env)->GetMethodID(env, script_class, "<init>", "(J)V");
   return (*env)->NewObject(env, script_class, script_constructor, (jlong) script);
 }
 
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_enableChildGating(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Session_enableChildGating(JNIEnv *env, jobject obj) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -87,7 +87,7 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_enableChildGating(JNIEnv *en
   }
 }
 
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_disableChildGating(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Session_disableChildGating(JNIEnv *env, jobject obj) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
@@ -100,7 +100,27 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_disableChildGating(JNIEnv *e
   }
 }
 
-JNIEXPORT void JNICALL Java_nl_axelkoolhaas_Session_disposeNative(JNIEnv *env, jclass cls, jlong native_ptr) {
+JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Session_getDevice(JNIEnv *env, jobject obj) {
+  // frida_session_get_device is not available in this Frida SDK version.
+  return NULL;
+}
+
+JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Session_getParameters(JNIEnv *env, jobject obj) {
+  // Not implemented: FridaSession parameters not exposed in C API
+  return NULL;
+}
+
+JNIEXPORT jstring JNICALL Java_nl_axelkoolhaas_frida_1java_Session_getRealm(JNIEnv *env, jobject obj) {
+  // Not implemented: FridaSession realm not exposed in C API
+  return NULL;
+}
+
+JNIEXPORT jint JNICALL Java_nl_axelkoolhaas_frida_1java_Session_getPersistTimeout(JNIEnv *env, jobject obj) {
+  // Not implemented: FridaSession persist-timeout not exposed in C API
+  return 0;
+}
+
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Session_disposeNative(JNIEnv *env, jclass cls, jlong native_ptr) {
   FridaSession *session = (FridaSession *) native_ptr;
   if (session != NULL) {
     if (!frida_session_is_detached(session)) {

@@ -1,4 +1,4 @@
-package nl.axelkoolhaas;
+package nl.axelkoolhaas.frida_java;
 
 /**
  * Represents a Frida script that can be injected into a process.
@@ -12,6 +12,9 @@ public class Script implements AutoCloseable {
 
     /** Native pointer to the FridaScript object */
     private final long nativePtr;
+
+    /** Closed flag to prevent double unload */
+    private volatile boolean closed = false;
 
     /**
      * Script message handler interface
@@ -47,12 +50,15 @@ public class Script implements AutoCloseable {
 
     /**
      * Closes this script and releases any system resources associated with it.
-     * This method calls {@link #unload()} if the script is not already destroyed.
+     * This method calls unload() if the script is not already destroyed.
+     * This method is idempotent and safe to call multiple times.
+     * <b>Warning:</b> Always call close() explicitly or use try-with-resources.
      */
     @Override
     public void close() {
-        if (!isDestroyed()) {
+        if (!closed && !isDestroyed()) {
             unload();
+            closed = true;
         }
     }
 
@@ -82,6 +88,26 @@ public class Script implements AutoCloseable {
      * @param handler Message handler to receive script messages
      */
     public native void setMessageHandler(MessageHandler handler);
+
+    /**
+     * Get the name of the script.
+     * @return Script name
+     */
+    public native String getName();
+
+    // Async/sync/finish variants for load
+    public native void loadAsync(Object cancellable, Object callback, Object callbackTarget);
+    public native void loadFinish(Object asyncResult);
+    public native void loadSync(Object cancellable);
+
+    // Async/sync/finish variants for unload
+    public native void unloadAsync(Object cancellable, Object callback, Object callbackTarget);
+    public native void unloadFinish(Object asyncResult);
+    public native void unloadSync(Object cancellable);
+
+    // Event registration (signals)
+    public native void onDestroyed(Runnable callback);
+    public native void onMessage(MessageHandler handler);
 
     /**
      * Get the native pointer (for internal use).
