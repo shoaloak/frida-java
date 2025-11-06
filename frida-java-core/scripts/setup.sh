@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-readonly FRIDA_VERSION="17.5.0"
+readonly FRIDA_VERSION="17.5.1"
+readonly BASE_URL="https://github.com/frida/frida/releases/download"
 
 get_os() {
   local os_name
@@ -30,17 +31,53 @@ function fetch_devkit() {
   os=$(get_os)
   arch=$(get_arch)
 
-  # Construct the download URL
-  local base_url="https://github.com/frida/frida/releases/download"
-  local file_name="frida-core-devkit-${FRIDA_VERSION}-${os}-${arch}.tar.xz"
-  local download_url="${base_url}/${FRIDA_VERSION}/${file_name}"
-
+  # Create the frida-devkit directory if it doesn't exist
   if [ ! -d "frida-devkit" ]; then
       mkdir frida-devkit
   fi
 
-  curl --progress-bar --location --output - "${download_url}" \
-    | tar -x --directory frida-devkit
+  # For macOS, fetch both x86_64 and arm64 devkits
+  if [ "${os}" = "macos" ]; then
+    echo "Fetching devkits for both x86_64 and arm64 architectures..."
+
+    # Create directories for each architecture
+    if [ ! -d "frida-devkit/x86_64" ]; then
+        mkdir -p frida-devkit/x86_64
+    fi
+    if [ ! -d "frida-devkit/arm64" ]; then
+        mkdir -p frida-devkit/arm64
+    fi
+
+    # Define architectures to fetch
+    local architectures=("x86_64" "arm64")
+
+    for target_arch in "${architectures[@]}"; do
+      echo "Downloading ${target_arch} devkit..."
+
+      # Construct the correct URL format
+      local file_name="frida-core-devkit-${FRIDA_VERSION}-${os}-${target_arch}.tar.xz"
+      local download_url="${BASE_URL}/${FRIDA_VERSION}/${file_name}"
+
+      echo "URL: ${download_url}"
+
+      # Download and extract
+      if ! curl --progress-bar --location --output - "${download_url}" | tar -x --directory "frida-devkit/${target_arch}"; then
+        echo "Error: Failed to download or extract ${target_arch} devkit"
+        exit 1
+      fi
+    done
+
+    echo "Architecture-specific devkits downloaded successfully"
+    echo "Note: Headers are kept separate per architecture to avoid conflicts"
+
+  else
+    # For non-macOS, use the original single-architecture approach
+    local file_name="frida-core-devkit-${FRIDA_VERSION}-${os}-${arch}.tar.xz"
+    local download_url="${BASE_URL}/${FRIDA_VERSION}/${file_name}"
+
+    curl --progress-bar --location --output - "${download_url}" \
+      | tar -x --directory frida-devkit
+  fi
 }
 
 function main() {
