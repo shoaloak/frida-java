@@ -18,3 +18,6 @@ frida-java-core/frida-devkit/
 *.so
 *.dylib
 *.dll
+
+# Logs
+*.log
