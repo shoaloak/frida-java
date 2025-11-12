@@ -12,12 +12,20 @@ public class ClassNameOrderTest {
     @Nested
     class B_DeviceTest extends DeviceTest {}
     @Nested
-    class C_ProcessTest extends ProcessTest {}
+    class C_DeviceAdvancedTest extends DeviceAdvancedTest {}
     @Nested
-    class D_ApplicationTest extends ApplicationTest {}
+    class D_ProcessTest extends ProcessTest {}
     @Nested
-    class E_SessionTest extends SessionTest {}
+    class E_ApplicationTest extends ApplicationTest {}
     @Nested
-    class F_ErrorHandlingTest extends ErrorHandlingTest {}
+    class F_SpawnTest extends SpawnTest {}
+    @Nested
+    class G_SessionTest extends SessionTest {}
+    @Nested
+    class H_ScriptTest extends ScriptTest {}
+    @Nested
+    class I_ChildTest extends ChildTest {}
+    @Nested
+    class J_ErrorHandlingTest extends ErrorHandlingTest {}
 }
 
