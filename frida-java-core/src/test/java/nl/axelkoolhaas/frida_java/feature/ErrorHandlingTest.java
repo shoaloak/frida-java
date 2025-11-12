@@ -30,6 +30,15 @@ public class ErrorHandlingTest {
         }
     }
 
-    // More error and edge case tests will be added here.
+    @Test
+    @Order(2)
+    void testAttachToNonexistentPid() {
+        try (DeviceManager deviceManager = new DeviceManager()) {
+            Device localDevice = deviceManager.getLocalDevice();
+            // Test with a very high PID that should not exist
+            assertThrows(RuntimeException.class, () -> localDevice.attach(Integer.MAX_VALUE), "Should throw for non-existent PID");
+        }
+    }
+
 }
 
