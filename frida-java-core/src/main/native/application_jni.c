@@ -67,7 +67,44 @@ JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_ApplicationList_get(J
   FridaApplicationList *list = (FridaApplicationList *) native_ptr;
   FridaApplication *app = frida_application_list_get(list, index);
   g_object_ref(app);
-  jclass app_class = (*env)->FindClass(env, "nl/nl/axelkoolhaas/frida_java/Application");
+  jclass app_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/Application");
   jmethodID app_ctor = (*env)->GetMethodID(env, app_class, "<init>", "(J)V");
   return (*env)->NewObject(env, app_class, app_ctor, (jlong) app);
 }
+
+JNIEXPORT jobjectArray JNICALL Java_nl_axelkoolhaas_frida_1java_ApplicationList_toArray(JNIEnv *env, jobject obj) {
+  jclass cls = (*env)->GetObjectClass(env, obj);
+  jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
+  jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
+  FridaApplicationList *list = (FridaApplicationList *) native_ptr;
+
+  gint size = frida_application_list_size(list);
+  jclass app_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/Application");
+  jobjectArray result = (*env)->NewObjectArray(env, size, app_class, NULL);
+
+  for (gint i = 0; i < size; i++) {
+    FridaApplication *app = frida_application_list_get(list, i);
+    g_object_ref(app);
+    jmethodID app_ctor = (*env)->GetMethodID(env, app_class, "<init>", "(J)V");
+    jobject app_obj = (*env)->NewObject(env, app_class, app_ctor, (jlong) app);
+    (*env)->SetObjectArrayElement(env, result, i, app_obj);
+    (*env)->DeleteLocalRef(env, app_obj);
+  }
+
+  return result;
+}
+
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_ApplicationList_disposeNative(JNIEnv *env, jobject obj, jlong native_ptr) {
+  FridaApplicationList *list = (FridaApplicationList *) native_ptr;
+  if (list != NULL) {
+    g_object_unref(list);
+  }
+}
+
+JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Application_disposeNative(JNIEnv *env, jobject obj, jlong native_ptr) {
+  FridaApplication *app = (FridaApplication *) native_ptr;
+  if (app != NULL) {
+    g_object_unref(app);
+  }
+}
+

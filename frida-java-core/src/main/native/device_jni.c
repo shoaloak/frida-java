@@ -228,6 +228,24 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Device_disposeNative(JNI
   }
 }
 
+JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Device_enumerateApplicationsSync(JNIEnv *env, jobject obj, jobject options, jobject cancellable) {
+    jclass cls = (*env)->GetObjectClass(env, obj);
+    jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
+    jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
+    FridaDevice *device = (FridaDevice *) native_ptr;
+    GError *error = NULL;
+    FridaApplicationList *applications = frida_device_enumerate_applications_sync(device, NULL, NULL, &error);
+    if (error != NULL) {
+        throw_runtime_exception(env, error->message);
+        g_error_free(error);
+        return NULL;
+    }
+    jclass application_list_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/ApplicationList");
+    jmethodID application_list_ctor = (*env)->GetMethodID(env, application_list_class, "<init>", "(J)V");
+    jobject result = (*env)->NewObject(env, application_list_class, application_list_ctor, (jlong) applications);
+    return result;
+}
+
 JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Device_enumerateProcessesSync(JNIEnv *env, jobject obj, jobject cancellable) {
     jclass cls = (*env)->GetObjectClass(env, obj);
     jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");

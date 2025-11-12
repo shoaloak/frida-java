@@ -49,6 +49,14 @@ public class Application implements AutoCloseable {
     }
 
     /**
+     * Get the native pointer for JNI access.
+     * @return Native pointer value
+     */
+    long getNativePtr() {
+        return nativePtr;
+    }
+
+    /**
      * Native method to release native resources.
      */
     private native void disposeNative(long nativePtr);
