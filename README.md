@@ -31,7 +31,9 @@ Supported platforms
 - [ ] Linux (x86_64, arm64)
 - [ ] Windows (x86_64)
 
-To build the entire project, run the following command from the root directory:
+### Native Build
+
+To build the entire project natively, run the following command from the root directory:
 
 ```bash
 mvn clean install
@@ -42,6 +44,28 @@ This will:
 2. Build the examples module (`frida-java-examples`)
 3. Run tests for the core library
 4. Install both artifacts to your local Maven repository
+
+### Docker-based Cross-Platform Build
+
+For cross-platform compilation, Docker-based builds are available:
+
+#### macOS Build (using Docker OSX)
+
+```bash
+# Quick start - builds for both x86_64 and arm64
+./scripts/build-macos-docker.sh
+```
+
+This uses the [sickcodes/docker-osx](https://hub.docker.com/r/sickcodes/docker-osx) image to create a macOS environment for compilation.
+
+**Requirements:**
+- Docker with at least 8GB RAM allocated
+- KVM support (Linux hosts)
+- ~50GB free disk space
+
+**Output:** Build artifacts will be in `build-output/macos/`
+
+For more details, see [docker/README.md](docker/README.md)
 
 ## Usage
 

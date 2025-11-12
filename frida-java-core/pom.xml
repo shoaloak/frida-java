@@ -15,6 +15,10 @@
     <name>Frida Java</name>
     <description>Java bindings for Frida dynamic instrumentation toolkit</description>
 
+    <properties>
+        <skipNative>false</skipNative>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -162,6 +166,7 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
+                                    <skip>${skipNative}</skip>
                                     <executable>lipo</executable>
                                     <workingDirectory>${project.build.directory}</workingDirectory>
                                     <arguments>
@@ -269,6 +274,135 @@
                                         <linkerStartOption>-lm</linkerStartOption>
                                         <linkerStartOption>-lpthread</linkerStartOption>
                                     </linkerStartOptions>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>native-only</id>
+            <build>
+                <plugins>
+                    <!-- Skip Java compilation, only do native -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default-compile</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Skip JAR creation -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default-jar</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Skip resource copying -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-native-libs</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Force native compilation with cross-compiler -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>1.0-M1</version>
+                        <executions>
+                            <execution>
+                                <id>compile-macos-cross-x86_64</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                    <goal>link</goal>
+                                </goals>
+                                <configuration>
+                                    <compilerProvider>generic-classic</compilerProvider>
+                                    <compilerExecutable>${native.compiler.macos}</compilerExecutable>
+                                    <linkerExecutable>${native.compiler.macos}</linkerExecutable>
+                                    <sources>
+                                        <source>
+                                            <directory>src/main/native</directory>
+                                            <fileNames>
+                                                <fileName>_frida_java.c</fileName>
+                                            </fileNames>
+                                        </source>
+                                    </sources>
+                                    <compilerStartOptions>
+                                        <compilerStartOption>--target=x86_64-apple-darwin24</compilerStartOption>
+                                        <compilerStartOption>-fPIC</compilerStartOption>
+                                        <compilerStartOption>-I${java.home}/include</compilerStartOption>
+                                        <compilerStartOption>-I${java.home}/include/linux</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/frida-devkit/macos-x86_64</compilerStartOption>
+                                    </compilerStartOptions>
+                                    <linkerFinalName>libfrida-java-x86_64</linkerFinalName>
+                                    <linkerFinalNameExt>dylib</linkerFinalNameExt>
+                                    <attach>false</attach>
+                                    <compilerOutputDirectory>${project.build.directory}/objs/x86_64</compilerOutputDirectory>
+                                    <linkerStartOptions>
+                                        <linkerStartOption>--target=x86_64-apple-darwin24</linkerStartOption>
+                                        <linkerStartOption>-shared</linkerStartOption>
+                                        <linkerStartOption>-L${project.basedir}/frida-devkit/macos-x86_64</linkerStartOption>
+                                        <linkerStartOption>-lfrida-core</linkerStartOption>
+                                        <linkerStartOption>-framework</linkerStartOption>
+                                        <linkerStartOption>Foundation</linkerStartOption>
+                                        <linkerStartOption>-framework</linkerStartOption>
+                                        <linkerStartOption>AppKit</linkerStartOption>
+                                        <linkerStartOption>-framework</linkerStartOption>
+                                        <linkerStartOption>IOKit</linkerStartOption>
+                                        <linkerStartOption>-framework</linkerStartOption>
+                                        <linkerStartOption>Security</linkerStartOption>
+                                        <linkerStartOption>-lbsm</linkerStartOption>
+                                        <linkerStartOption>-ldl</linkerStartOption>
+                                        <linkerStartOption>-lm</linkerStartOption>
+                                        <linkerStartOption>-lresolv</linkerStartOption>
+                                        <linkerStartOption>-Wl,-w</linkerStartOption>
+                                    </linkerStartOptions>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Create universal binary -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>create-universal-binary</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>lipo</executable>
+                                    <workingDirectory>${project.build.directory}</workingDirectory>
+                                    <arguments>
+                                        <argument>-create</argument>
+                                        <argument>-output</argument>
+                                        <argument>libfrida-java.dylib</argument>
+                                        <argument>libfrida-java-x86_64.dylib</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>

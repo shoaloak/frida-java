@@ -1,0 +1,38 @@
+# Build outputs
+target/
+build-output/
+*.jar
+*.dylib
+*.so
+*.dll
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker files (don't copy other dockerfiles)
+docker/Dockerfile.linux-*
+
+# Test outputs
+surefire-reports/

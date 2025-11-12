@@ -24,6 +24,40 @@
         <native.compiler.linux>gcc</native.compiler.linux>
     </properties>
 
+<!--    <profiles>-->
+<!--        <profile>-->
+<!--            <id>linux</id>-->
+<!--            <properties>-->
+<!--                <skip.linux.build>false</skip.linux.build>-->
+<!--            </properties>-->
+<!--        </profile>-->
+<!--        <profile>-->
+<!--            <id>docker-linux</id>-->
+<!--            <build>-->
+<!--                <plugins>-->
+<!--                    <plugin>-->
+<!--                        <groupId>org.codehaus.mojo</groupId>-->
+<!--                        <artifactId>exec-maven-plugin</artifactId>-->
+<!--                        <version>3.1.0</version>-->
+<!--                        <executions>-->
+<!--                            <execution>-->
+<!--                                <id>docker-build-linux</id>-->
+<!--                                <phase>compile</phase>-->
+<!--                                <goals>-->
+<!--                                    <goal>exec</goal>-->
+<!--                                </goals>-->
+<!--                                <configuration>-->
+<!--                                    <executable>./scripts/build-docker-linux.sh</executable>-->
+<!--                                    <workingDirectory>${project.basedir}</workingDirectory>-->
+<!--                                </configuration>-->
+<!--                            </execution>-->
+<!--                        </executions>-->
+<!--                    </plugin>-->
+<!--                </plugins>-->
+<!--            </build>-->
+<!--        </profile>-->
+<!--    </profiles>-->
+
     <dependencyManagement>
         <dependencies>
             <dependency>
