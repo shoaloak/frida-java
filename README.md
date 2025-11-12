@@ -14,8 +14,8 @@ This project is organized as a multi-module Maven project:
 * [Java Development Kit (JDK)](https://adoptium.net/)
   - Java 11 or higher is required
 * [Apache Maven](https://maven.apache.org/)
-* [Clang](https://clang.llvm.org/)
-  - GCC can also be used, but on macOS, clang is the default compiler
+* [Clang](https://clang.llvm.org/) for macOS
+* [GCC](https://gcc.gnu.org/) for Linux
 
 ### Frida Devkit
 

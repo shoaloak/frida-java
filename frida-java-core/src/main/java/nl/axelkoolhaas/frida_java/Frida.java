@@ -20,14 +20,16 @@ public class Frida {
      */
     private static void loadNativeLibrary() {
         String osName = System.getProperty("os.name").toLowerCase();
-        String libName = getLibraryName(osName);
-        
-        // Try to load from JAR resources first
-        try (InputStream is = Frida.class.getResourceAsStream("/native/" + libName)) {
+        String arch = System.getProperty("os.arch").toLowerCase();
+        String libName = getLibraryName(osName, arch);
+
+        // Try to load the platform-specific library from JAR resources
+        String resourcePath = "/native/" + libName;
+        try (InputStream is = Frida.class.getResourceAsStream(resourcePath)) {
             if (is != null) {
-                // Extract library to temporary file
-                String libExtension = getLibraryExtension(osName);
-                Path tempFile = Files.createTempFile("libfrida-java", libExtension);
+                // Extract the platform-specific library to temporary file
+                String extension = libName.substring(libName.lastIndexOf('.'));
+                Path tempFile = Files.createTempFile("libfrida-java", extension);
                 Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
                 tempFile.toFile().deleteOnExit();
                 
@@ -37,42 +39,44 @@ public class Frida {
             }
         } catch (IOException e) {
             // Fall through to system library loading
-            System.err.println("Warning: Failed to load native library from JAR: " + e.getMessage());
+            System.err.println("Warning: Failed to load native library from JAR (" + resourcePath + "): " + e.getMessage());
         }
         
         // Fallback to system library loading
         try {
             System.loadLibrary("frida-java");
         } catch (UnsatisfiedLinkError e) {
-            throw new UnsatisfiedLinkError("Failed to load native library 'frida-java'. " +
-                "Make sure the library is available in java.library.path or bundled in the JAR. " +
+            throw new UnsatisfiedLinkError("Failed to load native library 'frida-java' for " + osName + "/" + arch + ". " +
+                "Make sure the library is available in java.library.path or bundled in the JAR as " + resourcePath + ". " +
                 "Original error: " + e.getMessage());
         }
     }
     
     /**
-     * Get the platform-specific library name.
+     * Get the platform and architecture-specific library name.
      */
-    private static String getLibraryName(String osName) {
-        if (osName.contains("mac")) return "libfrida-java.dylib";
-        if (osName.contains("linux")) return "libfrida-java.so";
-        if (osName.contains("windows")) return "frida-java.dll";
-        throw new UnsatisfiedLinkError("Unsupported operating system: " + osName);
-    }
-    
-    /**
-     * Get the platform-specific library file extension.
-     */
-    private static String getLibraryExtension(String osName) {
-        if (osName.contains("mac")) return ".dylib";
-        if (osName.contains("linux")) return ".so";
-        if (osName.contains("windows")) return ".dll";
+    private static String getLibraryName(String osName, String arch) {
+        if (osName.contains("mac")) {
+            return "libfrida-java.dylib"; // Universal fat binary for macOS
+        }
+        if (osName.contains("linux")) {
+            if (arch.contains("amd64") || arch.contains("x86_64")) {
+                return "libfrida-java-x86_64.so";
+            } else if (arch.contains("aarch64") || arch.contains("arm64")) {
+                return "libfrida-java-arm64.so";
+            }
+            throw new UnsatisfiedLinkError("Unsupported Linux architecture: " + arch);
+        }
+        if (osName.contains("windows")) {
+            throw new UnsatisfiedLinkError("Windows is currently not supported.");
+//            return "frida-java.dll";
+        }
         throw new UnsatisfiedLinkError("Unsupported operating system: " + osName);
     }
 
     /**
      * Get the Frida version as a string.
-     * @return Version string (e.g., "16.1.4")
+     * @return Version string (e.g., "17.5.1")
      */
     public static native String getVersionString();
 

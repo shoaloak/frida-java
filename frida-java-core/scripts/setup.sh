@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# TODO make this version configurable via command line argument...
 readonly FRIDA_VERSION="17.5.1"
 readonly BASE_URL="https://github.com/frida/frida/releases/download"
 
@@ -51,43 +52,82 @@ download_and_extract() {
   return 0
 }
 
-function fetch_devkit() {
-  local os
-  local arch
+fetch_macos_devkits() {
+  echo "Fetching devkits for macOS (both x86_64 and arm64 architectures)..."
 
+  local architectures=("x86_64" "arm64")
+
+  for target_arch in "${architectures[@]}"; do
+    local target_dir="${DEVKIT_DIR}/macos-${target_arch}"
+    if ! download_and_extract "macos" "${target_arch}" "${target_dir}"; then
+      return 1
+    fi
+  done
+
+  echo "macOS devkits downloaded successfully"
+  return 0
+}
+
+fetch_linux_devkits() {
+  echo "Fetching devkits for Linux (both x86_64 and arm64 architectures)..."
+
+  local architectures=("x86_64" "arm64")
+
+  for target_arch in "${architectures[@]}"; do
+    local target_dir="${DEVKIT_DIR}/linux-${target_arch}"
+
+    if ! download_and_extract "linux" "${target_arch}" "${target_dir}"; then
+      return 1
+    fi
+  done
+
+  echo "Linux devkits downloaded successfully"
+  return 0
+}
+
+fetch_windows_devkits() {
+  #TODO
+  echo "Windows support is not yet implemented"
+  echo "Placeholder for future Windows devkit download functionality"
+  return 1
+}
+
+fetch_devkit() {
+  local os
   os=$(get_os)
-  arch=$(get_arch)
 
   # Create the frida-devkit directory if it doesn't exist
   mkdir -p "${DEVKIT_DIR}"
 
-  # For macOS, fetch both x86_64 and arm64 devkits
-  if [ "${os}" = "macos" ]; then
-    echo "Fetching devkits for both x86_64 and arm64 architectures..."
-
-    # Define architectures to fetch
-    local architectures=("x86_64" "arm64")
-
-    for target_arch in "${architectures[@]}"; do
-      if ! download_and_extract "${os}" "${target_arch}" "${DEVKIT_DIR}/${target_arch}"; then
-        exit 1
-      fi
-    done
-
-    echo "Architecture-specific devkits downloaded successfully"
-    echo "Note: Headers are kept separate per architecture to avoid conflicts"
-
-  else
-    # For non-macOS, use the original single-architecture approach
-    if ! download_and_extract "${os}" "${arch}" "${DEVKIT_DIR}"; then
-      exit 1
-    fi
-  fi
+  case "${os}" in
+    "macos")
+      fetch_macos_devkits
+      ;;
+    "linux")
+      fetch_linux_devkits
+      ;;
+    "windows")
+      fetch_windows_devkits
+      ;;
+    *)
+      echo "Error: Unsupported operating system: ${os}"
+      return 1
+      ;;
+  esac
 }
 
-function main() {
-  echo "Fetching and extracting Frida DevKit..."
-  fetch_devkit
+main() {
+  echo "Downloading Frida devkit..."
+
+  if ! fetch_devkit; then
+    echo "Error: Failed to fetch devkit(s)"
+    exit 1
+  fi
+
+  echo "All devkit(s) downloaded successfully"
+  return 0
+
+  echo "Setup completed successfully!"
 }
 
 main "$@"
