@@ -59,9 +59,17 @@ public class Session implements AutoCloseable {
      */
     @Override
     public void close() {
-        if (!closed && !isDetached()) {
-            detach();
-            closed = true;
+        if (!closed && nativePtr != 0) {
+            try {
+                if (!isDetached()) {
+                    detach();
+                }
+            } catch (Exception e) {
+                // Ignore exceptions during cleanup
+                System.err.println("Warning: Exception during session cleanup: " + e.getMessage());
+            } finally {
+                closed = true;
+            }
         }
     }
 
