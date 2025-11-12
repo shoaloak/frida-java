@@ -263,3 +263,65 @@ JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Device_enumerateProce
     jobject result = (*env)->NewObject(env, process_list_class, process_list_ctor, (jlong) processes);
     return result;
 }
+
+JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Device_querySystemParametersSync(JNIEnv *env, jobject obj, jobject cancellable) {
+    jclass cls = (*env)->GetObjectClass(env, obj);
+    jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
+    jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
+    FridaDevice *device = (FridaDevice *) native_ptr;
+
+    GError *error = NULL;
+    GHashTable *parameters = frida_device_query_system_parameters_sync(device, NULL, &error);
+    if (error != NULL) {
+        throw_runtime_exception(env, error->message);
+        g_error_free(error);
+        return NULL;
+    }
+
+    // Create Java HashMap
+    jclass hashmap_class = (*env)->FindClass(env, "java/util/HashMap");
+    jmethodID hashmap_init = (*env)->GetMethodID(env, hashmap_class, "<init>", "()V");
+    jmethodID hashmap_put = (*env)->GetMethodID(env, hashmap_class, "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
+    jobject result_map = (*env)->NewObject(env, hashmap_class, hashmap_init);
+
+    // Iterate over GHashTable and populate Java HashMap
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, parameters);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        jstring java_key = (*env)->NewStringUTF(env, (const char *)key);
+        jstring java_value = NULL;
+
+        // Handle the value which is a GVariant from Frida
+        if (value != NULL) {
+            GVariant *variant = (GVariant *)value;
+
+            // Check if it's a string variant
+            if (g_variant_is_of_type(variant, G_VARIANT_TYPE_STRING)) {
+                const char *str_value = g_variant_get_string(variant, NULL);
+                if (str_value != NULL) {
+                    java_value = (*env)->NewStringUTF(env, str_value);
+                }
+            } else {
+                // Try to get a string representation of the variant
+                gchar *str_repr = g_variant_print(variant, TRUE);
+                if (str_repr != NULL) {
+                    java_value = (*env)->NewStringUTF(env, str_repr);
+                    g_free(str_repr);
+                }
+            }
+        }
+
+        // If we couldn't create a value, use empty string
+        if (java_value == NULL) {
+            java_value = (*env)->NewStringUTF(env, "");
+        }
+
+        (*env)->CallObjectMethod(env, result_map, hashmap_put, java_key, java_value);
+        (*env)->DeleteLocalRef(env, java_key);
+        (*env)->DeleteLocalRef(env, java_value);
+    }
+
+    g_hash_table_unref(parameters);
+    return result_map;
+}
