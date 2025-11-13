@@ -16,20 +16,17 @@ This project is organized as a multi-module Maven project:
 * [Apache Maven](https://maven.apache.org/)
 * [Clang](https://clang.llvm.org/) for macOS
 * [GCC](https://gcc.gnu.org/) for Linux
+* [Curl](https://curl.se/) for downloading dependencies
+* [Docker](https://www.docker.com/) (optional, for building different platform)
 
 ### Frida Devkit
 
-Run [setup script](frida-java-core/scripts/setup.sh) to do this automatically
+Run [setup script](frida-java-core/scripts/fetch_devkit.sh) to do this automatically
 
 * Download the corresponding _frida-core-devkit_ from the Frida releases [page](https://github.com/frida/frida/releases/)
 * Extract the downloaded archive to `frida-java-core/frida-devkit/` directory
 
 ## Build
-
-Supported platforms
-- [x] MacOS (x86_64, arm64)
-- [ ] Linux (x86_64, arm64)
-- [ ] Windows (x86_64)
 
 To build the entire project, run the following command from the root directory:
 
@@ -42,6 +39,19 @@ This will:
 2. Build the examples module (`frida-java-examples`)
 3. Run tests for the core library
 4. Install both artifacts to your local Maven repository
+
+### Cross-Platform Builds with Docker
+
+Supported platforms
+- [x] MacOS (x86_64, arm64)
+- [x] Linux (x86_64, arm64)
+- [ ] Windows (x86_64)
+
+```bash
+mvn clean install -Pmacos,linux-docker
+```
+
+Note that this was developed and tested on an Apple Silicon Mac, so please report any issues you encounter on other platforms.
 
 ## Usage
 

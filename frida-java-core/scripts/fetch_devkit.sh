@@ -43,7 +43,7 @@ download_and_extract() {
   mkdir -p "${target_dir}"
 
   # Download and extract
-  if ! curl --progress-bar --location --output - "${download_url}" | tar -x --directory "${target_dir}"; then
+  if ! curl --progress-bar --location --output - "${download_url}" | tar -x -J --directory "${target_dir}"; then
     echo "Error: Failed to download or extract ${arch} devkit"
     return 1
   fi
