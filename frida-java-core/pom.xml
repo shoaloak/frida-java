@@ -372,6 +372,25 @@
                             </nonFilteredFileExtensions>
                         </configuration>
                     </execution>
+                    <!-- Include LGPL license file in the JAR -->
+                    <execution>
+                        <id>copy-license-files</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../</directory>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
@@ -393,6 +412,17 @@
                         </manifestEntries>
                     </archive>
                 </configuration>
+                <!-- Don't include pom.xml inside the JAR to reduce size -->
+                <executions>
+                    <execution>
+                        <id>default-jar</id>
+                        <configuration>
+                            <archive>
+                                <addMavenDescriptor>false</addMavenDescriptor>
+                            </archive>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Used to run unit tests -->

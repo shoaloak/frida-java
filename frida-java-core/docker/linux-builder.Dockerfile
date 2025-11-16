@@ -14,10 +14,6 @@ WORKDIR /app
 # copy parent project into container
 COPY . /app
 
-# Install project dependencies
-RUN bash /app/frida-java-core/scripts/fetch_devkit.sh \
-    && mvn --errors --define aether.dependencyCollector.impl=bf --define maven.artifact.threads=16 dependency:go-offline
-
 # x86_64
 RUN mvn compile \
     --projects frida-java-core \
