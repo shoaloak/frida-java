@@ -4,153 +4,37 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>nl.axelkoolhaas</groupId>
-    <artifactId>frida-java</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <artifactId>frida-java-parent</artifactId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
 
-    <name>frida-java</name>
+    <name>Frida Java Parent</name>
+    <description>Parent project for Frida Java bindings and examples</description>
     <url>https://axelkoolhaas.nl</url>
+
+    <modules>
+        <module>frida-java-core</module>
+        <module>frida-java-examples</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>11</maven.compiler.release>
-        <native.compiler>clang</native.compiler>
+        <native.compiler.macos>clang</native.compiler.macos>
+        <native.compiler.linux>gcc</native.compiler.linux>
+        <native.linker.linux>ld</native.linker.linux>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.10.0</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>5.10.0</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-    <build>
-        <plugins>
-            <!-- Used to compile Java code  -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <release>${maven.compiler.release}</release>
-                </configuration>
-            </plugin>
 
-            <!-- Used to compile native code  -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>native-maven-plugin</artifactId>
-                <version>1.0-M1</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <compilerProvider>generic-classic</compilerProvider>
-                    <compilerExecutable>${native.compiler}</compilerExecutable>
-                    <linkerExecutable>${native.compiler}</linkerExecutable>
-                    <sources>
-                        <source>
-                            <directory>src/main/native</directory>
-                            <fileNames>
-                                <fileName>frida-java.c</fileName>
-                            </fileNames>
-                        </source>
-                    </sources>
-                    <compilerStartOptions>
-                        <compilerStartOption>-fPIC</compilerStartOption>
-                        <compilerStartOption>-I${java.home}/include</compilerStartOption>
-                        <compilerStartOption>-I${java.home}/include/darwin</compilerStartOption>
-                        <compilerStartOption>-I${project.basedir}/frida-devkit</compilerStartOption>
-                    </compilerStartOptions>
-                    <linkerFinalName>libfrida-java</linkerFinalName>
-                    <linkerFinalNameExt>dylib</linkerFinalNameExt>
-                    <attach>false</attach>
-                    <linkerStartOptions>
-                        <linkerStartOption>-shared</linkerStartOption>
-                        <linkerStartOption>-L${project.basedir}/frida-devkit</linkerStartOption>
-                        <linkerStartOption>-lfrida-core</linkerStartOption>
-                        <linkerStartOption>-framework</linkerStartOption>
-                        <linkerStartOption>Foundation</linkerStartOption>
-                        <linkerStartOption>-framework</linkerStartOption>
-                        <linkerStartOption>AppKit</linkerStartOption>
-                        <linkerStartOption>-framework</linkerStartOption>
-                        <linkerStartOption>IOKit</linkerStartOption>
-                        <linkerStartOption>-framework</linkerStartOption>
-                        <linkerStartOption>Security</linkerStartOption>
-                        <linkerStartOption>-lbsm</linkerStartOption>
-                        <linkerStartOption>-ldl</linkerStartOption>
-                        <linkerStartOption>-lm</linkerStartOption>
-                        <linkerStartOption>-lresolv</linkerStartOption>
-                    </linkerStartOptions>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>link</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Used to copy native library to JAR resources -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-                <executions>
-                    <execution>
-                        <id>copy-native-libs</id>
-                        <phase>process-classes</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.build.directory}</directory>
-                                    <includes>
-                                        <include>libfrida-java.dylib</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Used to create JAR -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.2</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-                        </manifest>
-                        <manifestEntries>
-                            <Built-By>${user.name}</Built-By>
-                            <Build-Jdk>${java.version}</Build-Jdk>
-                            <Implementation-URL>${project.url}</Implementation-URL>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
-            </plugin>
-
-            <!-- Used to run unit tests -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
-                <configuration>
-                    <argLine>-Djava.library.path=${project.build.directory}</argLine>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>
