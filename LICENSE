@@ -1,0 +1,38 @@
+frida-java - Java bindings for Frida dynamic instrumentation toolkit
+Copyright (C) 2025 Axel Koolhaas
+
+The frida-java library core, and other portions of the official frida-java
+distribution not explicitly licensed otherwise, are licensed under the
+GNU LESSER GENERAL PUBLIC LICENSE version 3 or later -- see the
+'COPYING.LESSER' file in this directory for details.
+
+[ The below explicit exemption clarifies the frida-java developers' position
+concerning the application of the GNU Lesser General Public License to
+applications and libraries that use frida-java. The intention is to make it
+clear that arbitrarily-licensed programs and libraries that use frida-java
+do not automatically assume the LGPL license themselves simply because of
+their use of frida-java APIs or linking to frida-java libraries: ]
+
+EXEMPTION:
+
+Applications and libraries that use frida-java through its public APIs,
+whether statically or dynamically linked, are not considered derivative
+works of frida-java for the purposes of the LGPL. Such applications and
+libraries may be distributed under any license of the author's choosing,
+provided that they comply with the LGPL requirements for the frida-java
+library itself (such as providing source code for any modifications to
+frida-java and ensuring users can replace the frida-java library).
+
+This exemption applies to:
+- Applications that use frida-java to perform dynamic instrumentation
+- Libraries that wrap or extend frida-java functionality
+- Native code that interfaces with frida-java through JNI
+- Scripts and programs that are instrumented using frida-java
+
+This exemption does not apply to:
+- Modified versions of frida-java itself
+- Code that incorporates frida-java source code directly
+- Derivative works of the frida-java library core
+
+For the full license text, see the COPYING.LESSER file or visit:
+https://www.gnu.org/licenses/lgpl-3.0.html
