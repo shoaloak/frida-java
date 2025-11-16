@@ -20,9 +20,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>11</maven.compiler.release>
-        <native.compiler.macos>clang</native.compiler.macos>
-        <native.compiler.linux>gcc</native.compiler.linux>
-        <native.linker.linux>ld</native.linker.linux>
     </properties>
 
     <dependencyManagement>

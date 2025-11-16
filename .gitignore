@@ -6,6 +6,7 @@ dependency-reduced-pom.xml
 
 # Dependency directories
 frida-java-core/frida-devkit/
+frida-java-core/jni-headers/
 
 # IntelliJ IDEA
 .idea/

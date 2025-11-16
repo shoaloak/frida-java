@@ -14,14 +14,13 @@ This project is organized as a multi-module Maven project:
 * [Java Development Kit (JDK)](https://adoptium.net/)
   - Java 11 or higher is required
 * [Apache Maven](https://maven.apache.org/)
-* [Clang](https://clang.llvm.org/) for macOS
-* [GCC](https://gcc.gnu.org/) for Linux
-* [Curl](https://curl.se/) for downloading dependencies
-* [Docker](https://www.docker.com/) (optional, for building different platform)
+* [Clang](https://clang.llvm.org/)
+* [Curl](https://curl.se/)
+* [Docker](https://www.docker.com/) for building the different platform artifacts
 
 ### Frida Devkit
 
-Run [setup script](frida-java-core/scripts/fetch_devkit.sh) to do this automatically
+Maven runs [setup script](frida-java-core/scripts/fetch_devkits.sh) automatically.
 
 * Download the corresponding _frida-core-devkit_ from the Frida releases [page](https://github.com/frida/frida/releases/)
 * Extract the downloaded archive to `frida-java-core/frida-devkit/` directory
@@ -45,13 +44,15 @@ This will:
 Supported platforms
 - [x] MacOS (x86_64, arm64)
 - [x] Linux (x86_64, arm64)
-- [ ] Windows (x86_64)
+- [X] Windows (x86_64)
 
 ```bash
-mvn clean install -Pmacos,linux-docker
+mvn clean install -Pmacos,linux-docker,windows-docker
 ```
 
-Note that this was developed and tested on an Apple Silicon Mac, so please report any issues you encounter on other platforms.
+#### Notes
+This project was developed on an Apple Silicon Mac, so please beware when building on other platforms.
+I should add a docker image that can be used to build macos binaries on linux hosts... todo :)
 
 ## Usage
 

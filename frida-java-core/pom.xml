@@ -15,6 +15,15 @@
     <name>Frida Java</name>
     <description>Java bindings for Frida dynamic instrumentation toolkit</description>
 
+    <properties>
+        <native.compiler>clang</native.compiler>
+        <native.linker>clang</native.linker>
+        <exec-maven-plugin.version>3.1.0</exec-maven-plugin.version>
+        <native-maven-plugin.version>1.0-M1</native-maven-plugin.version>
+        <devkit.skip>false</devkit.skip>
+        <jni.skip>false</jni.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -24,8 +33,34 @@
         </dependency>
     </dependencies>
 
-    <!-- Profiles for building native libraries for different OSes -->
     <profiles>
+        <!-- Profile to skip fetching JNI headers if present -->
+        <profile>
+            <id>jni-exists</id>
+            <activation>
+                <file>
+                    <exists>${project.basedir}/jni-headers</exists>
+                </file>
+            </activation>
+            <properties>
+                <jni.skip>true</jni.skip>
+            </properties>
+        </profile>
+
+        <!-- Profile to skip fetching devkits if present -->
+        <profile>
+            <id>devkit-exists</id>
+            <activation>
+                <file>
+                    <exists>${project.basedir}/frida-devkit</exists>
+                </file>
+            </activation>
+            <properties>
+                <devkit.skip>true</devkit.skip>
+            </properties>
+        </profile>
+
+        <!-- Profiles for building native libraries for different OSes -->
         <profile>
             <id>macos</id>
             <activation>
@@ -39,7 +74,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>1.0-M1</version>
+                        <version>${native-maven-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>compile-macos-x86_64</id>
@@ -50,8 +85,8 @@
                                 </goals>
                                 <configuration>
                                     <compilerProvider>generic-classic</compilerProvider>
-                                    <compilerExecutable>${native.compiler.macos}</compilerExecutable>
-                                    <linkerExecutable>${native.compiler.macos}</linkerExecutable>
+                                    <compilerExecutable>${native.compiler}</compilerExecutable>
+                                    <linkerExecutable>${native.linker}</linkerExecutable>
                                     <sources>
                                         <source>
                                             <directory>src/main/native</directory>
@@ -64,8 +99,7 @@
                                         <compilerStartOption>-fPIC</compilerStartOption>
                                         <compilerStartOption>-arch</compilerStartOption>
                                         <compilerStartOption>x86_64</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include/darwin</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/jni-headers/macos</compilerStartOption>
                                         <compilerStartOption>-I${project.basedir}/frida-devkit/macos-x86_64</compilerStartOption>
                                     </compilerStartOptions>
                                     <linkerFinalName>libfrida-java-x86_64</linkerFinalName>
@@ -104,8 +138,8 @@
                                 </goals>
                                 <configuration>
                                     <compilerProvider>generic-classic</compilerProvider>
-                                    <compilerExecutable>${native.compiler.macos}</compilerExecutable>
-                                    <linkerExecutable>${native.compiler.macos}</linkerExecutable>
+                                    <compilerExecutable>${native.compiler}</compilerExecutable>
+                                    <linkerExecutable>${native.linker}</linkerExecutable>
                                     <sources>
                                         <source>
                                             <directory>src/main/native</directory>
@@ -118,8 +152,7 @@
                                         <compilerStartOption>-fPIC</compilerStartOption>
                                         <compilerStartOption>-arch</compilerStartOption>
                                         <compilerStartOption>arm64</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include/darwin</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/jni-headers/macos</compilerStartOption>
                                         <compilerStartOption>-I${project.basedir}/frida-devkit/macos-arm64</compilerStartOption>
                                     </compilerStartOptions>
                                     <linkerFinalName>libfrida-java-arm64</linkerFinalName>
@@ -153,7 +186,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
+                        <version>${exec-maven-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>create-universal-binary</id>
@@ -183,8 +216,8 @@
             <id>linux-x86_64</id>
             <activation>
                 <property>
-                    <name>target.arch</name>
-                    <value>x86_64</value>
+                    <name>target</name>
+                    <value>linux-x86_64</value>
                 </property>
             </activation>
             <build>
@@ -192,7 +225,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>1.0-M1</version>
+                        <version>${native-maven-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>compile-linux-x86_64</id>
@@ -203,8 +236,8 @@
                                 </goals>
                                 <configuration>
                                     <compilerProvider>generic-classic</compilerProvider>
-                                    <compilerExecutable>${native.compiler.linux}</compilerExecutable>
-                                    <linkerExecutable>${native.linker.linux}</linkerExecutable>
+                                    <compilerExecutable>${native.compiler}</compilerExecutable>
+                                    <linkerExecutable>${native.linker}</linkerExecutable>
                                     <sources>
                                         <source>
                                             <directory>src/main/native</directory>
@@ -214,21 +247,29 @@
                                         </source>
                                     </sources>
                                     <compilerStartOptions>
+                                        <compilerStartOption>--target=x86_64-linux-gnu</compilerStartOption>
+                                        <compilerStartOption>--sysroot=/usr/x86_64-linux-gnu</compilerStartOption>
                                         <compilerStartOption>-fPIC</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include/linux</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/jni-headers/linux</compilerStartOption>
                                         <compilerStartOption>-I${project.basedir}/frida-devkit/linux-x86_64</compilerStartOption>
                                     </compilerStartOptions>
-                                    <linkerFinalName>libfrida-java-linux-x86_64</linkerFinalName>
+                                    <linkerFinalName>libfrida-java-x86_64</linkerFinalName>
                                     <linkerFinalNameExt>so</linkerFinalNameExt>
                                     <attach>false</attach>
                                     <compilerOutputDirectory>${project.build.directory}/objs/linux-x86_64</compilerOutputDirectory>
                                     <linkerStartOptions>
+                                        <linkerStartOption>--target=x86_64-linux-gnu</linkerStartOption>
+                                        <linkerStartOption>--sysroot=/usr/x86_64-linux-gnu</linkerStartOption>
+                                        <linkerStartOption>-fuse-ld=lld</linkerStartOption>
+                                        <linkerStartOption>-nostartfiles</linkerStartOption>
+                                        <linkerStartOption>-nostdlib</linkerStartOption>
                                         <linkerStartOption>-shared</linkerStartOption>
                                         <linkerStartOption>-L${project.basedir}/frida-devkit/linux-x86_64</linkerStartOption>
                                         <linkerStartOption>-lfrida-core</linkerStartOption>
                                         <linkerStartOption>-ldl</linkerStartOption>
-                                        <linkerStartOption>-lm</linkerStartOption>
+<!--                                        <linkerStartOption>-lm</linkerStartOption>-->
+                                        <linkerStartOption>-lpthread</linkerStartOption>
+                                        <linkerStartOption>-lc</linkerStartOption>
                                     </linkerStartOptions>
                                 </configuration>
                             </execution>
@@ -242,8 +283,8 @@
             <id>linux-arm64</id>
             <activation>
                 <property>
-                    <name>target.arch</name>
-                    <value>arm64</value>
+                    <name>target</name>
+                    <value>linux-arm64</value>
                 </property>
             </activation>
             <build>
@@ -251,7 +292,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>1.0-M1</version>
+                        <version>${native-maven-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>compile-linux-arm64</id>
@@ -262,8 +303,8 @@
                                 </goals>
                                 <configuration>
                                     <compilerProvider>generic-classic</compilerProvider>
-                                    <compilerExecutable>${native.compiler.linux}</compilerExecutable>
-                                    <linkerExecutable>${native.linker.linux}</linkerExecutable>
+                                    <compilerExecutable>${native.compiler}</compilerExecutable>
+                                    <linkerExecutable>${native.linker}</linkerExecutable>
                                     <sources>
                                         <source>
                                             <directory>src/main/native</directory>
@@ -273,22 +314,29 @@
                                         </source>
                                     </sources>
                                     <compilerStartOptions>
+                                        <compilerStartOption>--target=aarch64-linux-gnu</compilerStartOption>
+                                        <compilerStartOption>--sysroot=/usr/aarch64-linux-gnu</compilerStartOption>
                                         <compilerStartOption>-fPIC</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include</compilerStartOption>
-                                        <compilerStartOption>-I${java.home}/include/linux</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/jni-headers/linux</compilerStartOption>
                                         <compilerStartOption>-I${project.basedir}/frida-devkit/linux-arm64</compilerStartOption>
                                     </compilerStartOptions>
-                                    <linkerFinalName>libfrida-java-linux-arm64</linkerFinalName>
+                                    <linkerFinalName>libfrida-java-arm64</linkerFinalName>
                                     <linkerFinalNameExt>so</linkerFinalNameExt>
                                     <attach>false</attach>
                                     <compilerOutputDirectory>${project.build.directory}/objs/linux-arm64</compilerOutputDirectory>
                                     <linkerStartOptions>
+                                        <linkerStartOption>--target=aarch64-linux-gnu</linkerStartOption>
+                                        <linkerStartOption>--sysroot=/usr/aarch64-linux-gnu</linkerStartOption>
+                                        <linkerStartOption>-fuse-ld=lld</linkerStartOption>
+                                        <linkerStartOption>-nostartfiles</linkerStartOption>
+                                        <linkerStartOption>-nostdlib</linkerStartOption>
                                         <linkerStartOption>-shared</linkerStartOption>
                                         <linkerStartOption>-L${project.basedir}/frida-devkit/linux-arm64</linkerStartOption>
                                         <linkerStartOption>-lfrida-core</linkerStartOption>
                                         <linkerStartOption>-ldl</linkerStartOption>
                                         <linkerStartOption>-lm</linkerStartOption>
                                         <linkerStartOption>-lpthread</linkerStartOption>
+                                        <linkerStartOption>-lc</linkerStartOption>
                                     </linkerStartOptions>
                                 </configuration>
                             </execution>
@@ -299,14 +347,158 @@
         </profile>
 
         <profile>
+            <id>windows-x86_64</id>
+            <activation>
+                <property>
+                    <name>target</name>
+                    <value>windows-x86_64</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>${native-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>compile-windows-x86_64</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                    <goal>link</goal>
+                                </goals>
+                                <configuration>
+                                    <compilerProvider>generic-classic</compilerProvider>
+                                    <compilerExecutable>${native.compiler}</compilerExecutable>
+                                    <linkerExecutable>${native.linker}</linkerExecutable>
+                                    <sources>
+                                        <source>
+                                            <directory>src/main/native</directory>
+                                            <fileNames>
+                                                <fileName>_frida_java.c</fileName>
+                                            </fileNames>
+                                        </source>
+                                    </sources>
+                                    <compilerStartOptions>
+                                        <compilerStartOption>--target=x86_64-pc-windows-msvc</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/jni-headers/windows</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/frida-devkit/windows-x86_64</compilerStartOption>
+                                    </compilerStartOptions>
+                                    <linkerFinalName>frida-java-x86_64</linkerFinalName>
+                                    <linkerFinalNameExt>dll</linkerFinalNameExt>
+                                    <attach>false</attach>
+                                    <compilerOutputDirectory>${project.build.directory}/objs/windows-x86_64</compilerOutputDirectory>
+                                    <linkerStartOptions>
+                                        <linkerStartOption>--target=x86_64-pc-windows-msvc</linkerStartOption>
+                                        <linkerStartOption>-shared</linkerStartOption>
+                                        <linkerStartOption>-L${project.basedir}/frida-devkit/windows-x86_64</linkerStartOption>
+                                        <linkerStartOption>-lfrida-core</linkerStartOption>
+                                        <linkerStartOption>-ladvapi32</linkerStartOption>
+                                        <linkerStartOption>-lcrypt32</linkerStartOption>
+                                        <linkerStartOption>-ldnsapi</linkerStartOption>
+                                        <linkerStartOption>-lgdi32</linkerStartOption>
+                                        <linkerStartOption>-liphlpapi</linkerStartOption>
+                                        <linkerStartOption>-lkernel32</linkerStartOption>
+                                        <linkerStartOption>-lole32</linkerStartOption>
+                                        <linkerStartOption>-lpsapi</linkerStartOption>
+                                        <linkerStartOption>-lsecur32</linkerStartOption>
+                                        <linkerStartOption>-lshell32</linkerStartOption>
+                                        <linkerStartOption>-lshlwapi</linkerStartOption>
+                                        <linkerStartOption>-luser32</linkerStartOption>
+                                        <linkerStartOption>-lwinmm</linkerStartOption>
+                                        <linkerStartOption>-lws2_32</linkerStartOption>
+                                        <linkerStartOption>-fuse-ld=lld</linkerStartOption>
+                                    </linkerStartOptions>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>windows-arm64</id>
+            <activation>
+                <property>
+                    <name>target</name>
+                    <value>windows-arm64</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>${native-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>compile-windows-arm64</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                    <goal>link</goal>
+                                </goals>
+                                <configuration>
+                                    <compilerProvider>generic-classic</compilerProvider>
+                                    <compilerExecutable>${native.compiler}</compilerExecutable>
+                                    <linkerExecutable>${native.linker}</linkerExecutable>
+                                    <sources>
+                                        <source>
+                                            <directory>src/main/native</directory>
+                                            <fileNames>
+                                                <fileName>_frida_java.c</fileName>
+                                            </fileNames>
+                                        </source>
+                                    </sources>
+                                    <compilerStartOptions>
+                                        <compilerStartOption>--target=aarch64-pc-windows-msvc</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/jni-headers/windows</compilerStartOption>
+                                        <compilerStartOption>-I${project.basedir}/frida-devkit/windows-arm64</compilerStartOption>
+                                    </compilerStartOptions>
+                                    <linkerFinalName>frida-java-arm64</linkerFinalName>
+                                    <linkerFinalNameExt>dll</linkerFinalNameExt>
+                                    <attach>false</attach>
+                                    <compilerOutputDirectory>${project.build.directory}/objs/windows-arm64</compilerOutputDirectory>
+                                    <linkerStartOptions>
+                                        <linkerStartOption>--target=aarch64-pc-windows-msvc</linkerStartOption>
+                                        <linkerStartOption>-shared</linkerStartOption>
+                                        <linkerStartOption>-L${project.basedir}/frida-devkit/windows-arm64</linkerStartOption>
+                                        <linkerStartOption>-lfrida-core</linkerStartOption>
+                                        <linkerStartOption>-ladvapi32</linkerStartOption>
+                                        <linkerStartOption>-lcrypt32</linkerStartOption>
+                                        <linkerStartOption>-ldnsapi</linkerStartOption>
+                                        <linkerStartOption>-lgdi32</linkerStartOption>
+                                        <linkerStartOption>-liphlpapi</linkerStartOption>
+                                        <linkerStartOption>-lkernel32</linkerStartOption>
+                                        <linkerStartOption>-lole32</linkerStartOption>
+                                        <linkerStartOption>-lpsapi</linkerStartOption>
+                                        <linkerStartOption>-lsecur32</linkerStartOption>
+                                        <linkerStartOption>-lshell32</linkerStartOption>
+                                        <linkerStartOption>-lshlwapi</linkerStartOption>
+                                        <linkerStartOption>-luser32</linkerStartOption>
+                                        <linkerStartOption>-lwinmm</linkerStartOption>
+                                        <linkerStartOption>-lws2_32</linkerStartOption>
+                                        <linkerStartOption>-fuse-ld=lld</linkerStartOption>
+                                    </linkerStartOptions>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Build Linux natives using Docker -->
+        <profile>
             <id>linux-docker</id>
             <build>
                 <plugins>
-                    <!-- Execute the Linux build script -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
+                        <version>${exec-maven-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>build-linux-natives</id>
@@ -318,7 +510,37 @@
                                     <executable>bash</executable>
                                     <workingDirectory>${project.basedir}</workingDirectory>
                                     <arguments>
-                                        <argument>scripts/build-linux.sh</argument>
+                                        <argument>scripts/build_linux.sh</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Build Windows natives using Docker -->
+        <profile>
+            <id>windows-docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>${exec-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>build-windows-natives</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bash</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <arguments>
+                                        <argument>scripts/build_windows.sh</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -329,10 +551,47 @@
         </profile>
     </profiles>
 
-    <!-- Cross-platform build configuration -->
+    <!-- Universal build configuration -->
     <build>
         <plugins>
-            <!-- Used to compile Java code  -->
+            <!-- Fetch JNI headers and Frida devkit -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${exec-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>fetch-jni</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${jni.skip}</skip>
+                            <executable>bash</executable>
+                            <arguments>
+                                <argument>${project.basedir}/scripts/fetch_jni_headers.sh</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>fetch-devkit</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${devkit.skip}</skip>
+                            <executable>bash</executable>
+                            <arguments>
+                                <argument>${project.basedir}/scripts/fetch_devkits.sh</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Compile Java code  -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -342,7 +601,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Used to copy native library to JAR resources -->
+            <!-- Copy native library to JAR resources -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -361,21 +620,24 @@
                                     <directory>${project.build.directory}</directory>
                                     <includes>
                                         <include>libfrida-java.dylib</include>
-                                        <include>libfrida-java-linux-x86_64.so</include>
-                                        <include>libfrida-java-linux-arm64.so</include>
+                                        <include>libfrida-java-x86_64.so</include>
+                                        <include>libfrida-java-arm64.so</include>
+                                        <include>frida-java-x86_64.dll</include>
+                                        <include>frida-java-arm64.dll</include>
                                     </includes>
                                 </resource>
                             </resources>
                             <nonFilteredFileExtensions>
                                 <nonFilteredFileExtension>dylib</nonFilteredFileExtension>
                                 <nonFilteredFileExtension>so</nonFilteredFileExtension>
+                                <nonFilteredFileExtension>dll</nonFilteredFileExtension>
                             </nonFilteredFileExtensions>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- Used to create JAR -->
+            <!-- Create JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -395,7 +657,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Used to run unit tests -->
+            <!-- Unit tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -406,6 +668,21 @@
                     <includes>
                         <include>**/ClassNameOrderTest.java</include>
                     </includes>
+                </configuration>
+            </plugin>
+
+            <!-- Clean downloaded dependencies -->
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.basedir}/jni_headers</directory>
+                            <directory>${project.basedir}/frida-devkit</directory>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
                 </configuration>
             </plugin>
         </plugins>

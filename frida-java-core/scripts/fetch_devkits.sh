@@ -7,27 +7,6 @@ readonly BASE_URL="https://github.com/frida/frida/releases/download"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly DEVKIT_DIR="${SCRIPT_DIR}/../frida-devkit"
 
-get_os() {
-  local os_name
-  os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
-  case "${os_name}" in
-    linux*)  echo "linux" ;;
-    darwin*) echo "macos" ;;
-    *)       echo "unsupported" ;;
-  esac
-}
-
-get_arch() {
-  local arch
-  arch="$(uname -m)"
-  case "${arch}" in
-    x86_64)   echo "x86_amd64" ;;
-    i386|i686) echo "x86" ;;
-    arm64|aarch64) echo "arm64" ;;
-    *)        echo "unknown" ;;
-  esac
-}
-
 download_and_extract() {
   local os="$1"
   local arch="$2"
@@ -86,48 +65,62 @@ fetch_linux_devkits() {
 }
 
 fetch_windows_devkits() {
-  #TODO
-  echo "Windows support is not yet implemented"
-  echo "Placeholder for future Windows devkit download functionality"
-  return 1
+  echo "Fetching devkits for Windows (both x86_64 and arm64 architectures)..."
+
+  local architectures=("x86_64" "arm64")
+
+  for target_arch in "${architectures[@]}"; do
+    local target_dir="${DEVKIT_DIR}/windows-${target_arch}"
+
+    if ! download_and_extract "windows" "${target_arch}" "${target_dir}"; then
+      return 1
+    fi
+  done
+
+  echo "Windows devkits downloaded successfully"
+  return 0
 }
 
 fetch_devkit() {
-  local os
-  os=$(get_os)
+  if [ -d "${DEVKIT_DIR}" ]; then
+    echo "Devkit directory already exists"
+    return 0
+  fi
 
-  # Create the frida-devkit directory if it doesn't exist
+  # Create the frida-devkit directory
   mkdir -p "${DEVKIT_DIR}"
 
-  case "${os}" in
-    "macos")
-      fetch_macos_devkits
-      ;;
-    "linux")
-      fetch_linux_devkits
-      ;;
-    "windows")
-      fetch_windows_devkits
-      ;;
-    *)
-      echo "Error: Unsupported operating system: ${os}"
-      return 1
-      ;;
-  esac
+  echo "Fetching devkits for all platforms (macOS, Linux, Windows)..."
+
+  # Fetch devkits for all platforms
+  if ! fetch_macos_devkits; then
+    echo "Error: Failed to fetch macOS devkits"
+    return 1
+  fi
+
+  if ! fetch_linux_devkits; then
+    echo "Error: Failed to fetch Linux devkits"
+    return 1
+  fi
+
+  if ! fetch_windows_devkits; then
+    echo "Error: Failed to fetch Windows devkits"
+    return 1
+  fi
+
+  return 0
 }
 
 main() {
-  echo "Downloading Frida devkit..."
+  echo "Downloading Frida devkits..."
 
   if ! fetch_devkit; then
-    echo "Error: Failed to fetch devkit(s)"
+    echo "Error: Failed to fetch devkits"
     exit 1
   fi
 
   echo "All devkit(s) downloaded successfully"
   return 0
-
-  echo "Setup completed successfully!"
 }
 
 main "$@"
