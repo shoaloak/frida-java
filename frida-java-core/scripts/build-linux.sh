@@ -22,8 +22,8 @@ docker run --name "${DOCKER_CONTAINER_NAME}" "${DOCKER_IMAGE_NAME}"
 mkdir -p "${PROJECT_DIR}/frida-java-core/target"
 
 # Copy libraries to target directory
-docker cp "${DOCKER_CONTAINER_NAME}":/app/frida-java-core/target/libfrida-java-linux-x86_64.so "${PROJECT_DIR}/frida-java-core/target/"
-docker cp "${DOCKER_CONTAINER_NAME}":/app/frida-java-core/target/libfrida-java-linux-arm64.so "${PROJECT_DIR}/frida-java-core/target/"
+docker cp "${DOCKER_CONTAINER_NAME}":/app/frida-java-core/target/libfrida-java-x86_64.so "${PROJECT_DIR}/frida-java-core/target/"
+docker cp "${DOCKER_CONTAINER_NAME}":/app/frida-java-core/target/libfrida-java-arm64.so "${PROJECT_DIR}/frida-java-core/target/"
 
 # Clean up the container
 docker rm "${DOCKER_CONTAINER_NAME}"
