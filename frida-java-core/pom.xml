@@ -219,7 +219,7 @@
                                         <compilerStartOption>-I${java.home}/include/linux</compilerStartOption>
                                         <compilerStartOption>-I${project.basedir}/frida-devkit/linux-x86_64</compilerStartOption>
                                     </compilerStartOptions>
-                                    <linkerFinalName>libfrida-java-linux-x86_64</linkerFinalName>
+                                    <linkerFinalName>libfrida-java-x86_64</linkerFinalName>
                                     <linkerFinalNameExt>so</linkerFinalNameExt>
                                     <attach>false</attach>
                                     <compilerOutputDirectory>${project.build.directory}/objs/linux-x86_64</compilerOutputDirectory>
@@ -278,7 +278,7 @@
                                         <compilerStartOption>-I${java.home}/include/linux</compilerStartOption>
                                         <compilerStartOption>-I${project.basedir}/frida-devkit/linux-arm64</compilerStartOption>
                                     </compilerStartOptions>
-                                    <linkerFinalName>libfrida-java-linux-arm64</linkerFinalName>
+                                    <linkerFinalName>libfrida-java-arm64</linkerFinalName>
                                     <linkerFinalNameExt>so</linkerFinalNameExt>
                                     <attach>false</attach>
                                     <compilerOutputDirectory>${project.build.directory}/objs/linux-arm64</compilerOutputDirectory>
