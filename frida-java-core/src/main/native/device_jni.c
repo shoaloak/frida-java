@@ -132,21 +132,56 @@ JNIEXPORT void JNICALL Java_nl_axelkoolhaas_frida_1java_Device_kill(JNIEnv *env,
   }
 }
 
-JNIEXPORT jobject JNICALL Java_nl_axelkoolhaas_frida_1java_Device_enumerateProcesses(JNIEnv *env, jobject obj) {
+JNIEXPORT jobjectArray JNICALL Java_nl_axelkoolhaas_frida_1java_Device_enumerateProcesses(JNIEnv *env, jobject obj) {
   jclass cls = (*env)->GetObjectClass(env, obj);
   jmethodID get_native_ptr_method = (*env)->GetMethodID(env, cls, "getNativePtr", "()J");
   jlong native_ptr = (*env)->CallLongMethod(env, obj, get_native_ptr_method);
   FridaDevice *device = (FridaDevice *) native_ptr;
   GError *error = NULL;
+
   FridaProcessList *processes = frida_device_enumerate_processes_sync(device, NULL, NULL, &error);
   if (error != NULL) {
     throw_runtime_exception(env, error->message);
     g_error_free(error);
     return NULL;
   }
-  jclass process_list_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/ProcessList");
-  jmethodID process_list_ctor = (*env)->GetMethodID(env, process_list_class, "<init>", "(J)V");
-  jobject result = (*env)->NewObject(env, process_list_class, process_list_ctor, (jlong) processes);
+
+  gint count = frida_process_list_size(processes);
+  jclass process_class = (*env)->FindClass(env, "nl/axelkoolhaas/frida_java/Process");
+  if (process_class == NULL) {
+    frida_unref(processes);
+    return NULL;
+  }
+
+  jmethodID process_constructor = (*env)->GetMethodID(env, process_class, "<init>", "(JLjava/lang/String;I)V");
+  if (process_constructor == NULL) {
+    frida_unref(processes);
+    return NULL;
+  }
+
+  jobjectArray result = (*env)->NewObjectArray(env, count, process_class, NULL);
+
+  for (gint i = 0; i < count; i++) {
+    FridaProcess *process = frida_process_list_get(processes, i);
+
+    guint pid = frida_process_get_pid(process);
+    const gchar *name = frida_process_get_name(process);
+    jstring java_name = (*env)->NewStringUTF(env, name ? name : "");
+
+    // Don't call g_object_ref here - the Process constructor should handle the native pointer
+    jobject java_process = (*env)->NewObject(env, process_class, process_constructor,
+                                             (jlong)process,
+                                             java_name,
+                                             (jint)pid);
+
+    (*env)->DeleteLocalRef(env, java_name);
+    (*env)->SetObjectArrayElement(env, result, i, java_process);
+    (*env)->DeleteLocalRef(env, java_process);
+
+    // Don't unref here - let the Java Process object manage the lifecycle
+  }
+
+  frida_unref(processes);
   return result;
 }
 
