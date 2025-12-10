@@ -7,7 +7,7 @@ readonly FRIDA_VERSION="17.5.1"
 readonly FRIDA_URL="https://github.com/frida/frida/releases/download"
 
 function fetch_arch_devkit() {
-  readonly arch="$1"
+  local arch="$1"
   echo "Fetching macOS ${arch} devkit..."
   mkdir -p "macos-${arch}"
   curl --progress-bar --location --output - \
@@ -57,11 +57,13 @@ fi
 
 # Build x86_64 dylib with all required frameworks
 if [ ! -f "libfrida-core-x86_64.dylib" ]; then
+  # -Wl,-w suppresses "ld: warning: alignment (1) of atom is too small and may result in unaligned pointers"
   clang -shared \
     -arch x86_64 \
     -o libfrida-core-x86_64.dylib \
     -Wl,-force_load,macos-x86_64/libfrida-core.a \
     -Wl,-install_name,@rpath/libfrida-core.dylib \
+    -Wl,-w \
     -framework CoreFoundation \
     -framework Foundation \
     -framework AppKit \
@@ -70,9 +72,7 @@ if [ ! -f "libfrida-core-x86_64.dylib" ]; then
     -lbsm \
     -ldl \
     -lm \
-    -lresolv \
-    -Wl,-w
-    # -Wl suppress "ld: warning: alignment (1) of atom is too small and may result in unaligned pointers"
+    -lresolv
 fi
 
 # Merge into universal dylib
