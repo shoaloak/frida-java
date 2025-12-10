@@ -200,6 +200,7 @@ function Build-DLL {
         "shell32.lib"     # Shell API
         "user32.lib"      # User32
         "kernel32.lib"    # Kernel32
+        "gdi32.lib"       # GDI32 (Graphics Device Interface) - MISSING!
         "dbghelp.lib"     # Debug Help Library
         "version.lib"     # Version Information
         "winhttp.lib"     # WinHTTP
@@ -211,6 +212,7 @@ function Build-DLL {
         "iphlpapi.lib"    # IP Helper API
         "wbemuuid.lib"    # WMI UUID
         "comctl32.lib"    # Common Controls
+        "msvcrt.lib"      # Microsoft Visual C Runtime
     )
 
     # Link command to create DLL
