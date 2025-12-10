@@ -57,3 +57,40 @@ jobs:
         with:
           name: frida-core-linux-arm64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.so
+
+  build-frida-windows-x64:
+    runs-on: windows-latest
+    outputs:
+      artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build windows dll
+        shell: powershell
+        run: ./frida-java-core/scripts/build-frida-windows.ps1
+
+      - name: Upload library artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-core-windows-x64
+          path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
+
+  build-frida-windows-arm64:
+    runs-on: windows-latest
+    outputs:
+      artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build windows dll
+        shell: powershell
+        run: ./frida-java-core/scripts/build-frida-windows.ps1
+
+      - name: Upload library artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-core-windows-arm64
+          path: ./frida-java-core/frida-devkit/libfrida-core-arm64.dll
+
