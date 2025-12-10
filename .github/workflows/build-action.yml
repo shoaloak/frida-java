@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Build Linux so
-        run: ./frida-java-core/scripts/build-linux-linux.sh
+        run: ./frida-java-core/scripts/build-frida-linux.sh
 
       - name: Upload library artifacts
         uses: actions/upload-artifact@v4
