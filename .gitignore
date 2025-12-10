@@ -5,7 +5,7 @@ target/
 dependency-reduced-pom.xml
 
 # Dependency directories
-frida-java-core/frida-devkit/
+**/frida-devkit/
 
 # IntelliJ IDEA
 .idea/
