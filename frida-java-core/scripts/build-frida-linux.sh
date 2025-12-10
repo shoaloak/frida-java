@@ -6,6 +6,17 @@ readonly TARGET_DIR="${PROJECT_DIR}/frida-java-core/frida-devkit"
 readonly FRIDA_VERSION="17.5.1"
 readonly FRIDA_URL="https://github.com/frida/frida/releases/download"
 
+get_arch() {
+  local arch
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64)   echo "x86_64" ;;
+    i386|i686) echo "x86" ;;
+    arm64|aarch64) echo "arm64" ;;
+    *)        echo "unknown" ;;
+  esac
+}
+
 function fetch_arch_devkit() {
   local arch="$1"
   echo "Fetching Linux ${arch} devkit..."
@@ -26,34 +37,27 @@ fi
 mkdir -p "${TARGET_DIR}"
 cd "${TARGET_DIR}" || exit
 
-# check if arm devkit already exists, otherwise download
-if [ ! -d "linux-arm64" ]; then
-  echo "Linux arm64 devkit not found. Proceeding to download..."
-  fetch_arch_devkit "arm64"
+# Detect current architecture
+CURRENT_ARCH="$(get_arch)"
+
+if [ "$CURRENT_ARCH" != "x86_64" ] && [ "$CURRENT_ARCH" != "arm64" ]; then
+  echo "Unsupported architecture: $(uname -m)"
+  exit 1
 fi
 
-if [ ! -d "linux-x86_64" ]; then
-  echo "Linux x86_64 devkit not found. Proceeding to download..."
-  fetch_arch_devkit "x86_64"
+echo "Building for current architecture: $CURRENT_ARCH"
+
+# Check if devkit already exists, otherwise download
+if [ ! -d "linux-${CURRENT_ARCH}" ]; then
+  echo "Linux ${CURRENT_ARCH} devkit not found. Proceeding to download..."
+  fetch_arch_devkit "$CURRENT_ARCH"
 fi
 
-# Build ARM64 shared library
+# Build shared library for current architecture
 gcc -shared \
   -fPIC \
-  -o libfrida-core-arm64.so \
-  -Wl,--whole-archive,linux-arm64/libfrida-core.a \
-  -Wl,--no-whole-archive \
-  -Wl,-soname,libfrida-core.so \
-  -ldl \
-  -lm \
-  -pthread \
-  -lrt
-
-# Build x86_64 shared library
-gcc -shared \
-  -fPIC \
-  -o libfrida-core-x86_64.so \
-  -Wl,--whole-archive,/linux-x86_64/libfrida-core.a \
+  -o "libfrida-core-${CURRENT_ARCH}.so" \
+  -Wl,--whole-archive,"linux-${CURRENT_ARCH}/libfrida-core.a" \
   -Wl,--no-whole-archive \
   -Wl,-soname,libfrida-core.so \
   -ldl \
@@ -62,5 +66,4 @@ gcc -shared \
   -lrt
 
 # Verify
-file libfrida-core-arm64.so
-file libfrida-core-x86_64.so
+file "libfrida-core-${CURRENT_ARCH}.so"
