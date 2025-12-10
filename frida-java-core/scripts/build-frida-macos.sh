@@ -42,7 +42,7 @@ if [ ! -f "libfrida-core-arm64.dylib" ]; then
   clang -shared \
     -arch arm64 \
     -o libfrida-core-arm64.dylib \
-    -Wl,-force_load,"${TARGET_DIR}/macos-arm64/libfrida-core.a" \
+    -Wl,-force_load,macos-arm64/libfrida-core.a \
     -Wl,-install_name,@rpath/libfrida-core.dylib \
     -framework CoreFoundation \
     -framework Foundation \
@@ -61,7 +61,7 @@ if [ ! -f "libfrida-core-x86_64.dylib" ]; then
   clang -shared \
     -arch x86_64 \
     -o libfrida-core-x86_64.dylib \
-    -Wl,-force_load,"${TARGET_DIR}/macos-x86_64/libfrida-core.a" \
+    -Wl,-force_load,macos-x86_64/libfrida-core.a \
     -Wl,-install_name,@rpath/libfrida-core.dylib \
     -Wl,-w \
     -framework CoreFoundation \
