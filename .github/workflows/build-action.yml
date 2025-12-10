@@ -28,3 +28,22 @@ jobs:
         with:
           name: frida-core-macos-universal
           path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
+
+  build-frida-linux:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build Linux so
+        run: ./frida-java-core/scripts/build-linux-linux.sh
+
+      - name: Upload library artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-core-linux
+          path: |
+            ./frida-java-core/frida-devkit/libfrida-core-arm64.so
+            ./frida-java-core/frida-devkit/libfrida-core-x86_64.so
