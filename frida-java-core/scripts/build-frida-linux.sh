@@ -60,6 +60,7 @@ gcc -shared \
   -Wl,--whole-archive,"linux-${CURRENT_ARCH}/libfrida-core.a" \
   -Wl,--no-whole-archive \
   -Wl,-soname,libfrida-core.so \
+  -Wl,-z,noexecstack \
   -ldl \
   -lm \
   -pthread \
