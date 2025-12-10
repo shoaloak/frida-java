@@ -1,0 +1,30 @@
+name: Build Frida
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+    #working-directory: ./scripts
+
+jobs:
+  build-frida-macos:
+    runs-on: macos-latest
+    outputs:
+      artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build universal macOS dylib
+        run: ./frida-java-core/scripts/build-frida-macos.sh
+
+      - name: Upload universal dylib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-core-macos-universal
+          path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
