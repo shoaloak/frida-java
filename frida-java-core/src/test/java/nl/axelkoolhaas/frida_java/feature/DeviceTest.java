@@ -102,60 +102,54 @@ public class DeviceTest {
     @Test
     @Order(4)
     void testGetDeviceById() {
-        // Temporarily commenting out this test due to native crash
-        // DeviceManager deviceManager = new DeviceManager();
-        // Device localDevice = deviceManager.getDeviceById("local");
-        // assertNotNull(localDevice, "Local device should be found by ID");
-        // assertEquals("local", localDevice.getId(), "Device ID should match");
+         DeviceManager deviceManager = new DeviceManager();
+         Device localDevice = deviceManager.getDeviceById("local");
+         assertNotNull(localDevice, "Local device should be found by ID");
+         assertEquals("local", localDevice.getId(), "Device ID should match");
 
-        // Device nonExistentDevice = deviceManager.getDeviceById("non-existent-id");
-        // assertNull(nonExistentDevice, "Non-existent device should return null");
-        System.out.println("getDeviceById test temporarily disabled");
+         Device nonExistentDevice = deviceManager.getDeviceById("non-existent-id");
+         assertNull(nonExistentDevice, "Non-existent device should return null");
     }
 
     @Test
     @Order(5)
     void testGetDeviceByName() {
-        // Temporarily commenting out this test due to potential native crash
-        // DeviceManager deviceManager = new DeviceManager();
-        // Device localDevice = deviceManager.getLocalDevice();
-        // String localDeviceName = localDevice.getName();
+         DeviceManager deviceManager = new DeviceManager();
+         Device localDevice = deviceManager.getLocalDevice();
+         String localDeviceName = localDevice.getName();
 
-        // Device foundDevice = deviceManager.getDeviceByName(localDeviceName);
-        // assertNotNull(foundDevice, "Device should be found by name");
-        // assertEquals(localDeviceName, foundDevice.getName(), "Device name should match");
+         Device foundDevice = deviceManager.getDeviceByName(localDeviceName);
+         assertNotNull(foundDevice, "Device should be found by name");
+         assertEquals(localDeviceName, foundDevice.getName(), "Device name should match");
 
-        // Device nonExistentDevice = deviceManager.getDeviceByName("Non-existent Device");
-        // assertNull(nonExistentDevice, "Non-existent device should return null");
-        System.out.println("getDeviceByName test temporarily disabled");
+         Device nonExistentDevice = deviceManager.getDeviceByName("Non-existent Device");
+         assertNull(nonExistentDevice, "Non-existent device should return null");
     }
 
     @Test
     @Order(6)
     void testEnumerateProcesses() {
-        // Temporarily commenting out this test due to potential native crash
-        // DeviceManager deviceManager = new DeviceManager();
-        // Device localDevice = deviceManager.getLocalDevice();
-        // List<Process> processList = localDevice.enumerateProcesses();
+         DeviceManager deviceManager = new DeviceManager();
+         Device localDevice = deviceManager.getLocalDevice();
+         List<Process> processList = localDevice.enumerateProcesses();
 
-        // assertNotNull(processList, "ProcessList should not be null");
-        // int count = processList.size();
-        // assertTrue(count > 0, "Should have at least one running process");
+         assertNotNull(processList, "ProcessList should not be null");
+         int count = processList.size();
+         assertTrue(count > 0, "Should have at least one running process");
 
-        // System.out.println("Found " + count + " process(es):");
-        // int limit = Math.min(5, count);
-        // for (int i = 0; i < limit; i++) {
-        //     Process process = processList.get(i);
-        //     assertNotNull(process, "Process should not be null");
-        //     int pid = process.getPid();
-        //     String name = process.getName();
-        //     assertTrue(pid > 0, "Process PID should be positive");
-        //     assertNotNull(name, "Process name should not be null");
-        //     System.out.println("  - PID: " + pid + ", Name: " + name);
-        // }
-        // if (count > 5) {
-        //     System.out.println("  ... and " + (count - 5) + " more");
-        // }
-        System.out.println("enumerateProcesses test temporarily disabled");
+         System.out.println("Found " + count + " process(es):");
+         int limit = Math.min(5, count);
+         for (int i = 0; i < limit; i++) {
+             Process process = processList.get(i);
+             assertNotNull(process, "Process should not be null");
+             int pid = process.getPid();
+             String name = process.getName();
+             assertTrue(pid > 0, "Process PID should be positive");
+             assertNotNull(name, "Process name should not be null");
+             System.out.println("  - PID: " + pid + ", Name: " + name);
+         }
+         if (count > 5) {
+             System.out.println("  ... and " + (count - 5) + " more");
+         }
     }
 }

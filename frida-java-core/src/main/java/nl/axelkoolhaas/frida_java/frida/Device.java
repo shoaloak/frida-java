@@ -52,7 +52,7 @@ public class Device {
         FRIDA_DEVICE_IS_LOST = FridaJava.findFunction("frida_device_is_lost",
                 FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
         FRIDA_DEVICE_ENUMERATE_PROCESSES = FridaJava.findFunction("frida_device_enumerate_processes_sync",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
         FRIDA_PROCESS_LIST_SIZE = FridaJava.findFunction("frida_process_list_size",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_PROCESS_LIST_GET = FridaJava.findFunction("frida_process_list_get",
@@ -124,7 +124,7 @@ public class Device {
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
             MemorySegment processList = (MemorySegment) FRIDA_DEVICE_ENUMERATE_PROCESSES
-                    .invoke(devicePtr, MemorySegment.NULL, errorPtr);
+                    .invoke(devicePtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
