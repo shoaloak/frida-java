@@ -28,8 +28,8 @@ import org.junit.jupiter.api.TestClassOrder;
 public class ClassNameOrderTest {
     @Nested
     class A_VersionTest extends VersionTest {}
-    //@Nested
-    //class B_DeviceTest extends DeviceTest {}
+    @Nested
+    class B_DeviceTest extends DeviceTest {}
     //@Nested
     //class C_DeviceAdvancedTest extends DeviceAdvancedTest {}
     //@Nested

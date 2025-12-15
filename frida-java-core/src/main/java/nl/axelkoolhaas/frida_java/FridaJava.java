@@ -19,6 +19,8 @@
 
 package nl.axelkoolhaas.frida_java;
 
+import nl.axelkoolhaas.frida_java.frida.Frida;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.*;
@@ -26,30 +28,16 @@ import java.lang.invoke.MethodHandle;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 
-/**
- * Main Frida class
- */
-public class Frida {
+public class FridaJava {
 
     private static final Linker LINKER = Linker.nativeLinker();
     private static final SymbolLookup SYMBOL_LOOKUP;
 
-    // Method handles for Frida functions
-    private static final MethodHandle FRIDA_VERSION_STRING;
-    private static final MethodHandle FRIDA_VERSION;
-
     static {
         // Load the Frida library
         SYMBOL_LOOKUP = loadFridaLibrary();
-
-        // Initialize method handles for version functions
-        FRIDA_VERSION_STRING = findFunction("frida_version_string",
-            FunctionDescriptor.of(ValueLayout.ADDRESS));
-
-        FRIDA_VERSION = findFunction("frida_version",
-            FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS,
-                ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     /**
@@ -90,8 +78,8 @@ public class Frida {
             return SymbolLookup.libraryLookup("frida-core", Arena.global());
         } catch (IllegalArgumentException e) {
             throw new UnsatisfiedLinkError("Failed to load Frida library 'frida-core' for " + osName + "/" + arch + ". " +
-                "Make sure the library is available in the system path, bins directory, or bundled in the JAR as " + resourcePath + ". " +
-                "Original error: " + e.getMessage());
+                    "Make sure the library is available in the system path, bins directory, or bundled in the JAR as " + resourcePath + ". " +
+                    "Original error: " + e.getMessage());
         }
     }
 
@@ -124,86 +112,38 @@ public class Frida {
     /**
      * Find a function in the Frida library and create a method handle.
      */
-    private static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
+    public static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
         return SYMBOL_LOOKUP.find(name)
-            .map(addr -> LINKER.downcallHandle(addr, descriptor))
-            .orElseThrow(() -> new UnsatisfiedLinkError("Function not found: " + name));
+                .map(addr -> LINKER.downcallHandle(addr, descriptor))
+                .orElseThrow(() -> new UnsatisfiedLinkError("Function not found: " + name));
     }
 
     /**
-     * Get the Frida version as a string.
-     * @return Version string (e.g., "17.5.1")
+     * Validate that a native pointer is not null or NULL
+     * @param ptr The memory segment to validate
+     * @param name The name for error messages
+     * @return The validated pointer
+     * @throws IllegalArgumentException if pointer is null or NULL
      */
-    public static String getVersionString() {
-        try {
-            MemorySegment result = (MemorySegment) FRIDA_VERSION_STRING.invoke();
-            // Read the C string using UTF-8 encoding, searching for null terminator
-            return result.reinterpret(Long.MAX_VALUE).getString(0, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to get Frida version string", e);
+    public static MemorySegment requireValidPointer(MemorySegment ptr, String name) {
+        Objects.requireNonNull(ptr, name + " cannot be null");
+        if (ptr.equals(MemorySegment.NULL)) {
+            throw new IllegalArgumentException(name + " cannot be NULL");
         }
+        return ptr;
     }
 
     /**
-     * Get the Frida version components.
-     * @return Array containing [major, minor, micro, nano] version numbers
+     * Helper method to safely convert a MemorySegment to a UTF-8 string
+     * @param segment the memory segment to convert
+     * @return the string value, or empty string if segment is NULL
      */
-    public static int[] getVersion() {
-        try (Arena arena = Arena.ofConfined()) {
-            // Allocate memory for the four version components
-            MemorySegment major = arena.allocate(ValueLayout.JAVA_INT);
-            MemorySegment minor = arena.allocate(ValueLayout.JAVA_INT);
-            MemorySegment micro = arena.allocate(ValueLayout.JAVA_INT);
-            MemorySegment nano = arena.allocate(ValueLayout.JAVA_INT);
-
-            // Call frida_version function
-            FRIDA_VERSION.invoke(major, minor, micro, nano);
-
-            // Extract values and return as array
-            return new int[] {
-                major.get(ValueLayout.JAVA_INT, 0),
-                minor.get(ValueLayout.JAVA_INT, 0),
-                micro.get(ValueLayout.JAVA_INT, 0),
-                nano.get(ValueLayout.JAVA_INT, 0)
-            };
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to get Frida version", e);
+    public static String memorySegmentToString(MemorySegment segment) {
+        if (segment.equals(MemorySegment.NULL)) {
+            return "";
         }
-    }
-
-    /**
-     * Get the major version number.
-     * @return Major version number
-     */
-    public static int getMajorVersion() {
-        int[] version = getVersion();
-        return version[0];
-    }
-
-    /**
-     * Get the minor version number.
-     * @return Minor version number
-     */
-    public static int getMinorVersion() {
-        int[] version = getVersion();
-        return version[1];
-    }
-
-    /**
-     * Get the micro version number.
-     * @return Micro version number
-     */
-    public static int getMicroVersion() {
-        int[] version = getVersion();
-        return version[2];
-    }
-
-    /**
-     * Get the nano version number.
-     * @return Nano version number
-     */
-    public static int getNanoVersion() {
-        int[] version = getVersion();
-        return version[3];
+        // Read the C string using UTF-8 encoding, searching for null terminator
+        return segment.reinterpret(Long.MAX_VALUE)
+                .getString(0, java.nio.charset.StandardCharsets.UTF_8);
     }
 }
