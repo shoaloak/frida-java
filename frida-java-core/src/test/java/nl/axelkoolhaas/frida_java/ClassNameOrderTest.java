@@ -32,8 +32,8 @@ public class ClassNameOrderTest {
     class B_DeviceTest extends DeviceTest {}
     //@Nested
     //class C_DeviceAdvancedTest extends DeviceAdvancedTest {}
-    //@Nested
-    //class D_ProcessTest extends ProcessTest {}
+    @Nested
+    class D_ProcessTest extends ProcessTest {}
     //@Nested
     //class E_ApplicationTest extends ApplicationTest {}
     //@Nested

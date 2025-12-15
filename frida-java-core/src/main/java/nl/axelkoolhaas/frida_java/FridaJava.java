@@ -36,7 +36,6 @@ public class FridaJava {
     private static final SymbolLookup SYMBOL_LOOKUP;
 
     static {
-        // Load the Frida library
         SYMBOL_LOOKUP = loadFridaLibrary();
     }
 
@@ -115,7 +114,7 @@ public class FridaJava {
     public static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
         return SYMBOL_LOOKUP.find(name)
                 .map(addr -> LINKER.downcallHandle(addr, descriptor))
-                .orElseThrow(() -> new UnsatisfiedLinkError("Function not found: " + name));
+                .orElse(null);
     }
 
     /**
