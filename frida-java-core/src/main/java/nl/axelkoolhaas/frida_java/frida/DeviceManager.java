@@ -41,6 +41,8 @@ public class DeviceManager implements AutoCloseable {
 //    private static final MethodHandle FRIDA_DEVICE_MANAGER_GET_DEVICE_BY_ID_SYNC;
 
     static {
+        Frida.ensureInitialized();
+
         FRIDA_DEVICE_MANAGER_NEW = FridaJava.findFunction("frida_device_manager_new",
                 FunctionDescriptor.of(ValueLayout.ADDRESS));
         FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC = FridaJava.findFunction("frida_device_manager_enumerate_devices_sync",

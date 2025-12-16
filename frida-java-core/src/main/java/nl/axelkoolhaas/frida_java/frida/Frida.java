@@ -23,6 +23,7 @@ import nl.axelkoolhaas.frida_java.FridaJava;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static nl.axelkoolhaas.frida_java.FridaJava.memorySegmentToString;
 
@@ -34,9 +35,9 @@ public class Frida {
     private static final MethodHandle FRIDA_INIT;
     private static final MethodHandle FRIDA_DEINIT;
 
-    // Reference counting and synchronization to prevent race conditions
-    private static int fridaRefCount = 0;
-    private static final Object fridaRefMutex = new Object();
+    // Atomic state management to prevent init/deinit race conditions
+    private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
+    private static final Object initLock = new Object();
 
     static {
         FRIDA_VERSION_STRING = FridaJava.findFunction("frida_version_string",
@@ -45,41 +46,35 @@ public class Frida {
                 FunctionDescriptor.ofVoid());
         FRIDA_DEINIT = FridaJava.findFunction("frida_deinit",
                 FunctionDescriptor.ofVoid());
-    }
 
-    /**
-     * Initialize Frida. Must be called before using any other Frida functionality.
-     * This method is thread-safe and uses reference counting to ensure frida_init()
-     * is only called once.
-     */
-    public static void init() {
-        synchronized (fridaRefMutex) {
-            // Only call frida_init() on the first initialization
-            if (fridaRefCount == 0) {
+        // Register shutdown hook for automatic cleanup
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (isInitialized.compareAndSet(true, false)) {
                 try {
-                    FRIDA_INIT.invoke();
+                    FRIDA_DEINIT.invoke();
                 } catch (Throwable e) {
-                    throw new RuntimeException("Failed to initialize Frida", e);
+                    // Silently ignore errors during shutdown as the native library
+                    // may already be in the process of being unloaded
                 }
             }
-            fridaRefCount++;
-        }
+        }));
     }
 
     /**
-     * Deinitialize Frida. Should be called when done using Frida.
-     * This method is thread-safe and uses reference counting.
-     * Note: frida_deinit() is not called during normal execution to avoid crashes
-     * when multiple test classes or components try to deinitialize Frida.
-     * The Frida library will clean up automatically when the JVM shuts down.
+     * Ensure Frida is initialized. This method is thread-safe and idempotent.
+     * Called automatically by other methods, but can also be called explicitly.
      */
-    public static void deinit() {
-        synchronized (fridaRefMutex) {
-            if (fridaRefCount > 0) {
-                fridaRefCount--;
-                // Don't call frida_deinit() during normal execution to avoid crashes
-                // when multiple test classes or components try to deinitialize Frida.
-                // The Frida library will clean up automatically when the JVM shuts down.
+    public static void ensureInitialized() {
+        if (!isInitialized.get()) {
+            synchronized (initLock) {
+                if (!isInitialized.get()) {
+                    try {
+                        FRIDA_INIT.invoke();
+                        isInitialized.set(true);
+                    } catch (Throwable e) {
+                        throw new RuntimeException("Failed to initialize Frida", e);
+                    }
+                }
             }
         }
     }
@@ -89,21 +84,12 @@ public class Frida {
      * @return A String representing the Frida version.
      */
     public static String getVersion() {
+        ensureInitialized();
         try {
             MemorySegment result = (MemorySegment) FRIDA_VERSION_STRING.invoke();
             return memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get Frida version", e);
-        }
-    }
-
-    /**
-     * Get the current reference count (for debugging purposes).
-     * @return The current Frida reference count
-     */
-    public static int getRefCount() {
-        synchronized (fridaRefMutex) {
-            return fridaRefCount;
         }
     }
 }

@@ -22,7 +22,6 @@ package nl.axelkoolhaas.frida_java.feature;
 import nl.axelkoolhaas.frida_java.frida.Device;
 import nl.axelkoolhaas.frida_java.frida.DeviceManager;
 import nl.axelkoolhaas.frida_java.frida.DeviceType;
-import nl.axelkoolhaas.frida_java.frida.Frida;
 import nl.axelkoolhaas.frida_java.frida.Process;
 import org.junit.jupiter.api.*;
 
@@ -37,17 +36,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DeviceTest {
 
-    @BeforeAll
-    static void setUp() {
-        Frida.init();
-        System.out.println("Frida initialized for tests");
-    }
-
-    @AfterAll
-    static void tearDown() {
-        Frida.deinit();
-        System.out.println("Frida deinitialized after tests");
-    }
 
     @Test
     @Order(1)

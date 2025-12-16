@@ -36,6 +36,8 @@ public class Process {
     private static final MethodHandle FRIDA_PROCESS_GET_NAME;
 
     static {
+        Frida.ensureInitialized();
+
         FRIDA_PROCESS_GET_PID = FridaJava.findFunction("frida_process_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_PROCESS_GET_NAME = FridaJava.findFunction("frida_process_get_name",

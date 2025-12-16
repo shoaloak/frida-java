@@ -49,6 +49,8 @@ public class Device {
     private static final MethodHandle FRIDA_APPLICATION_LIST_GET;
 
     static {
+        Frida.ensureInitialized();
+
         FRIDA_DEVICE_GET_DTYPE = FridaJava.findFunction("frida_device_get_dtype",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_DEVICE_GET_ID = FridaJava.findFunction("frida_device_get_id",

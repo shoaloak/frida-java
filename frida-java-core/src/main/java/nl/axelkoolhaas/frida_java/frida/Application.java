@@ -34,6 +34,7 @@ public class Application implements AutoCloseable {
     private static final MethodHandle FRIDA_APPLICATION_GET_PID;
 
     static {
+        Frida.ensureInitialized();
         FRIDA_APPLICATION_GET_IDENTIFIER = FridaJava.findFunction("frida_application_get_identifier",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
         FRIDA_APPLICATION_GET_NAME = FridaJava.findFunction("frida_application_get_name",

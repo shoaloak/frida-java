@@ -31,15 +31,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ApplicationTest {
-    @BeforeAll
-    static void setUp() {
-        Frida.init();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        Frida.deinit();
-    }
 
     @Test
     @Order(1)
