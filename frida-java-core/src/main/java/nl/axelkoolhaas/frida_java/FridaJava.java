@@ -151,7 +151,7 @@ public class FridaJava {
 
     /**
      * Call g_object_unref on a GObject pointer
-     * @param object
+     * @param object the GObject memory segment
      */
     public static void g_object_unref(MemorySegment object) {
         try {
