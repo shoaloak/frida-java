@@ -47,6 +47,9 @@ public class Frida {
         FRIDA_DEINIT = FridaJava.findFunction("frida_deinit",
                 FunctionDescriptor.ofVoid());
 
+        // Initialize Frida immediately when the class is loaded
+        ensureInitialized();
+
         // Register shutdown hook for automatic cleanup
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (isInitialized.compareAndSet(true, false)) {
@@ -62,9 +65,9 @@ public class Frida {
 
     /**
      * Ensure Frida is initialized. This method is thread-safe and idempotent.
-     * Called automatically by other methods, but can also be called explicitly.
+     * Called automatically when the class is loaded and by other Frida classes.
      */
-    public static void ensureInitialized() {
+    static void ensureInitialized() {
         if (!isInitialized.get()) {
             synchronized (initLock) {
                 if (!isInitialized.get()) {
@@ -84,7 +87,6 @@ public class Frida {
      * @return A String representing the Frida version.
      */
     public static String getVersion() {
-        ensureInitialized();
         try {
             MemorySegment result = (MemorySegment) FRIDA_VERSION_STRING.invoke();
             return memorySegmentToString(result);
