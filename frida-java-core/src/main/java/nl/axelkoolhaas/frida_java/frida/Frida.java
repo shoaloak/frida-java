@@ -27,12 +27,16 @@ import java.lang.invoke.MethodHandle;
 import static nl.axelkoolhaas.frida_java.FridaJava.memorySegmentToString;
 
 /**
- * Main Frida class
+ * Main Frida class with safe initialization/deinitialization
  */
 public class Frida {
     private static final MethodHandle FRIDA_VERSION_STRING;
     private static final MethodHandle FRIDA_INIT;
     private static final MethodHandle FRIDA_DEINIT;
+
+    // Reference counting and synchronization to prevent race conditions
+    private static int fridaRefCount = 0;
+    private static final Object fridaRefMutex = new Object();
 
     static {
         FRIDA_VERSION_STRING = FridaJava.findFunction("frida_version_string",
@@ -45,23 +49,38 @@ public class Frida {
 
     /**
      * Initialize Frida. Must be called before using any other Frida functionality.
+     * This method is thread-safe and uses reference counting to ensure frida_init()
+     * is only called once.
      */
     public static void init() {
-        try {
-            FRIDA_INIT.invoke();
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to initialize Frida", e);
+        synchronized (fridaRefMutex) {
+            // Only call frida_init() on the first initialization
+            if (fridaRefCount == 0) {
+                try {
+                    FRIDA_INIT.invoke();
+                } catch (Throwable e) {
+                    throw new RuntimeException("Failed to initialize Frida", e);
+                }
+            }
+            fridaRefCount++;
         }
     }
 
     /**
      * Deinitialize Frida. Should be called when done using Frida.
+     * This method is thread-safe and uses reference counting.
+     * Note: frida_deinit() is not called during normal execution to avoid crashes
+     * when multiple test classes or components try to deinitialize Frida.
+     * The Frida library will clean up automatically when the JVM shuts down.
      */
     public static void deinit() {
-        try {
-            FRIDA_DEINIT.invoke();
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to deinitialize Frida", e);
+        synchronized (fridaRefMutex) {
+            if (fridaRefCount > 0) {
+                fridaRefCount--;
+                // Don't call frida_deinit() during normal execution to avoid crashes
+                // when multiple test classes or components try to deinitialize Frida.
+                // The Frida library will clean up automatically when the JVM shuts down.
+            }
         }
     }
 
@@ -75,6 +94,16 @@ public class Frida {
             return memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get Frida version", e);
+        }
+    }
+
+    /**
+     * Get the current reference count (for debugging purposes).
+     * @return The current Frida reference count
+     */
+    public static int getRefCount() {
+        synchronized (fridaRefMutex) {
+            return fridaRefCount;
         }
     }
 }

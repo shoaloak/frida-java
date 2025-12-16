@@ -23,15 +23,16 @@ import nl.axelkoolhaas.frida_java.FridaJava;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-
-import static nl.axelkoolhaas.frida_java.FridaJava.memorySegmentToString;
 
 /**
  * Represents a device that Frida connects to
  */
 public class Device {
+    private final MemorySegment devicePtr;
+
     private static final MethodHandle FRIDA_DEVICE_GET_DTYPE;
     private static final MethodHandle FRIDA_DEVICE_GET_ID;
     private static final MethodHandle FRIDA_DEVICE_GET_NAME;
@@ -40,7 +41,12 @@ public class Device {
     private static final MethodHandle FRIDA_PROCESS_LIST_SIZE;
     private static final MethodHandle FRIDA_PROCESS_LIST_GET;
 
-    private final MemorySegment devicePtr;
+    private static final MethodHandle FRIDA_APPLICATION_QUERY_OPTIONS_NEW;
+    private static final MethodHandle FRIDA_APPLICATION_QUERY_OPTIONS_SET_SCOPE;
+    private static final MethodHandle FRIDA_APPLICATION_QUERY_OPTIONS_SELECT_IDENTIFIER;
+    private static final MethodHandle FRIDA_DEVICE_ENUMERATE_APPLICATIONS;
+    private static final MethodHandle FRIDA_APPLICATION_LIST_SIZE;
+    private static final MethodHandle FRIDA_APPLICATION_LIST_GET;
 
     static {
         FRIDA_DEVICE_GET_DTYPE = FridaJava.findFunction("frida_device_get_dtype",
@@ -57,6 +63,19 @@ public class Device {
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_PROCESS_LIST_GET = FridaJava.findFunction("frida_process_list_get",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+
+        FRIDA_APPLICATION_QUERY_OPTIONS_NEW = FridaJava.findFunction("frida_application_query_options_new",
+                FunctionDescriptor.of(ValueLayout.ADDRESS));
+        FRIDA_APPLICATION_QUERY_OPTIONS_SET_SCOPE = FridaJava.findFunction("frida_application_query_options_set_scope",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+        FRIDA_APPLICATION_QUERY_OPTIONS_SELECT_IDENTIFIER = FridaJava.findFunction("frida_application_query_options_select_identifier",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_ENUMERATE_APPLICATIONS = FridaJava.findFunction("frida_device_enumerate_applications_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_APPLICATION_LIST_SIZE = FridaJava.findFunction("frida_application_list_size",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+        FRIDA_APPLICATION_LIST_GET = FridaJava.findFunction("frida_application_list_get",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     }
 
     public Device(MemorySegment devicePtr) {
@@ -70,7 +89,7 @@ public class Device {
     public String getId() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_DEVICE_GET_ID.invoke(devicePtr);
-            return memorySegmentToString(result);
+            return FridaJava.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get device ID", e);
         }
@@ -83,7 +102,7 @@ public class Device {
     public String getName() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_DEVICE_GET_NAME.invoke(devicePtr);
-            return memorySegmentToString(result);
+            return FridaJava.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get device name", e);
         }
@@ -143,6 +162,74 @@ public class Device {
     }
 
     /**
+     * Enumerate applications running on this device
+     * @param identifier Optional identifier to filter by (null for all)
+     * @param scope Scope for enumeration
+     * @return List of Application objects
+     */
+    public List<Application> enumerateApplications(String identifier, Scope scope) {
+        try (Arena arena = Arena.ofConfined()) {
+            // Create query options
+            MemorySegment queryOpts = (MemorySegment) FRIDA_APPLICATION_QUERY_OPTIONS_NEW.invoke();
+
+            // Set scope
+            FRIDA_APPLICATION_QUERY_OPTIONS_SET_SCOPE.invoke(queryOpts, scope.getValue());
+
+            // Set identifier if provided
+            if (identifier != null && !identifier.isEmpty()) {
+                byte[] identifierBytes = identifier.getBytes(StandardCharsets.UTF_8);
+                MemorySegment identifierPtr = arena.allocate(identifierBytes.length + 1); // +1 for null terminator
+                identifierPtr.copyFrom(MemorySegment.ofArray(identifierBytes));
+                identifierPtr.set(ValueLayout.JAVA_BYTE, identifierBytes.length, (byte) 0); // null terminator
+                FRIDA_APPLICATION_QUERY_OPTIONS_SELECT_IDENTIFIER.invoke(queryOpts, identifierPtr);
+            }
+
+            // Error handling
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            // Enumerate applications
+            MemorySegment appList = (MemorySegment) FRIDA_DEVICE_ENUMERATE_APPLICATIONS
+                    .invoke(devicePtr, queryOpts, MemorySegment.NULL, errorPtr);
+
+            // Check for errors
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            if (!error.equals(MemorySegment.NULL)) {
+                FridaJava.g_object_unref(queryOpts);
+                throw new RuntimeException("Failed to enumerate applications");
+            }
+
+            if (appList.equals(MemorySegment.NULL)) {
+                FridaJava.g_object_unref(queryOpts);
+                return new ArrayList<>();
+            }
+
+            try {
+                List<Application> applications = extractApplicationsFromList(appList);
+                // Sort by PID descending, mimicking Go Bindings
+                applications.sort((a, b) -> Integer.compare(b.getPid(), a.getPid()));
+                return applications;
+            } finally {
+                // Clean up native resources
+                FridaJava.g_object_unref(queryOpts);
+                FridaJava.g_object_unref(appList);
+            }
+
+        } catch (Throwable e) {
+            System.err.println("Failed to enumerate applications");
+            return null;
+        }
+    }
+
+    /**
+     * Enumerate all applications on this device
+     * @return List of Application objects
+     */
+    public List<Application> enumerateApplications() {
+        return enumerateApplications(null, Scope.MINIMAL);
+    }
+
+    /**
      * Extract Process objects from the native process list
      */
     private List<Process> extractProcessesFromList(MemorySegment processList) throws Throwable {
@@ -157,5 +244,22 @@ public class Device {
         }
 
         return processes;
+    }
+
+    /**
+     * Extract Application objects from the native application list
+     */
+    private List<Application> extractApplicationsFromList(MemorySegment appList) throws Throwable {
+        int appCount = (int) FRIDA_APPLICATION_LIST_SIZE.invoke(appList);
+        List<Application> applications = new ArrayList<>(appCount);
+
+        for (int i = 0; i < appCount; i++) {
+            MemorySegment appPtr = (MemorySegment) FRIDA_APPLICATION_LIST_GET.invoke(appList, i);
+            if (!appPtr.equals(MemorySegment.NULL)) {
+                applications.add(new Application(appPtr));
+            }
+        }
+
+        return applications;
     }
 }

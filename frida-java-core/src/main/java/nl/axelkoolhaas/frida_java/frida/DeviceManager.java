@@ -10,7 +10,9 @@ import java.util.List;
 /**
  * Device manager for enumerating and managing Frida devices
  */
-public class DeviceManager {
+public class DeviceManager implements AutoCloseable {
+    private final MemorySegment managerPtr;
+
     private static final MethodHandle FRIDA_DEVICE_MANAGER_NEW;
     private static final MethodHandle FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC;
     private static final MethodHandle FRIDA_DEVICE_LIST_SIZE;
@@ -18,8 +20,6 @@ public class DeviceManager {
 
     // Using pure Java filtering, as the native method seems to have issues in some environments
 //    private static final MethodHandle FRIDA_DEVICE_MANAGER_GET_DEVICE_BY_ID_SYNC;
-
-    private final MemorySegment managerPtr;
 
     static {
         FRIDA_DEVICE_MANAGER_NEW = FridaJava.findFunction("frida_device_manager_new",
@@ -105,6 +105,20 @@ public class DeviceManager {
                 .filter(device -> deviceName.equals(device.getName()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public void clean() {
+        try {
+            FridaJava.g_object_unref(managerPtr);
+        } catch (Throwable e) {
+            // Log error but don't throw, cleanup should be safe
+            System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void close() {
+        clean();
     }
 
     /**

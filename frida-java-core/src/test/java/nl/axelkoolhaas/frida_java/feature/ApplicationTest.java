@@ -19,12 +19,15 @@
 
 package nl.axelkoolhaas.frida_java.feature;
 
-import nl.axelkoolhaas.frida_java.*;
+import nl.axelkoolhaas.frida_java.frida.*;
 import org.junit.jupiter.api.*;
+
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test class for Frida Application and Child management.
+ * Test class for Frida Application enumeration.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ApplicationTest {
@@ -43,101 +46,132 @@ public class ApplicationTest {
     void testEnumerateApplications() {
         try (DeviceManager deviceManager = new DeviceManager()) {
             Device localDevice = deviceManager.getLocalDevice();
-            try {
-                ApplicationList appList = localDevice.enumerateApplicationsSync(null, null);
-                assertNotNull(appList, "ApplicationList should not be null");
-                System.out.println("Enumerated " + appList.size() + " applications");
 
-                // Test individual application properties if we have any apps
-                if (appList.size() > 0) {
-                    try (Application firstApp = appList.get(0)) {
-                        assertNotNull(firstApp, "Application should not be null");
-                        assertNotNull(firstApp.getIdentifier(), "Application identifier should not be null");
-                        assertNotNull(firstApp.getName(), "Application name should not be null");
-                        System.out.println("First app: " + firstApp.getName() + " (" + firstApp.getIdentifier() + ")");
-                    }
+            List<Application> appList = localDevice.enumerateApplications();
+            if (appList == null) {
+                System.err.println("Failed to enumerate applications");
+                return;
+            }
+
+            System.out.println("Enumerated " + appList.size() + " applications");
+
+            // Test individual application properties if we have any apps
+            if (!appList.isEmpty()) {
+                Application firstApp = appList.getFirst();
+                assertNotNull(firstApp, "Application should not be null");
+                assertNotNull(firstApp.getIdentifier(), "Application identifier should not be null");
+                assertNotNull(firstApp.getName(), "Application name should not be null");
+                System.out.println("First app: " + firstApp.getName() + " (" + firstApp.getIdentifier() + ")");
+
+                // Clean up applications
+                for (Application app : appList) {
+                    app.clean();
                 }
-
-                appList.close();
-            } catch (UnsupportedOperationException e) {
-                System.out.println("Application enumeration not supported on this platform");
             }
         }
     }
 
     @Test
     @Order(2)
-    void testApplicationProperties() {
+    void testEnumerateApplicationsWithScope() {
         try (DeviceManager deviceManager = new DeviceManager()) {
             Device localDevice = deviceManager.getLocalDevice();
-            try {
-                ApplicationList appList = localDevice.enumerateApplicationsSync(null, null);
 
-                if (appList.size() > 0) {
-                    for (int i = 0; i < Math.min(3, appList.size()); i++) {
-                        try (Application app = appList.get(i)) {
-                            String identifier = app.getIdentifier();
-                            String name = app.getName();
-                            int pid = app.getPid();
+            // Test with different scopes
+            List<Application> minimalApps = localDevice.enumerateApplications(null, Scope.MINIMAL);
+            List<Application> fullApps = localDevice.enumerateApplications(null, Scope.FULL);
 
-                            assertNotNull(identifier, "Application identifier should not be null");
-                            assertNotNull(name, "Application name should not be null");
-                            assertFalse(identifier.isEmpty(), "Application identifier should not be empty");
-                            assertFalse(name.isEmpty(), "Application name should not be empty");
-
-                            System.out.printf("App %d: %s (%s) PID: %d%n", i, name, identifier, pid);
-                        }
-                    }
+            if (minimalApps != null) {
+                System.out.println("Minimal scope: " + minimalApps.size() + " applications");
+                for (Application app : minimalApps) {
+                    app.clean();
                 }
+            }
 
-                appList.close();
-            } catch (UnsupportedOperationException e) {
-                System.out.println("Application enumeration not supported on this platform");
+            if (fullApps != null) {
+                System.out.println("Full scope: " + fullApps.size() + " applications");
+                for (Application app : fullApps) {
+                    app.clean();
+                }
             }
         }
     }
 
     @Test
     @Order(3)
-    void testGetFrontmostApplication() {
+    void testApplicationProperties() {
         try (DeviceManager deviceManager = new DeviceManager()) {
             Device localDevice = deviceManager.getLocalDevice();
-            try {
-                Application frontmostApp = localDevice.getFrontmostApplicationSync(null, null);
-                if (frontmostApp != null) {
-                    assertNotNull(frontmostApp.getIdentifier(), "Frontmost app identifier should not be null");
-                    assertNotNull(frontmostApp.getName(), "Frontmost app name should not be null");
-                    System.out.println("Frontmost application: " + frontmostApp.getName());
-                    frontmostApp.close();
-                } else {
-                    System.out.println("No frontmost application found");
+
+            List<Application> appList = localDevice.enumerateApplications();
+            if (appList == null) {
+                System.err.println("Failed to enumerate applications");
+                return;
+            }
+
+            if (!appList.isEmpty()) {
+                // Test first few applications
+                int testCount = Math.min(3, appList.size());
+                for (int i = 0; i < testCount; i++) {
+                    Application app = appList.get(i);
+
+                    String identifier = app.getIdentifier();
+                    String name = app.getName();
+                    int pid = app.getPid();
+
+                    assertNotNull(identifier, "Application identifier should not be null");
+                    assertNotNull(name, "Application name should not be null");
+                    assertFalse(identifier.isEmpty(), "Application identifier should not be empty");
+                    assertFalse(name.isEmpty(), "Application name should not be empty");
+
+                    System.out.printf("App %d: %s (%s) PID: %d%n", i, name, identifier, pid);
                 }
-            } catch (UnsatisfiedLinkError e) {
-                System.out.println("getFrontmostApplicationSync not implemented in native layer: " + e.getMessage());
-                // This is expected if the native method is not yet implemented
-            } catch (UnsupportedOperationException e) {
-                System.out.println("Frontmost application query not supported on this platform");
+
+                // Clean up applications
+                for (Application app : appList) {
+                    app.clean();
+                }
             }
         }
     }
 
     @Test
     @Order(4)
-    void testApplicationQueryOptions() {
+    void testEnumerateSpecificApplication() {
         try (DeviceManager deviceManager = new DeviceManager()) {
             Device localDevice = deviceManager.getLocalDevice();
-            try {
-                // Test with ApplicationQueryOptions if available
-                ApplicationQueryOptions options = new ApplicationQueryOptions();
-                ApplicationList appList = localDevice.enumerateApplicationsSync(options, null);
-                assertNotNull(appList, "ApplicationList with options should not be null");
-                System.out.println("Enumerated " + appList.size() + " applications with options");
-                appList.close();
-            } catch (UnsupportedOperationException e) {
-                System.out.println("Application enumeration with options not supported on this platform");
-            } catch (Exception e) {
-                System.out.println("ApplicationQueryOptions test skipped: " + e.getMessage());
+
+            // First get all apps to find a valid identifier
+            List<Application> allApps = localDevice.enumerateApplications();
+            if (allApps == null || allApps.isEmpty()) {
+                System.out.println("No applications found to test specific enumeration");
+                return;
+            }
+
+            String testIdentifier = allApps.getFirst().getIdentifier();
+            System.out.println("Testing enumeration with identifier: " + testIdentifier);
+
+            // Clean up the initial list
+            for (Application app : allApps) {
+                app.clean();
+            }
+
+            // Now test specific enumeration
+            List<Application> specificApps = localDevice.enumerateApplications(testIdentifier, Scope.MINIMAL);
+            if (specificApps != null) {
+                System.out.println("Found " + specificApps.size() + " applications matching identifier");
+
+                if (!specificApps.isEmpty()) {
+                    assertEquals(testIdentifier, specificApps.getFirst().getIdentifier(),
+                            "Returned application should match requested identifier");
+                }
+
+                // Clean up
+                for (Application app : specificApps) {
+                    app.clean();
+                }
             }
         }
     }
 }
+

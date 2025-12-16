@@ -34,9 +34,12 @@ public class FridaJava {
 
     private static final Linker LINKER = Linker.nativeLinker();
     private static final SymbolLookup SYMBOL_LOOKUP;
+    private static final MethodHandle G_OBJECT_UNREF;
 
     static {
         SYMBOL_LOOKUP = loadFridaLibrary();
+        G_OBJECT_UNREF = FridaJava.findFunction("g_object_unref",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
     }
 
     /**
@@ -144,5 +147,17 @@ public class FridaJava {
         // Read the C string using UTF-8 encoding, searching for null terminator
         return segment.reinterpret(Long.MAX_VALUE)
                 .getString(0, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Call g_object_unref on a GObject pointer
+     * @param object
+     */
+    public static void g_object_unref(MemorySegment object) {
+        try {
+            G_OBJECT_UNREF.invoke(object);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to unref GObject", e);
+        }
     }
 }
