@@ -36,6 +36,7 @@ public class DeviceManager implements AutoCloseable {
     private static final MethodHandle FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC;
     private static final MethodHandle FRIDA_DEVICE_LIST_SIZE;
     private static final MethodHandle FRIDA_DEVICE_LIST_GET;
+    private static final MethodHandle FRIDA_DEVICE_MANAGER_CLOSE_SYNC;
 
     // Using pure Java filtering, as the native method seems to have issues in some environments
 //    private static final MethodHandle FRIDA_DEVICE_MANAGER_GET_DEVICE_BY_ID_SYNC;
@@ -51,6 +52,8 @@ public class DeviceManager implements AutoCloseable {
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_DEVICE_LIST_GET = FridaJava.findFunction("frida_device_list_get",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+        FRIDA_DEVICE_MANAGER_CLOSE_SYNC = FridaJava.findFunction("frida_device_manager_close_sync",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public DeviceManager() {
@@ -129,11 +132,20 @@ public class DeviceManager implements AutoCloseable {
     }
 
     public void clean() {
-        try {
-            FridaJava.g_object_unref(managerPtr);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            FRIDA_DEVICE_MANAGER_CLOSE_SYNC.invoke(managerPtr, MemorySegment.NULL, errorPtr);
+
+            // Check for errors
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            if (!error.equals(MemorySegment.NULL)) {
+                System.err.println("Warning: Error during device manager close");
+            }
         } catch (Throwable e) {
             // Log error but don't throw, cleanup should be safe
-            System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());
+            System.err.println("Warning: Failed to cleanup DeviceManager: " + e.getMessage());
         }
     }
 

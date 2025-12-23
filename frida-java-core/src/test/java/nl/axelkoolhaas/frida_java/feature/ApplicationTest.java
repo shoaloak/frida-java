@@ -53,11 +53,6 @@ public class ApplicationTest {
                 assertNotNull(firstApp.getIdentifier(), "Application identifier should not be null");
                 assertNotNull(firstApp.getName(), "Application name should not be null");
                 System.out.println("First app: " + firstApp.getName() + " (" + firstApp.getIdentifier() + ")");
-
-                // Clean up applications
-                for (Application app : appList) {
-                    app.clean();
-                }
             }
         }
     }
@@ -74,16 +69,10 @@ public class ApplicationTest {
 
             if (minimalApps != null) {
                 System.out.println("Minimal scope: " + minimalApps.size() + " applications");
-                for (Application app : minimalApps) {
-                    app.clean();
-                }
             }
 
             if (fullApps != null) {
                 System.out.println("Full scope: " + fullApps.size() + " applications");
-                for (Application app : fullApps) {
-                    app.clean();
-                }
             }
         }
     }
@@ -117,11 +106,6 @@ public class ApplicationTest {
 
                     System.out.printf("App %d: %s (%s) PID: %d%n", i, name, identifier, pid);
                 }
-
-                // Clean up applications
-                for (Application app : appList) {
-                    app.clean();
-                }
             }
         }
     }
@@ -142,11 +126,6 @@ public class ApplicationTest {
             String testIdentifier = allApps.getFirst().getIdentifier();
             System.out.println("Testing enumeration with identifier: " + testIdentifier);
 
-            // Clean up the initial list
-            for (Application app : allApps) {
-                app.clean();
-            }
-
             // Now test specific enumeration
             List<Application> specificApps = localDevice.enumerateApplications(testIdentifier, Scope.MINIMAL);
             if (specificApps != null) {
@@ -155,11 +134,6 @@ public class ApplicationTest {
                 if (!specificApps.isEmpty()) {
                     assertEquals(testIdentifier, specificApps.getFirst().getIdentifier(),
                             "Returned application should match requested identifier");
-                }
-
-                // Clean up
-                for (Application app : specificApps) {
-                    app.clean();
                 }
             }
         }

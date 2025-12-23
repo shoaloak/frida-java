@@ -30,14 +30,12 @@ public class ClassNameOrderTest {
     class A_VersionTest extends VersionTest {}
     @Nested
     class B_DeviceTest extends DeviceTest {}
-    //@Nested
-    //class C_DeviceAdvancedTest extends DeviceAdvancedTest {}
     @Nested
     class D_ProcessTest extends ProcessTest {}
-    //@Nested
-    //class E_ApplicationTest extends ApplicationTest {}
-    //@Nested
-    //class F_SpawnTest extends SpawnTest {}
+    @Nested
+    class E_ApplicationTest extends ApplicationTest {}
+    @Nested
+    class F_SpawnTest extends SpawnTest {}
     //@Nested
     //class G_SessionTest extends SessionTest {}
     //@Nested

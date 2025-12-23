@@ -26,7 +26,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
-public class Application implements AutoCloseable {
+public class Application {
     private final MemorySegment applicationPtr;
 
     private static final MethodHandle FRIDA_APPLICATION_GET_IDENTIFIER;
@@ -83,17 +83,14 @@ public class Application implements AutoCloseable {
                 getIdentifier(), getName(), getPid());
     }
 
+    // Manager will clean up resources, so no need to call
+    @Deprecated
     public void clean() {
         try {
-            FridaJava.g_object_unref(applicationPtr);
+            FridaJava.fridaUnref(applicationPtr);
         } catch (Throwable e) {
             // Log error but don't throw, cleanup should be safe
             System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void close() {
-        clean();
     }
 }

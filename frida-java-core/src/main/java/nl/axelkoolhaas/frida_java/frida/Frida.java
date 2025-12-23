@@ -33,7 +33,7 @@ import static nl.axelkoolhaas.frida_java.FridaJava.memorySegmentToString;
 public class Frida {
     private static final MethodHandle FRIDA_VERSION_STRING;
     private static final MethodHandle FRIDA_INIT;
-    private static final MethodHandle FRIDA_DEINIT;
+    private static final MethodHandle FRIDA_DEINIT; // Not used
 
     // Atomic state management to prevent init/deinit race conditions
     private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
@@ -49,18 +49,6 @@ public class Frida {
 
         // Initialize Frida immediately when the class is loaded
         ensureInitialized();
-
-        // Register shutdown hook for automatic cleanup
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (isInitialized.compareAndSet(true, false)) {
-                try {
-                    FRIDA_DEINIT.invoke();
-                } catch (Throwable e) {
-                    // Silently ignore errors during shutdown as the native library
-                    // may already be in the process of being unloaded
-                }
-            }
-        }));
     }
 
     /**
@@ -94,4 +82,24 @@ public class Frida {
             throw new RuntimeException("Failed to get Frida version", e);
         }
     }
+
+    /**
+     * Explicitly deinitialize Frida. This is mainly for testing purposes.
+     * This method is thread-safe and idempotent.
+     */
+//    public static void deinit() {
+//        if (isInitialized.compareAndSet(true, false)) {
+//            synchronized (initLock) {
+//                try {
+//                    FRIDA_DEINIT.invoke();
+//                    // Note that frida_deinit calls frida_shutdown internally
+//                    System.err.println("");
+//                } catch (Throwable e) {
+//                    // Reset the flag if deinit failed
+//                    isInitialized.set(true);
+//                    throw new RuntimeException("Failed to deinitialize Frida", e);
+//                }
+//            }
+//        }
+//    }
 }

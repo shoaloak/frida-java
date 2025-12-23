@@ -33,12 +33,12 @@ import java.util.Objects;
 public class FridaJava {
 
     private static final Linker LINKER = Linker.nativeLinker();
-    private static final SymbolLookup SYMBOL_LOOKUP;
-    private static final MethodHandle G_OBJECT_UNREF;
+    private static final SymbolLookup LOADED_LIBRARY;
+    private static final MethodHandle FRIDA_UNREF;
 
     static {
-        SYMBOL_LOOKUP = loadFridaLibrary();
-        G_OBJECT_UNREF = FridaJava.findFunction("g_object_unref",
+        LOADED_LIBRARY = loadFridaLibrary();
+        FRIDA_UNREF = FridaJava.findFunction("frida_unref",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
     }
 
@@ -115,7 +115,7 @@ public class FridaJava {
      * Find a function in the Frida library and create a method handle.
      */
     public static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
-        return SYMBOL_LOOKUP.find(name)
+        return LOADED_LIBRARY.find(name)
                 .map(addr -> LINKER.downcallHandle(addr, descriptor))
                 .orElse(null);
     }
@@ -150,14 +150,15 @@ public class FridaJava {
     }
 
     /**
-     * Call g_object_unref on a GObject pointer
+     * Call frida_unref on a pointer
+     * Note that this will call g_object_unref under the hood
      * @param object the GObject memory segment
      */
-    public static void g_object_unref(MemorySegment object) {
+    public static void fridaUnref(MemorySegment object) {
         try {
-            G_OBJECT_UNREF.invoke(object);
+            FRIDA_UNREF.invoke(object);
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to unref GObject", e);
+            throw new RuntimeException("Failed to unref pointer", e);
         }
     }
 }
