@@ -19,7 +19,7 @@
 
 package nl.axelkoolhaas.frida_java.feature;
 
-import nl.axelkoolhaas.frida_java.*;
+import nl.axelkoolhaas.frida_java.frida.*;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,15 +31,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ScriptTest {
 
-    @BeforeAll
-    static void setUp() {
-        Frida.init();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        Frida.deinit();
-    }
 
     @Test
     @Order(1)
@@ -80,14 +71,13 @@ public class ScriptTest {
             if (testPid > 0) {
                 try (Session session = localDevice.attach(testPid)) {
                     String scriptSource = "console.log('Named script test');";
-                    String scriptName = "test-script";
 
-                    try (Script script = session.createScript(scriptSource, scriptName)) {
+                    try (Script script = session.createScript(scriptSource)) {
                         assertNotNull(script, "Script should not be null");
-                        assertEquals(scriptName, script.getName(), "Script name should match");
-                        System.out.println("Created named script: " + script.getName());
+                        // Note: FFM version doesn't support named scripts
+                        System.out.println("Created script successfully (FFM version doesn't support script names)");
                     } catch (RuntimeException e) {
-                        System.out.println("Named script creation failed: " + e.getMessage());
+                        System.out.println("Script creation failed: " + e.getMessage());
                     }
                 } catch (RuntimeException e) {
                     System.out.println("Cannot attach to process for named script test: " + e.getMessage());
@@ -218,7 +208,7 @@ public class ScriptTest {
             return currentPid;
         }
 
-        // Fallback to spawning
+        // Fallback to spawning - FFM version uses simplified spawn API
         try {
             return device.spawn("/bin/sleep");
         } catch (Exception e) {

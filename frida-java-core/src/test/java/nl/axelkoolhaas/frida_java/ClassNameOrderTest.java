@@ -36,10 +36,10 @@ public class ClassNameOrderTest {
     class E_ApplicationTest extends ApplicationTest {}
     @Nested
     class F_SpawnTest extends SpawnTest {}
-    //@Nested
-    //class G_SessionTest extends SessionTest {}
-    //@Nested
-    //class H_ScriptTest extends ScriptTest {}
+    @Nested
+    class G_SessionTest extends SessionTest {}
+    @Nested
+    class H_ScriptTest extends ScriptTest {}
     //@Nested
     //class I_ChildTest extends ChildTest {}
     //@Nested
