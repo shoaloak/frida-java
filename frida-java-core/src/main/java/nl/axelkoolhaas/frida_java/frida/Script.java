@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -76,9 +77,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to load script");
-            }
+            GErrorUtils.checkAndThrow(error, "load script");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to load script", e);
         }
@@ -98,13 +97,12 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to unload script");
-            }
+            GErrorUtils.checkAndThrow(error, "unload script");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to unload script", e);
         }
     }
+
 
     /**
      * Check if the script is destroyed
@@ -130,11 +128,8 @@ public class Script implements AutoCloseable {
             // Eternalize the script (script, cancellable=NULL, error)
             FRIDA_SCRIPT_ETERNALIZE_SYNC.invoke(scriptPtr, MemorySegment.NULL, errorPtr);
 
-            // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to eternalize script");
-            }
+            GErrorUtils.checkAndThrow(error, "eternalize script");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to eternalize script", e);
         }
@@ -187,9 +182,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to enable debugger on port: " + port);
-            }
+            GErrorUtils.checkAndThrow(error, "enable debugger on port: " + port);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to enable debugger on port: " + port, e);
         }
@@ -209,9 +202,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to disable debugger");
-            }
+            GErrorUtils.checkAndThrow(error, "disable debugger");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to disable debugger", e);
         }

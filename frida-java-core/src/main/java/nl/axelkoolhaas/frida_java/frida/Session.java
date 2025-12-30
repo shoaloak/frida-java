@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -100,9 +101,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to detach session");
-            }
+            GErrorUtils.checkAndThrow(error, "detach session");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to detach session", e);
         }
@@ -122,9 +121,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to resume session");
-            }
+            GErrorUtils.checkAndThrow(error, "resume session");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to resume session", e);
         }
@@ -144,9 +141,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to enable child gating");
-            }
+            GErrorUtils.checkAndThrow(error, "enable child gating");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to enable child gating", e);
         }
@@ -166,9 +161,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to disable child gating");
-            }
+            GErrorUtils.checkAndThrow(error, "disable child gating");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to disable child gating", e);
         }
@@ -193,9 +186,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to create script");
-            }
+            GErrorUtils.checkAndThrow(error, "create script");
 
             return new Script(scriptObjPtr);
         } catch (Throwable e) {

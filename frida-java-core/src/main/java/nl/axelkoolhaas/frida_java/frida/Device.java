@@ -21,12 +21,15 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
+import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a device that Frida connects to
@@ -54,6 +57,13 @@ public class Device implements AutoCloseable {
     private static final MethodHandle FRIDA_DEVICE_ENUMERATE_APPLICATIONS;
     private static final MethodHandle FRIDA_APPLICATION_LIST_SIZE;
     private static final MethodHandle FRIDA_APPLICATION_LIST_GET;
+
+    private static final MethodHandle FRIDA_DEVICE_GET_BUS;
+    private static final MethodHandle FRIDA_DEVICE_GET_ICON;
+    private static final MethodHandle FRIDA_DEVICE_QUERY_SYSTEM_PARAMETERS_SYNC;
+    private static final MethodHandle FRIDA_FRONTMOST_QUERY_OPTIONS_NEW;
+    private static final MethodHandle FRIDA_FRONTMOST_QUERY_OPTIONS_SET_SCOPE;
+    private static final MethodHandle FRIDA_DEVICE_GET_FRONTMOST_APPLICATION_SYNC;
 
     static {
         Frida.ensureInitialized();
@@ -95,6 +105,19 @@ public class Device implements AutoCloseable {
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_APPLICATION_LIST_GET = FridaLibraryLoader.findFunction("frida_application_list_get",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+
+        FRIDA_DEVICE_GET_BUS = FridaLibraryLoader.findFunction("frida_device_get_bus",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_GET_ICON = FridaLibraryLoader.findFunction("frida_device_get_icon",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_QUERY_SYSTEM_PARAMETERS_SYNC = FridaLibraryLoader.findFunction("frida_device_query_system_parameters_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_FRONTMOST_QUERY_OPTIONS_NEW = FridaLibraryLoader.findFunction("frida_frontmost_query_options_new",
+                FunctionDescriptor.of(ValueLayout.ADDRESS));
+        FRIDA_FRONTMOST_QUERY_OPTIONS_SET_SCOPE = FridaLibraryLoader.findFunction("frida_frontmost_query_options_set_scope",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+        FRIDA_DEVICE_GET_FRONTMOST_APPLICATION_SYNC = FridaLibraryLoader.findFunction("frida_device_get_frontmost_application_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public Device(MemorySegment devicePtr) {
@@ -166,9 +189,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to enumerate processes");
-            }
+            GErrorUtils.checkAndThrow(error, "enumerate processes");
 
             if (processList.equals(MemorySegment.NULL)) {
                 return new ArrayList<>();
@@ -228,11 +249,11 @@ public class Device implements AutoCloseable {
             MemorySegment appList = (MemorySegment) FRIDA_DEVICE_ENUMERATE_APPLICATIONS
                     .invoke(devicePtr, queryOpts, MemorySegment.NULL, errorPtr);
 
-            // Check for errors
+            // Check for errors - need to cleanup queryOpts before throwing
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             if (!error.equals(MemorySegment.NULL)) {
                 FridaNativeUtils.fridaUnref(queryOpts);
-                throw new RuntimeException("Failed to enumerate applications");
+                GErrorUtils.checkAndThrow(error, "enumerate applications");
             }
 
             if (appList.equals(MemorySegment.NULL)) {
@@ -301,9 +322,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to spawn process: " + program);
-            }
+            GErrorUtils.checkAndThrow(error, "spawn process: " + program);
 
             return pid;
         } catch (Throwable e) {
@@ -340,9 +359,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to spawn process: " + program);
-            }
+            GErrorUtils.checkAndThrow(error, "spawn process: " + program);
 
             return pid;
         } catch (Throwable e) {
@@ -365,9 +382,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to kill process with PID: " + pid);
-            }
+            GErrorUtils.checkAndThrow(error, "kill process: " + pid);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to kill process with PID: " + pid, e);
         }
@@ -388,9 +403,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to resume process with PID: " + pid);
-            }
+            GErrorUtils.checkAndThrow(error, "resume process: " + pid);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to resume process with PID: " + pid, e);
         }
@@ -413,13 +426,101 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to attach to process with PID: " + pid);
-            }
+            GErrorUtils.checkAndThrow(error, "attach process: " + pid);
 
             return new Session(sessionPtr);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to attach to process with PID: " + pid, e);
+        }
+    }
+
+    /**
+     * Get the device icon
+     * @return device icon object, or null if not available
+     */
+    public Object getIcon() {
+        try {
+            MemorySegment icon = (MemorySegment) FRIDA_DEVICE_GET_ICON.invoke(devicePtr);
+            if (icon.equals(MemorySegment.NULL)) {
+                return null;
+            }
+            // Convert GIcon to appropriate Java representation
+            //TODO
+            return icon; // You may need to implement proper GIcon conversion
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to get device icon", e);
+        }
+    }
+
+    /**
+     * Get the device bus
+     * @return Bus object representing the device bus
+     */
+    public Bus getBus() {
+        try {
+            MemorySegment bus = (MemorySegment) FRIDA_DEVICE_GET_BUS.invoke(devicePtr);
+            if (bus.equals(MemorySegment.NULL)) {
+                return null;
+            }
+            return new Bus(bus);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to get device bus", e);
+        }
+    }
+
+    /**
+     * Get system parameters of the device
+     * @return Map of system parameters
+     */
+    public Map<String, Object> getParams() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment hashTable = (MemorySegment) FRIDA_DEVICE_QUERY_SYSTEM_PARAMETERS_SYNC
+                    .invoke(devicePtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.checkAndThrow(error, "get params");
+
+            return GHashTableUtil.toMap(hashTable);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to get device parameters", e);
+        }
+    }
+
+    /**
+     * Get the frontmost application
+     * @param scope Scope for the query
+     * @return Frontmost Application, or null if none
+     */
+    public Application getFrontmostApplication(Scope scope) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment queryOpts = (MemorySegment) FRIDA_FRONTMOST_QUERY_OPTIONS_NEW.invoke();
+            FRIDA_FRONTMOST_QUERY_OPTIONS_SET_SCOPE.invoke(queryOpts, scope.getValue());
+
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment appPtr = (MemorySegment) FRIDA_DEVICE_GET_FRONTMOST_APPLICATION_SYNC
+                    .invoke(devicePtr, queryOpts, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            if (!error.equals(MemorySegment.NULL)) {
+                FridaNativeUtils.fridaUnref(queryOpts);
+                GErrorUtils.checkAndThrow(error, "get frontmost application");
+                throw new RuntimeException("Failed to get frontmost application");
+            }
+
+            FridaNativeUtils.fridaUnref(queryOpts);
+
+            if (appPtr.equals(MemorySegment.NULL)) {
+                return null;
+            }
+
+            return new Application(appPtr);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to get frontmost application", e);
         }
     }
 

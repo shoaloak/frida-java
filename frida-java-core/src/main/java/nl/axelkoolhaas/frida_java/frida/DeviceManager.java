@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -80,9 +81,7 @@ public class DeviceManager implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                throw new RuntimeException("Failed to enumerate devices");
-            }
+            GErrorUtils.checkAndThrow(error, "enumerate devices");
 
             if (deviceList.equals(MemorySegment.NULL)) {
                 return new ArrayList<>();
@@ -141,9 +140,7 @@ public class DeviceManager implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                System.err.println("Warning: Error during device manager close");
-            }
+            GErrorUtils.checkAndThrow(error, "clean device manager");
         } catch (Throwable e) {
             // Log error but don't throw, cleanup should be safe
             System.err.println("Warning: Failed to cleanup DeviceManager: " + e.getMessage());

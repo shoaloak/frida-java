@@ -35,6 +35,14 @@ public class Process {
 
     private static final MethodHandle FRIDA_PROCESS_GET_PID;
     private static final MethodHandle FRIDA_PROCESS_GET_NAME;
+    // Unsure???
+//    private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_NEW;
+//    private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT;
+//    private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE;
+//    private static final MethodHandle FRIDA_DEVICE_GET_PROCESS_BY_PID_SYNC;
+//    private static final MethodHandle FRIDA_DEVICE_GET_PROCESS_BY_NAME_SYNC;
+//    private static final MethodHandle FRIDA_DEVICE_FIND_PROCESS_BY_PID_SYNC;
+//    private static final MethodHandle FRIDA_DEVICE_FIND_PROCESS_BY_NAME_SYNC;
 
     static {
         Frida.ensureInitialized();

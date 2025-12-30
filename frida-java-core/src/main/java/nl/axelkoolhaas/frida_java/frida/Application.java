@@ -83,15 +83,4 @@ public class Application {
         return String.format("Application{identifier='%s', name='%s', pid=%d}",
                 getIdentifier(), getName(), getPid());
     }
-
-    // Manager will clean up resources, so no need to call
-    @Deprecated
-    public void clean() {
-        try {
-            FridaNativeUtils.fridaUnref(applicationPtr);
-        } catch (Throwable e) {
-            // Log error but don't throw, cleanup should be safe
-            System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());
-        }
-    }
 }

@@ -22,16 +22,26 @@ package nl.axelkoolhaas.frida_java;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
 
 public class FridaNativeUtils {
 
     private static final MethodHandle FRIDA_UNREF;
+    private static final MethodHandle G_BYTES_NEW;
+    private static final MethodHandle G_OBJECT_UNREF;
+    private static final MethodHandle G_OBJECT_REF;
 
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+        G_BYTES_NEW = FridaLibraryLoader.findFunction("g_bytes_new",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+        G_OBJECT_UNREF = FridaLibraryLoader.findFunction("g_object_unref",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+        G_OBJECT_REF = FridaLibraryLoader.findFunction("g_object_ref",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     /**
@@ -73,6 +83,48 @@ public class FridaNativeUtils {
             FRIDA_UNREF.invoke(object);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to unref pointer", e);
+        }
+    }
+
+
+    /**
+     * Convert byte array to GBytes
+     * @param data byte array to convert
+     * @param arena Arena for memory allocation
+     * @return GBytes pointer
+     */
+    public static MemorySegment bytesToGBytes(byte[] data, Arena arena) {
+        try {
+            MemorySegment dataPtr = arena.allocate(data.length);
+            dataPtr.copyFrom(MemorySegment.ofArray(data));
+            return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, data.length);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to convert bytes to GBytes", e);
+        }
+    }
+
+    /**
+     * Reference a GObject (increase reference count)
+     * @param object GObject pointer
+     * @return The same pointer (for convenience)
+     */
+    public static MemorySegment gObjectRef(MemorySegment object) {
+        try {
+            return (MemorySegment) G_OBJECT_REF.invoke(object);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to ref GObject", e);
+        }
+    }
+
+    /**
+     * Unreference a GObject (decrease reference count)
+     * @param object GObject pointer
+     */
+    public static void gObjectUnref(MemorySegment object) {
+        try {
+            G_OBJECT_UNREF.invoke(object);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to unref GObject", e);
         }
     }
 }
