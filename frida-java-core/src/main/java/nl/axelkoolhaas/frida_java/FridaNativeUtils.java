@@ -19,6 +19,8 @@
 
 package nl.axelkoolhaas.frida_java;
 
+import nl.axelkoolhaas.frida_java.frida.Closure;
+
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -30,18 +32,25 @@ public class FridaNativeUtils {
 
     private static final MethodHandle FRIDA_UNREF;
     private static final MethodHandle G_BYTES_NEW;
-    private static final MethodHandle G_OBJECT_UNREF;
-    private static final MethodHandle G_OBJECT_REF;
+    // THESE SHOULD NOT BE USED
+//    private static final MethodHandle G_OBJECT_UNREF;
+//    private static final MethodHandle G_OBJECT_REF;
+    private static final MethodHandle G_SIGNAL_LOOKUP;
+    private static final MethodHandle G_SIGNAL_CONNECT_DATA;
+    private static final MethodHandle G_OBJECT_GET_TYPE;
 
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
         G_BYTES_NEW = FridaLibraryLoader.findFunction("g_bytes_new",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-        G_OBJECT_UNREF = FridaLibraryLoader.findFunction("g_object_unref",
-                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
-        G_OBJECT_REF = FridaLibraryLoader.findFunction("g_object_ref",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        G_SIGNAL_LOOKUP = FridaLibraryLoader.findFunction("g_signal_lookup",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+        G_SIGNAL_CONNECT_DATA = FridaLibraryLoader.findFunction("g_signal_connect_data",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                                    ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+        G_OBJECT_GET_TYPE = FridaLibraryLoader.findFunction("G_OBJECT_GET_TYPE",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
     }
 
     /**
@@ -104,27 +113,38 @@ public class FridaNativeUtils {
     }
 
     /**
-     * Reference a GObject (increase reference count)
-     * @param object GObject pointer
-     * @return The same pointer (for convenience)
+     * Connect a Java callback to a GObject signal
+     * This is the Java equivalent of the Go connectClosure function
+     *
+     * @param object GObject pointer to connect to
+     * @param signalName Name of the signal to connect to
+     * @param callback Java callback object
      */
-    public static MemorySegment gObjectRef(MemorySegment object) {
-        try {
-            return (MemorySegment) G_OBJECT_REF.invoke(object);
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to ref GObject", e);
-        }
-    }
+    public static void connectSignal(MemorySegment object, String signalName, Object callback) {
+        try (Arena arena = Arena.ofConfined()) {
+            Closure closure = Closure.create(callback, signalName);
 
-    /**
-     * Unreference a GObject (decrease reference count)
-     * @param object GObject pointer
-     */
-    public static void gObjectUnref(MemorySegment object) {
-        try {
-            G_OBJECT_UNREF.invoke(object);
+            MemorySegment signalNamePtr = arena.allocateFrom(signalName);
+
+            long objectType = (Long) G_OBJECT_GET_TYPE.invoke(object);
+
+            int signalId = (Integer) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
+
+            // Only connect if signal exists (signalId != 0)
+            if (signalId != 0) {
+                // Connect the signal using g_signal_connect_data
+                // Parameters: object, detailed_signal, c_handler, data, destroy_data, connect_flags
+                G_SIGNAL_CONNECT_DATA.invoke(
+                    object,                          // instance
+                    signalNamePtr,                   // detailed_signal
+                    closure.getNativeCallback(),     // c_handler
+                    MemorySegment.NULL,              // data
+                    MemorySegment.NULL,              // destroy_data
+                    0                                // connect_flags (0 = G_CONNECT_DEFAULT)
+                );
+            }
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to unref GObject", e);
+            throw new RuntimeException("Failed to connect signal: " + signalName, e);
         }
     }
 }

@@ -40,7 +40,7 @@ public class ClassNameOrderTest {
     class G_SessionAndScriptTest extends SessionAndScriptTest {}
     @Nested
     class I_ChildTest extends ChildTest {}
-    //@Nested
-    //class J_ErrorHandlingTest extends ErrorHandlingTest {}
+    @Nested
+    class J_ClosureTest extends ClosureTest {}
 }
 
