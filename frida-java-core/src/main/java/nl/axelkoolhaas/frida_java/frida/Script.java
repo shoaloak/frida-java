@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -41,24 +42,24 @@ public class Script implements AutoCloseable {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_SCRIPT_LOAD_SYNC = FridaJava.findFunction("frida_script_load_sync",
+        FRIDA_SCRIPT_LOAD_SYNC = FridaLibraryLoader.findFunction("frida_script_load_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SCRIPT_UNLOAD_SYNC = FridaJava.findFunction("frida_script_unload_sync",
+        FRIDA_SCRIPT_UNLOAD_SYNC = FridaLibraryLoader.findFunction("frida_script_unload_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SCRIPT_IS_DESTROYED = FridaJava.findFunction("frida_script_is_destroyed",
+        FRIDA_SCRIPT_IS_DESTROYED = FridaLibraryLoader.findFunction("frida_script_is_destroyed",
                 FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
-        FRIDA_SCRIPT_ETERNALIZE_SYNC = FridaJava.findFunction("frida_script_eternalize_sync",
+        FRIDA_SCRIPT_ETERNALIZE_SYNC = FridaLibraryLoader.findFunction("frida_script_eternalize_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SCRIPT_POST = FridaJava.findFunction("frida_script_post",
+        FRIDA_SCRIPT_POST = FridaLibraryLoader.findFunction("frida_script_post",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SCRIPT_ENABLE_DEBUGGER_SYNC = FridaJava.findFunction("frida_script_enable_debugger_sync",
+        FRIDA_SCRIPT_ENABLE_DEBUGGER_SYNC = FridaLibraryLoader.findFunction("frida_script_enable_debugger_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_SHORT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SCRIPT_DISABLE_DEBUGGER_SYNC = FridaJava.findFunction("frida_script_disable_debugger_sync",
+        FRIDA_SCRIPT_DISABLE_DEBUGGER_SYNC = FridaLibraryLoader.findFunction("frida_script_disable_debugger_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public Script(MemorySegment scriptPtr) {
-        this.scriptPtr = FridaJava.requireValidPointer(scriptPtr, "Script pointer");
+        this.scriptPtr = FridaNativeUtils.requireValidPointer(scriptPtr, "Script pointer");
     }
 
     /**

@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -38,9 +39,9 @@ public class Process {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_PROCESS_GET_PID = FridaJava.findFunction("frida_process_get_pid",
+        FRIDA_PROCESS_GET_PID = FridaLibraryLoader.findFunction("frida_process_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_PROCESS_GET_NAME = FridaJava.findFunction("frida_process_get_name",
+        FRIDA_PROCESS_GET_NAME = FridaLibraryLoader.findFunction("frida_process_get_name",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
@@ -49,7 +50,7 @@ public class Process {
      * @param processPtr Native process pointer
      */
     public Process(MemorySegment processPtr) {
-        this.processPtr = FridaJava.requireValidPointer(processPtr, "Process pointer");
+        this.processPtr = FridaNativeUtils.requireValidPointer(processPtr, "Process pointer");
     }
 
     /**
@@ -71,7 +72,7 @@ public class Process {
     public String getName() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_PROCESS_GET_NAME.invoke(processPtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get process name", e);
         }

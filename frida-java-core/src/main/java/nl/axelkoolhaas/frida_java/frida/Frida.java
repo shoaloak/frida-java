@@ -19,13 +19,13 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static nl.axelkoolhaas.frida_java.FridaJava.memorySegmentToString;
+import static nl.axelkoolhaas.frida_java.FridaNativeUtils.memorySegmentToString;
 
 /**
  * Main Frida class with safe initialization/deinitialization
@@ -40,11 +40,11 @@ public class Frida {
     private static final Object initLock = new Object();
 
     static {
-        FRIDA_VERSION_STRING = FridaJava.findFunction("frida_version_string",
+        FRIDA_VERSION_STRING = FridaLibraryLoader.findFunction("frida_version_string",
                 FunctionDescriptor.of(ValueLayout.ADDRESS));
-        FRIDA_INIT = FridaJava.findFunction("frida_init",
+        FRIDA_INIT = FridaLibraryLoader.findFunction("frida_init",
                 FunctionDescriptor.ofVoid());
-        FRIDA_DEINIT = FridaJava.findFunction("frida_deinit",
+        FRIDA_DEINIT = FridaLibraryLoader.findFunction("frida_deinit",
                 FunctionDescriptor.ofVoid());
 
         // Initialize Frida immediately when the class is loaded

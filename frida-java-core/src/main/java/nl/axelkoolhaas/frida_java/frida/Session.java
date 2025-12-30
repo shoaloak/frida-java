@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -41,24 +42,24 @@ public class Session implements AutoCloseable {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_SESSION_IS_DETACHED = FridaJava.findFunction("frida_session_is_detached",
+        FRIDA_SESSION_IS_DETACHED = FridaLibraryLoader.findFunction("frida_session_is_detached",
                 FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
-        FRIDA_SESSION_DETACH_SYNC = FridaJava.findFunction("frida_session_detach_sync",
+        FRIDA_SESSION_DETACH_SYNC = FridaLibraryLoader.findFunction("frida_session_detach_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SESSION_RESUME_SYNC = FridaJava.findFunction("frida_session_resume_sync",
+        FRIDA_SESSION_RESUME_SYNC = FridaLibraryLoader.findFunction("frida_session_resume_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SESSION_GET_PID = FridaJava.findFunction("frida_session_get_pid",
+        FRIDA_SESSION_GET_PID = FridaLibraryLoader.findFunction("frida_session_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_SESSION_ENABLE_CHILD_GATING_SYNC = FridaJava.findFunction("frida_session_enable_child_gating_sync",
+        FRIDA_SESSION_ENABLE_CHILD_GATING_SYNC = FridaLibraryLoader.findFunction("frida_session_enable_child_gating_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SESSION_DISABLE_CHILD_GATING_SYNC = FridaJava.findFunction("frida_session_disable_child_gating_sync",
+        FRIDA_SESSION_DISABLE_CHILD_GATING_SYNC = FridaLibraryLoader.findFunction("frida_session_disable_child_gating_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SESSION_CREATE_SCRIPT_SYNC = FridaJava.findFunction("frida_session_create_script_sync",
+        FRIDA_SESSION_CREATE_SCRIPT_SYNC = FridaLibraryLoader.findFunction("frida_session_create_script_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public Session(MemorySegment sessionPtr) {
-        this.sessionPtr = FridaJava.requireValidPointer(sessionPtr, "Session pointer");
+        this.sessionPtr = FridaNativeUtils.requireValidPointer(sessionPtr, "Session pointer");
     }
 
     /**

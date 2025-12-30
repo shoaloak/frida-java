@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -36,14 +37,14 @@ public class Spawn {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_SPAWN_GET_PID = FridaJava.findFunction("frida_spawn_get_pid",
+        FRIDA_SPAWN_GET_PID = FridaLibraryLoader.findFunction("frida_spawn_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_GET_IDENTIFIER = FridaJava.findFunction("frida_spawn_get_identifier",
+        FRIDA_SPAWN_GET_IDENTIFIER = FridaLibraryLoader.findFunction("frida_spawn_get_identifier",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public Spawn(MemorySegment spawnPtr) {
-        this.spawnPtr = FridaJava.requireValidPointer(spawnPtr, "Spawn pointer");
+        this.spawnPtr = FridaNativeUtils.requireValidPointer(spawnPtr, "Spawn pointer");
     }
 
     /**
@@ -65,7 +66,7 @@ public class Spawn {
     public String getIdentifier() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_SPAWN_GET_IDENTIFIER.invoke(spawnPtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get spawn identifier", e);
         }

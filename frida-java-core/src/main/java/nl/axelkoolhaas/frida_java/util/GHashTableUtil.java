@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.util;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -49,25 +50,25 @@ public class GHashTableUtil {
 
     static {
         // GHashTable and GList functions
-        G_HASH_TABLE_GET_KEYS = FridaJava.findFunction("g_hash_table_get_keys",
+        G_HASH_TABLE_GET_KEYS = FridaLibraryLoader.findFunction("g_hash_table_get_keys",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        G_HASH_TABLE_LOOKUP = FridaJava.findFunction("g_hash_table_lookup",
+        G_HASH_TABLE_LOOKUP = FridaLibraryLoader.findFunction("g_hash_table_lookup",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        G_LIST_LENGTH = FridaJava.findFunction("g_list_length",
+        G_LIST_LENGTH = FridaLibraryLoader.findFunction("g_list_length",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        G_LIST_NTH_DATA = FridaJava.findFunction("g_list_nth_data",
+        G_LIST_NTH_DATA = FridaLibraryLoader.findFunction("g_list_nth_data",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
         // GValue type checking and extraction functions
-        G_VALUE_TYPE = FridaJava.findFunction("g_value_type",
+        G_VALUE_TYPE = FridaLibraryLoader.findFunction("g_value_type",
                 FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-        G_VALUE_GET_STRING = FridaJava.findFunction("g_value_get_string",
+        G_VALUE_GET_STRING = FridaLibraryLoader.findFunction("g_value_get_string",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        G_VALUE_GET_INT = FridaJava.findFunction("g_value_get_int",
+        G_VALUE_GET_INT = FridaLibraryLoader.findFunction("g_value_get_int",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        G_VALUE_GET_BOOLEAN = FridaJava.findFunction("g_value_get_boolean",
+        G_VALUE_GET_BOOLEAN = FridaLibraryLoader.findFunction("g_value_get_boolean",
                 FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
-        G_VALUE_GET_POINTER = FridaJava.findFunction("g_value_get_pointer",
+        G_VALUE_GET_POINTER = FridaLibraryLoader.findFunction("g_value_get_pointer",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
@@ -100,7 +101,7 @@ public class GHashTableUtil {
                     continue;
                 }
 
-                String key = FridaJava.memorySegmentToString(keyPtr);
+                String key = FridaNativeUtils.memorySegmentToString(keyPtr);
 
                 // Get the value for this key
                 MemorySegment valuePtr = (MemorySegment) G_HASH_TABLE_LOOKUP.invoke(hashTable, keyPtr);
@@ -156,7 +157,7 @@ public class GHashTableUtil {
             switch ((int) gType) {
                 case (int) G_TYPE_STRING:
                     MemorySegment strPtr = (MemorySegment) G_VALUE_GET_STRING.invoke(gValuePtr);
-                    return FridaJava.memorySegmentToString(strPtr);
+                    return FridaNativeUtils.memorySegmentToString(strPtr);
 
                 case (int) G_TYPE_INT:
                     return (int) G_VALUE_GET_INT.invoke(gValuePtr);
@@ -189,7 +190,7 @@ public class GHashTableUtil {
     private static Object convertDirectValue(MemorySegment valuePtr) {
         try {
             // Try to interpret as a string first (most common case)
-            String strValue = FridaJava.memorySegmentToString(valuePtr);
+            String strValue = FridaNativeUtils.memorySegmentToString(valuePtr);
             if (strValue != null && !strValue.isEmpty()) {
                 // Check if it looks like a number
                 try {

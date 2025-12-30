@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -35,11 +36,11 @@ public class Application {
 
     static {
         Frida.ensureInitialized();
-        FRIDA_APPLICATION_GET_IDENTIFIER = FridaJava.findFunction("frida_application_get_identifier",
+        FRIDA_APPLICATION_GET_IDENTIFIER = FridaLibraryLoader.findFunction("frida_application_get_identifier",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_APPLICATION_GET_NAME = FridaJava.findFunction("frida_application_get_name",
+        FRIDA_APPLICATION_GET_NAME = FridaLibraryLoader.findFunction("frida_application_get_name",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_APPLICATION_GET_PID = FridaJava.findFunction("frida_application_get_pid",
+        FRIDA_APPLICATION_GET_PID = FridaLibraryLoader.findFunction("frida_application_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     }
 
@@ -48,13 +49,13 @@ public class Application {
      * @param applicationPtr Native application pointer
      */
     public Application(MemorySegment applicationPtr) {
-        this.applicationPtr = FridaJava.requireValidPointer(applicationPtr, "Application pointer");
+        this.applicationPtr = FridaNativeUtils.requireValidPointer(applicationPtr, "Application pointer");
     }
 
     public String getIdentifier() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_APPLICATION_GET_IDENTIFIER.invoke(applicationPtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get application identifier", e);
         }
@@ -63,7 +64,7 @@ public class Application {
     public String getName() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_APPLICATION_GET_NAME.invoke(applicationPtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get application name", e);
         }
@@ -87,7 +88,7 @@ public class Application {
     @Deprecated
     public void clean() {
         try {
-            FridaJava.fridaUnref(applicationPtr);
+            FridaNativeUtils.fridaUnref(applicationPtr);
         } catch (Throwable e) {
             // Log error but don't throw, cleanup should be safe
             System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());

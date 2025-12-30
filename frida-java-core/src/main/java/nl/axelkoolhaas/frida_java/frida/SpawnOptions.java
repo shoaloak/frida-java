@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
 import java.lang.foreign.*;
@@ -50,36 +51,36 @@ public class SpawnOptions implements AutoCloseable {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_SPAWN_OPTIONS_NEW = FridaJava.findFunction("frida_spawn_options_new",
+        FRIDA_SPAWN_OPTIONS_NEW = FridaLibraryLoader.findFunction("frida_spawn_options_new",
                 FunctionDescriptor.of(ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_SET_ARGV = FridaJava.findFunction("frida_spawn_options_set_argv",
+        FRIDA_SPAWN_OPTIONS_SET_ARGV = FridaLibraryLoader.findFunction("frida_spawn_options_set_argv",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        FRIDA_SPAWN_OPTIONS_GET_ARGV = FridaJava.findFunction("frida_spawn_options_get_argv",
+        FRIDA_SPAWN_OPTIONS_GET_ARGV = FridaLibraryLoader.findFunction("frida_spawn_options_get_argv",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_SET_ENVP = FridaJava.findFunction("frida_spawn_options_set_envp",
+        FRIDA_SPAWN_OPTIONS_SET_ENVP = FridaLibraryLoader.findFunction("frida_spawn_options_set_envp",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        FRIDA_SPAWN_OPTIONS_GET_ENVP = FridaJava.findFunction("frida_spawn_options_get_envp",
+        FRIDA_SPAWN_OPTIONS_GET_ENVP = FridaLibraryLoader.findFunction("frida_spawn_options_get_envp",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_SET_ENV = FridaJava.findFunction("frida_spawn_options_set_env",
+        FRIDA_SPAWN_OPTIONS_SET_ENV = FridaLibraryLoader.findFunction("frida_spawn_options_set_env",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        FRIDA_SPAWN_OPTIONS_GET_ENV = FridaJava.findFunction("frida_spawn_options_get_env",
+        FRIDA_SPAWN_OPTIONS_GET_ENV = FridaLibraryLoader.findFunction("frida_spawn_options_get_env",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_SET_CWD = FridaJava.findFunction("frida_spawn_options_set_cwd",
+        FRIDA_SPAWN_OPTIONS_SET_CWD = FridaLibraryLoader.findFunction("frida_spawn_options_set_cwd",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_GET_CWD = FridaJava.findFunction("frida_spawn_options_get_cwd",
+        FRIDA_SPAWN_OPTIONS_GET_CWD = FridaLibraryLoader.findFunction("frida_spawn_options_get_cwd",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_SET_STDIO = FridaJava.findFunction("frida_spawn_options_set_stdio",
+        FRIDA_SPAWN_OPTIONS_SET_STDIO = FridaLibraryLoader.findFunction("frida_spawn_options_set_stdio",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        FRIDA_SPAWN_OPTIONS_GET_STDIO = FridaJava.findFunction("frida_spawn_options_get_stdio",
+        FRIDA_SPAWN_OPTIONS_GET_STDIO = FridaLibraryLoader.findFunction("frida_spawn_options_get_stdio",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_SPAWN_OPTIONS_GET_AUX = FridaJava.findFunction("frida_spawn_options_get_aux",
+        FRIDA_SPAWN_OPTIONS_GET_AUX = FridaLibraryLoader.findFunction("frida_spawn_options_get_aux",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public SpawnOptions() {
         try {
             this.optionsPtr = (MemorySegment) FRIDA_SPAWN_OPTIONS_NEW.invoke();
-            FridaJava.requireValidPointer(optionsPtr, "SpawnOptions pointer");
+            FridaNativeUtils.requireValidPointer(optionsPtr, "SpawnOptions pointer");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to create SpawnOptions", e);
         }
@@ -123,7 +124,7 @@ public class SpawnOptions implements AutoCloseable {
 
             for (int i = 0; i < count; i++) {
                 MemorySegment strPtr = argvPtr.getAtIndex(ValueLayout.ADDRESS, i);
-                args.add(FridaJava.memorySegmentToString(strPtr));
+                args.add(FridaNativeUtils.memorySegmentToString(strPtr));
             }
 
             return args;
@@ -175,7 +176,7 @@ public class SpawnOptions implements AutoCloseable {
 
             for (int i = 0; i < count; i++) {
                 MemorySegment strPtr = envpPtr.getAtIndex(ValueLayout.ADDRESS, i);
-                envp.add(FridaJava.memorySegmentToString(strPtr));
+                envp.add(FridaNativeUtils.memorySegmentToString(strPtr));
             }
 
             return envp;
@@ -226,7 +227,7 @@ public class SpawnOptions implements AutoCloseable {
 
             for (int i = 0; i < count; i++) {
                 MemorySegment strPtr = envPtr.getAtIndex(ValueLayout.ADDRESS, i);
-                env.add(FridaJava.memorySegmentToString(strPtr));
+                env.add(FridaNativeUtils.memorySegmentToString(strPtr));
             }
 
             return env;
@@ -255,7 +256,7 @@ public class SpawnOptions implements AutoCloseable {
     public String getCwd() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_SPAWN_OPTIONS_GET_CWD.invoke(optionsPtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get cwd", e);
         }
@@ -305,7 +306,7 @@ public class SpawnOptions implements AutoCloseable {
 
     public void clean() {
         try {
-            FridaJava.fridaUnref(optionsPtr);
+            FridaNativeUtils.fridaUnref(optionsPtr);
         } catch (Throwable e) {
             System.err.println("Warning: Failed to cleanup SpawnOptions: " + e.getMessage());
         }

@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -44,22 +45,22 @@ public class DeviceManager implements AutoCloseable {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_DEVICE_MANAGER_NEW = FridaJava.findFunction("frida_device_manager_new",
+        FRIDA_DEVICE_MANAGER_NEW = FridaLibraryLoader.findFunction("frida_device_manager_new",
                 FunctionDescriptor.of(ValueLayout.ADDRESS));
-        FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC = FridaJava.findFunction("frida_device_manager_enumerate_devices_sync",
+        FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC = FridaLibraryLoader.findFunction("frida_device_manager_enumerate_devices_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_LIST_SIZE = FridaJava.findFunction("frida_device_list_size",
+        FRIDA_DEVICE_LIST_SIZE = FridaLibraryLoader.findFunction("frida_device_list_size",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_LIST_GET = FridaJava.findFunction("frida_device_list_get",
+        FRIDA_DEVICE_LIST_GET = FridaLibraryLoader.findFunction("frida_device_list_get",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        FRIDA_DEVICE_MANAGER_CLOSE_SYNC = FridaJava.findFunction("frida_device_manager_close_sync",
+        FRIDA_DEVICE_MANAGER_CLOSE_SYNC = FridaLibraryLoader.findFunction("frida_device_manager_close_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public DeviceManager() {
         try {
             MemorySegment managerPtr = (MemorySegment) FRIDA_DEVICE_MANAGER_NEW.invoke();
-            this.managerPtr = FridaJava.requireValidPointer(managerPtr, "Device manager pointer");
+            this.managerPtr = FridaNativeUtils.requireValidPointer(managerPtr, "Device manager pointer");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to initialize device manager", e);
         }

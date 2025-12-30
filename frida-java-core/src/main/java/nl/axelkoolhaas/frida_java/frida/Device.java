@@ -19,7 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaJava;
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -57,47 +58,47 @@ public class Device implements AutoCloseable {
     static {
         Frida.ensureInitialized();
 
-        FRIDA_DEVICE_GET_DTYPE = FridaJava.findFunction("frida_device_get_dtype",
+        FRIDA_DEVICE_GET_DTYPE = FridaLibraryLoader.findFunction("frida_device_get_dtype",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_GET_ID = FridaJava.findFunction("frida_device_get_id",
+        FRIDA_DEVICE_GET_ID = FridaLibraryLoader.findFunction("frida_device_get_id",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_GET_NAME = FridaJava.findFunction("frida_device_get_name",
+        FRIDA_DEVICE_GET_NAME = FridaLibraryLoader.findFunction("frida_device_get_name",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_IS_LOST = FridaJava.findFunction("frida_device_is_lost",
+        FRIDA_DEVICE_IS_LOST = FridaLibraryLoader.findFunction("frida_device_is_lost",
                 FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_ENUMERATE_PROCESSES = FridaJava.findFunction("frida_device_enumerate_processes_sync",
+        FRIDA_DEVICE_ENUMERATE_PROCESSES = FridaLibraryLoader.findFunction("frida_device_enumerate_processes_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_PROCESS_LIST_SIZE = FridaJava.findFunction("frida_process_list_size",
+        FRIDA_PROCESS_LIST_SIZE = FridaLibraryLoader.findFunction("frida_process_list_size",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_PROCESS_LIST_GET = FridaJava.findFunction("frida_process_list_get",
+        FRIDA_PROCESS_LIST_GET = FridaLibraryLoader.findFunction("frida_process_list_get",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
         // Spawn, kill, and resume method handles
-        FRIDA_DEVICE_SPAWN_SYNC = FridaJava.findFunction("frida_device_spawn_sync",
+        FRIDA_DEVICE_SPAWN_SYNC = FridaLibraryLoader.findFunction("frida_device_spawn_sync",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_KILL_SYNC = FridaJava.findFunction("frida_device_kill_sync",
+        FRIDA_DEVICE_KILL_SYNC = FridaLibraryLoader.findFunction("frida_device_kill_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_RESUME_SYNC = FridaJava.findFunction("frida_device_resume_sync",
+        FRIDA_DEVICE_RESUME_SYNC = FridaLibraryLoader.findFunction("frida_device_resume_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_ATTACH_SYNC = FridaJava.findFunction("frida_device_attach_sync",
+        FRIDA_DEVICE_ATTACH_SYNC = FridaLibraryLoader.findFunction("frida_device_attach_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-        FRIDA_APPLICATION_QUERY_OPTIONS_NEW = FridaJava.findFunction("frida_application_query_options_new",
+        FRIDA_APPLICATION_QUERY_OPTIONS_NEW = FridaLibraryLoader.findFunction("frida_application_query_options_new",
                 FunctionDescriptor.of(ValueLayout.ADDRESS));
-        FRIDA_APPLICATION_QUERY_OPTIONS_SET_SCOPE = FridaJava.findFunction("frida_application_query_options_set_scope",
+        FRIDA_APPLICATION_QUERY_OPTIONS_SET_SCOPE = FridaLibraryLoader.findFunction("frida_application_query_options_set_scope",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        FRIDA_APPLICATION_QUERY_OPTIONS_SELECT_IDENTIFIER = FridaJava.findFunction("frida_application_query_options_select_identifier",
+        FRIDA_APPLICATION_QUERY_OPTIONS_SELECT_IDENTIFIER = FridaLibraryLoader.findFunction("frida_application_query_options_select_identifier",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_DEVICE_ENUMERATE_APPLICATIONS = FridaJava.findFunction("frida_device_enumerate_applications_sync",
+        FRIDA_DEVICE_ENUMERATE_APPLICATIONS = FridaLibraryLoader.findFunction("frida_device_enumerate_applications_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        FRIDA_APPLICATION_LIST_SIZE = FridaJava.findFunction("frida_application_list_size",
+        FRIDA_APPLICATION_LIST_SIZE = FridaLibraryLoader.findFunction("frida_application_list_size",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        FRIDA_APPLICATION_LIST_GET = FridaJava.findFunction("frida_application_list_get",
+        FRIDA_APPLICATION_LIST_GET = FridaLibraryLoader.findFunction("frida_application_list_get",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     }
 
     public Device(MemorySegment devicePtr) {
-        this.devicePtr = FridaJava.requireValidPointer(devicePtr, "Device pointer");
+        this.devicePtr = FridaNativeUtils.requireValidPointer(devicePtr, "Device pointer");
     }
 
     /**
@@ -107,7 +108,7 @@ public class Device implements AutoCloseable {
     public String getId() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_DEVICE_GET_ID.invoke(devicePtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get device ID", e);
         }
@@ -120,7 +121,7 @@ public class Device implements AutoCloseable {
     public String getName() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_DEVICE_GET_NAME.invoke(devicePtr);
-            return FridaJava.memorySegmentToString(result);
+            return FridaNativeUtils.memorySegmentToString(result);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get device name", e);
         }
@@ -230,12 +231,12 @@ public class Device implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             if (!error.equals(MemorySegment.NULL)) {
-                FridaJava.fridaUnref(queryOpts);
+                FridaNativeUtils.fridaUnref(queryOpts);
                 throw new RuntimeException("Failed to enumerate applications");
             }
 
             if (appList.equals(MemorySegment.NULL)) {
-                FridaJava.fridaUnref(queryOpts);
+                FridaNativeUtils.fridaUnref(queryOpts);
                 return new ArrayList<>();
             }
 
@@ -246,8 +247,8 @@ public class Device implements AutoCloseable {
                 return applications;
             } finally {
                 // Clean up native resources
-                FridaJava.fridaUnref(queryOpts);
-                FridaJava.fridaUnref(appList);
+                FridaNativeUtils.fridaUnref(queryOpts);
+                FridaNativeUtils.fridaUnref(appList);
             }
 
         } catch (Throwable e) {
@@ -424,7 +425,7 @@ public class Device implements AutoCloseable {
 
     public void clean() {
         try {
-            FridaJava.fridaUnref(devicePtr);
+            FridaNativeUtils.fridaUnref(devicePtr);
         } catch (Throwable e) {
             // Log error but don't throw, cleanup should be safe
             System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());
