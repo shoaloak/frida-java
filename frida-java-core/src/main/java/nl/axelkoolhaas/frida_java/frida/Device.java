@@ -32,7 +32,6 @@ import java.util.List;
  */
 public class Device implements AutoCloseable {
     private final MemorySegment devicePtr;
-    private volatile boolean closed = false;
 
     private static final MethodHandle FRIDA_DEVICE_GET_DTYPE;
     private static final MethodHandle FRIDA_DEVICE_GET_ID;
@@ -317,10 +316,37 @@ public class Device implements AutoCloseable {
      * @param args Arguments to pass to the process
      * @return PID of the spawned process
      */
-    public int spawn(String program, String[] args) {
-        // For now, use the simple spawn - we can enhance this later with SpawnOptions
-        // TODO
-        return spawn(program);
+    public int spawn(String program, List<String> args) {
+        try (SpawnOptions options = new SpawnOptions();
+             Arena arena = Arena.ofConfined()) {
+
+            // Prepend program name to arguments
+            String[] fullArgs = new String[args.size() + 1];
+            fullArgs[0] = program;
+            String[] argsArray = args.toArray(new String[0]);
+            System.arraycopy(argsArray, 0, fullArgs, 1, args.size());
+
+            options.setArgv(fullArgs);
+
+            MemorySegment programPtr = arena.allocateFrom(program);
+
+            // Error handling
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            // Spawn the process with options
+            int pid = (int) FRIDA_DEVICE_SPAWN_SYNC.invoke(devicePtr, programPtr, options.getPointer(), MemorySegment.NULL, errorPtr);
+
+            // Check for errors
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            if (!error.equals(MemorySegment.NULL)) {
+                throw new RuntimeException("Failed to spawn process: " + program);
+            }
+
+            return pid;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to spawn process: " + program, e);
+        }
     }
 
     /**

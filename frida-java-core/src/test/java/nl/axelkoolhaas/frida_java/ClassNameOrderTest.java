@@ -37,9 +37,7 @@ public class ClassNameOrderTest {
     @Nested
     class F_SpawnTest extends SpawnTest {}
     @Nested
-    class G_SessionTest extends SessionTest {}
-    @Nested
-    class H_ScriptTest extends ScriptTest {}
+    class G_SessionAndScriptTest extends SessionAndScriptTest {}
     //@Nested
     //class I_ChildTest extends ChildTest {}
     //@Nested
