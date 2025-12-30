@@ -19,9 +19,13 @@
 
 package nl.axelkoolhaas.frida_java.feature;
 
-import nl.axelkoolhaas.frida_java.*;
-import nl.axelkoolhaas.frida_java.Process;
+import nl.axelkoolhaas.frida_java.frida.ChildOrigin;
+import nl.axelkoolhaas.frida_java.frida.Device;
+import nl.axelkoolhaas.frida_java.frida.DeviceManager;
+import nl.axelkoolhaas.frida_java.frida.Session;
 import org.junit.jupiter.api.*;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.*;
@@ -33,214 +37,96 @@ import static org.junit.jupiter.api.Assumptions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ChildTest {
 
-    @BeforeAll
-    static void setUp() {
-        Frida.init();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        Frida.deinit();
-    }
 
     @Test
     @Order(1)
-    void testChildListCreation() {
-        try {
-            // Test that we can create child-related objects
-            // Note: Actual child enumeration might require specific scenarios
-            System.out.println("Child list classes are available");
-        } catch (Exception e) {
-            System.out.println("Child test setup issue: " + e.getMessage());
-        }
+    void testChildOriginEnum() {
+        // Simple enum validation
+        assertEquals(3, ChildOrigin.values().length);
+        assertEquals(0, ChildOrigin.FORK.getValue());
+        assertEquals(1, ChildOrigin.EXEC.getValue());
+        assertEquals(2, ChildOrigin.SPAWN.getValue());
+
+        // Test round-trip conversion
+        assertEquals(ChildOrigin.FORK, ChildOrigin.fromValue(0));
+        assertEquals(ChildOrigin.EXEC, ChildOrigin.fromValue(1));
+        assertEquals(ChildOrigin.SPAWN, ChildOrigin.fromValue(2));
     }
 
     @Test
     @Order(2)
-    void testSpawnWithChildGating() {
-        try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+    void testChildGatingBasicOperations() {
+        try (DeviceManager deviceManager = new DeviceManager();
+             Session session = createTestSession(deviceManager)) {
 
-            try {
-                // Spawn a process that might create children
-                String program = "/bin/sh";
-                String[] args = {"-c", "sleep 5"};
+            // Session can be null if attachment failed due to SIP
+            if (session == null) return;
 
-                int spawnedPid = localDevice.spawn(program, args);
-                if (spawnedPid > 0) {
-                    System.out.println("Spawned shell process with PID: " + spawnedPid);
+            // Test enabling child gating
+            assertDoesNotThrow(session::enableChildGating);
 
-                    // Attach to it and enable child gating
-                    try (Session session = localDevice.attach(spawnedPid)) {
-                        session.enableChildGating();
-                        System.out.println("Enabled child gating for PID: " + spawnedPid);
+            // Test disabling child gating
+            assertDoesNotThrow(session::disableChildGating);
 
-                        // Resume the process
-                        localDevice.resume(spawnedPid);
-
-                        // Give it some time to potentially create children
-                        Thread.sleep(500);
-
-                        // Disable child gating
-                        session.disableChildGating();
-                        System.out.println("Disabled child gating for PID: " + spawnedPid);
-
-                    } finally {
-                        try {
-                            localDevice.kill(spawnedPid);
-                            System.out.println("Cleaned up spawned process: " + spawnedPid);
-                        } catch (Exception e) {
-                            System.out.println("Could not clean up process: " + e.getMessage());
-                        }
-                    }
-                } else {
-                    System.out.println("Could not spawn shell process for child gating test (returned PID: " + spawnedPid + ")");
-                }
-
-            } catch (RuntimeException e) {
-                abort("Could not test child gating: " + e.getMessage());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                fail("Test was interrupted");
-            }
+            // Test multiple enable/disable cycles
+            session.enableChildGating();
+            session.enableChildGating(); // Should be idempotent
+            session.disableChildGating();
+            session.disableChildGating(); // Should be idempotent
         }
     }
 
     @Test
     @Order(3)
-    void testChildProcessDetection() {
+    void testChildGatingWithProcessLifecycle() {
         try (DeviceManager deviceManager = new DeviceManager()) {
             Device localDevice = deviceManager.getLocalDevice();
 
-            try {
-                // Get current process list to compare
-                ProcessList beforeProcesses = localDevice.enumerateProcesses();
-                int beforeCount = beforeProcesses.size();
-                beforeProcesses.close();
+            // Spawn a shell that will create child processes
+            int parentPid = localDevice.spawn("/bin/sh", List.of("-c", "sleep 2 && echo done"));
+            assumeTrue(parentPid > 0, "Could not spawn test process");
 
-                // Spawn a process that creates a child
-                String program = "/bin/sh";
-                String[] args = {"-c", "sleep 1 & sleep 2"};
+            try (Session session = localDevice.attach(parentPid)) {
+                session.enableChildGating();
+                localDevice.resume(parentPid);
 
-                int parentPid = localDevice.spawn(program, args);
-                if (parentPid > 0) {
-                    // Resume to let it create children
-                    localDevice.resume(parentPid);
+                // Give some time for potential child creation
+                Thread.sleep(500);
 
-                // Give time for child processes to be created
-                Thread.sleep(200);
-
-                // Check if we have more processes now
-                ProcessList afterProcesses = localDevice.enumerateProcesses();
-                int afterCount = afterProcesses.size();
-
-                System.out.printf("Process count before: %d, after: %d%n", beforeCount, afterCount);
-
-                // Look for child processes with the parent PID
-                boolean foundChild = false;
-                for (int i = 0; i < afterProcesses.size(); i++) {
-                    Process process = afterProcesses.get(i);
-                    if (process.getParentPid() == parentPid) {
-                        foundChild = true;
-                        System.out.println("Found child process: " + process.getName() + " (PID: " + process.getPid() + ")");
-                    }
-                    process.close();
-                }
-
-                if (foundChild) {
-                    System.out.println("Successfully detected child processes");
-                } else {
-                    System.out.println("No child processes detected (may be platform-dependent)");
-                }
-
-                afterProcesses.close();
-
-                // Clean up
-                try {
-                    localDevice.kill(parentPid);
-                    System.out.println("Cleaned up parent process: " + parentPid);
-                } catch (Exception e) {
-                    System.out.println("Could not clean up parent process: " + e.getMessage());
-                }
-
-            } else {
-                System.out.println("Could not spawn parent process for child detection test (returned PID: " + parentPid + ")");
-            }
-
-            } catch (RuntimeException e) {
-                System.out.println("Could not test child detection: " + e.getMessage());
+                session.disableChildGating();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 fail("Test was interrupted");
+            } catch (Exception e) {
+                System.err.println("Attachment failed (can be due to SIP on macOS): " + e.getMessage());
+                assumeTrue(false, "Skipping test due to attachment issue: " + e.getMessage());
+            } finally {
+                cleanupProcess(localDevice, parentPid);
             }
         }
     }
 
-    @Test
-    @Order(4)
-    void testSpawnOptionsWithChildren() {
+    // Helper methods to reduce duplication
+    private Session createTestSession(DeviceManager deviceManager) {
+        Device localDevice = deviceManager.getLocalDevice();
+        int pid = localDevice.spawn("/bin/sleep", List.of("10"));
+        assumeTrue(pid > 0, "Could not spawn test process");
+
         try {
-            // Test SpawnOptions creation
-            SpawnOptions spawnOptions = new SpawnOptions();
-            assertNotNull(spawnOptions, "SpawnOptions should be creatable");
-            System.out.println("SpawnOptions created successfully");
-
-            // Note: Actual usage would depend on native implementation
-
+            return localDevice.attach(pid);
         } catch (Exception e) {
-            System.out.println("SpawnOptions test skipped: " + e.getMessage());
+            cleanupProcess(localDevice, pid);
+            assumeTrue(false, "Skipping test due to attachment issue (likely SIP on macOS): " + e.getMessage());
+            return null; // This line won't be reached due to assumeTrue(false)
         }
     }
 
-    @Test
-    @Order(5)
-    void testSessionChildHandling() {
-        try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
-
-            try {
-                // Spawn a simple process
-                int testPid = localDevice.spawn("/bin/sleep");
-                assertTrue(testPid > 0, "Test PID should be positive");
-
-                try (Session session = localDevice.attach(testPid)) {
-                    // Test that we can enable/disable child gating multiple times
-                    session.enableChildGating();
-                    session.enableChildGating(); // Should be safe to call multiple times
-
-                    session.disableChildGating();
-                    session.disableChildGating(); // Should be safe to call multiple times
-
-                    System.out.println("Child gating toggle test passed");
-
-                } finally {
-                    try {
-                        localDevice.kill(testPid);
-                    } catch (Exception e) {
-                        System.out.println("Cleanup warning: " + e.getMessage());
-                    }
-                }
-
-            } catch (RuntimeException e) {
-                abort("Could not test session child handling: " + e.getMessage());
-            }
-        }
-    }
-
-    @Test
-    @Order(6)
-    void testChildObjectProperties() {
+    private void cleanupProcess(Device device, int pid) {
         try {
-            // Test that Child objects can be created and have expected methods
-            // Note: This is more of a API surface test since actual child objects
-            // would typically be returned from native code
-            System.out.println("Child class API is available for native usage");
-
-            // The Child class would typically be instantiated by native code
-            // when actual child processes are detected
-
+            device.kill(pid);
         } catch (Exception e) {
-            System.out.println("Child object test note: " + e.getMessage());
+            // Log but don't fail test on cleanup issues
+            System.err.println("Warning: Could not cleanup process " + pid + ": " + e.getMessage());
         }
     }
 }
