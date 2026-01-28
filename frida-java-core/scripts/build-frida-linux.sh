@@ -76,18 +76,43 @@ if [ ! -d "linux-${CURRENT_ARCH}" ]; then
   fetch_arch_devkit "$CURRENT_ARCH"
 fi
 
+################################################################################
+## Define compilation flags
+################################################################################
+# -shared:  Create a shared library (.so)
+# -fPIC:    Generate position-independent code
+CFLAGS="-shared -fPIC"
+
+## Linker flags
+# -Wl,--whole-archive:    Include all object files from the static library
+# -Wl,--no-whole-archive: Stop including all object files
+# -Wl,-soname:            Set the shared library name
+# -Wl,-z,noexecstack:     Mark the stack as non-executable
+LDFLAGS="-Wl,--whole-archive,linux-${CURRENT_ARCH}/libfrida-core.a \
+         -Wl,--no-whole-archive \
+         -Wl,-soname,libfrida-core.so \
+         -Wl,-z,noexecstack"
+
+## Libraries to link against
+# -ldl:     Dynamic linking
+# -lm:      Math library
+# -pthread: POSIX threads
+# -lrt:     Real-time extensions
+LIBS="-ldl -lm -pthread -lrt"
+
+## Optional: optimization flags
+# -O2:                Optimize
+# -DNDEBUG:           Disable debug assertions
+# -Wl,--gc-sections:  Remove unused sections
+# -Wl,-s:             Strip symbols
+OPTFLAGS="-O2 -DNDEBUG -Wl,--gc-sections -Wl,-s"
+#################################################################################
+
 # Build shared library for current architecture
-gcc -shared \
-  -fPIC \
+gcc $CFLAGS $OPTFLAGS \
   -o "libfrida-core-${CURRENT_ARCH}.so" \
-  -Wl,--whole-archive,"linux-${CURRENT_ARCH}/libfrida-core.a" \
-  -Wl,--no-whole-archive \
-  -Wl,-soname,libfrida-core.so \
-  -Wl,-z,noexecstack \
-  -ldl \
-  -lm \
-  -pthread \
-  -lrt
+  $LDFLAGS \
+  $LIBS
 
 # Verify
 file "libfrida-core-${CURRENT_ARCH}.so"

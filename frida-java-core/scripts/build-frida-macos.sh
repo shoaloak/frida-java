@@ -60,42 +60,63 @@ if [ ! -d "macos-x86_64" ]; then
   fetch_arch_devkit "x86_64"
 fi
 
+################################################################################
+## Define compilation flags
+################################################################################
+# -shared: Create a shared library (.dylib)
+CFLAGS="-shared"
+
+## Linker flags
+# -Wl,-force_load:    Include all object files from the static library (macOS equivalent of --whole-archive)
+# -Wl,-install_name:  Set the dylib install name for runtime loading
+# -Wl,-w:             Suppress alignment warnings on x86_64
+LDFLAGS_COMMON="-Wl,-install_name,@rpath/libfrida-core.dylib"
+LDFLAGS_ARM64="$LDFLAGS_COMMON -Wl,-force_load,macos-arm64/libfrida-core.a"
+LDFLAGS_X86_64="$LDFLAGS_COMMON -Wl,-force_load,macos-x86_64/libfrida-core.a -Wl,-w"
+
+## Frameworks and libraries to link against
+# Core system frameworks required by Frida
+FRAMEWORKS="-framework CoreFoundation \
+           -framework Foundation \
+           -framework AppKit \
+           -framework IOKit \
+           -framework Security"
+
+## System libraries
+# -bsm:     Basic Security Module library
+# -dl:      Dynamic linking library
+# -m:       Math library
+# -resolv:  DNS resolution library
+LIBS="-lbsm -ldl -lm -lresolv"
+
+## Optional: optimization flags
+# -O2:              Optimize
+# -DNDEBUG:         Disable debug assertions
+# -Wl,-dead_strip:  Remove unused code (macOS equivalent of --gc-sections)
+# -Wl,-x:           Strip local symbols
+OPTFLAGS="-O2 -DNDEBUG -Wl,-dead_strip -Wl,-x"
+#################################################################################
+
 # Build ARM dylib with all required frameworks
 if [ ! -f "libfrida-core-arm64.dylib" ]; then
-  clang -shared \
+  clang $CFLAGS \
     -arch arm64 \
+    $OPTFLAGS \
     -o libfrida-core-arm64.dylib \
-    -Wl,-force_load,macos-arm64/libfrida-core.a \
-    -Wl,-install_name,@rpath/libfrida-core.dylib \
-    -framework CoreFoundation \
-    -framework Foundation \
-    -framework AppKit \
-    -framework IOKit \
-    -framework Security \
-    -lbsm \
-    -ldl \
-    -lm \
-    -lresolv
+    $LDFLAGS_ARM64 \
+    $FRAMEWORKS \
+    $LIBS
 fi
 
 # Build x86_64 dylib with all required frameworks
 if [ ! -f "libfrida-core-x86_64.dylib" ]; then
-  # -Wl,-w suppresses "ld: warning: alignment (1) of atom is too small and may result in unaligned pointers"
-  clang -shared \
+  clang $CFLAGS \
     -arch x86_64 \
+    $OPTFLAGS \
     -o libfrida-core-x86_64.dylib \
-    -Wl,-force_load,macos-x86_64/libfrida-core.a \
-    -Wl,-install_name,@rpath/libfrida-core.dylib \
-    -Wl,-w \
-    -framework CoreFoundation \
-    -framework Foundation \
-    -framework AppKit \
-    -framework IOKit \
-    -framework Security \
-    -lbsm \
-    -ldl \
-    -lm \
-    -lresolv
+    $LDFLAGS_X86_64 \
+    $FRAMEWORKS \
+    $LIBS
 fi
 
 # Merge into universal dylib

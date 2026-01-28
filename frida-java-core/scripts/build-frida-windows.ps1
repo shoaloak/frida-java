@@ -206,6 +206,10 @@ function Build-DLL {
     # Create DEF file
     $defPath = New-DefFile -LibPath $LibPath -DefPath $DefFile
 
+    ################################################################################
+    ## Define compilation flags and libraries
+    ################################################################################
+
     # Determine machine type for linker based on architecture
     $machineType = switch ($Arch) {
         "x86_64" { "X64" }
@@ -214,48 +218,68 @@ function Build-DLL {
         default { "X64" }
     }
 
-    # System libraries based on Frida's actual meson.build dependencies
-    $systemLibs = @(
-        "ws2_32.lib"      # Windows Sockets
-        "winmm.lib"       # Windows Multimedia
-        "psapi.lib"       # Process Status API
-        "shlwapi.lib"     # Shell Lightweight API
-        "ole32.lib"       # OLE32
-        "oleaut32.lib"    # OLE Automation
-        "uuid.lib"        # UUID
-        "setupapi.lib"    # Setup API
-        "advapi32.lib"    # Advanced Windows API
-        "shell32.lib"     # Shell API
-        "user32.lib"      # User32
-        "kernel32.lib"    # Kernel32
-        "gdi32.lib"       # GDI32 (Graphics Device Interface) - MISSING!
-        "dbghelp.lib"     # Debug Help Library
-        "version.lib"     # Version Information
-        "winhttp.lib"     # WinHTTP
-        "crypt32.lib"     # Cryptography API
-        "wintrust.lib"    # WinTrust
-        "bcrypt.lib"      # BCrypt
-        "ncrypt.lib"      # NCrypt
-        "dnsapi.lib"      # DNS API
-        "iphlpapi.lib"    # IP Helper API
-        "wbemuuid.lib"    # WMI UUID
-        "comctl32.lib"    # Common Controls
-        "msvcrt.lib"      # Microsoft Visual C Runtime
-    )
-
-    # Link command to create DLL
-    $linkArgs = @(
+    ## Core linker flags
+    # /DLL:           Create a dynamic link library
+    # /OUT:           Specify output file name
+    # /MACHINE:       Target machine architecture
+    $coreFlags = @(
         "/DLL"
         "/OUT:$OutputDLL"
         "/MACHINE:$machineType"
         "$LibPath"
     )
 
-    # Add system libraries
-    $linkArgs += $systemLibs
+    ## System libraries (based on Frida's actual meson.build dependencies)
+    # ws2_32.lib:     Windows Sockets 2
+    # winmm.lib:      Windows Multimedia API
+    # psapi.lib:      Process Status API
+    # shlwapi.lib:    Shell Lightweight API
+    # ole32.lib:      Object Linking and Embedding
+    # oleaut32.lib:   OLE Automation
+    # uuid.lib:       Universally Unique Identifier
+    # setupapi.lib:   Setup API
+    # advapi32.lib:   Advanced Windows 32 Base API
+    # shell32.lib:    Windows Shell API
+    # user32.lib:     Windows User API
+    # kernel32.lib:   Windows Kernel API
+    # gdi32.lib:      Graphics Device Interface
+    # dbghelp.lib:    Debug Help Library
+    # version.lib:    Version Information API
+    # winhttp.lib:    Windows HTTP Services
+    # crypt32.lib:    Cryptography API
+    # wintrust.lib:   WinTrust API
+    # bcrypt.lib:     Cryptography API: Next Generation
+    # ncrypt.lib:     Cryptography API: Next Generation
+    # dnsapi.lib:     DNS Client API
+    # iphlpapi.lib:   IP Helper API
+    # wbemuuid.lib:   Windows Management Instrumentation
+    # comctl32.lib:   Common Controls
+    # msvcrt.lib:     Microsoft Visual C++ Runtime
+    $systemLibs = @(
+        "ws2_32.lib", "winmm.lib", "psapi.lib", "shlwapi.lib",
+        "ole32.lib", "oleaut32.lib", "uuid.lib", "setupapi.lib",
+        "advapi32.lib", "shell32.lib", "user32.lib", "kernel32.lib",
+        "gdi32.lib", "dbghelp.lib", "version.lib", "winhttp.lib",
+        "crypt32.lib", "wintrust.lib", "bcrypt.lib", "ncrypt.lib",
+        "dnsapi.lib", "iphlpapi.lib", "wbemuuid.lib", "comctl32.lib",
+        "msvcrt.lib"
+    )
 
-    # Additional linker flags based on Frida's requirements
-    $linkArgs += @(
+    ## Optimization and security flags
+    # /O2:                 Maximize speed optimization
+    # /GL:                 Whole program optimization
+    # /LTCG:               Link-time code generation
+    # /SUBSYSTEM:WINDOWS:  Target Windows subsystem
+    # /DYNAMICBASE:        Enable ASLR (Address Space Layout Randomization)
+    # /NXCOMPAT:           Compatible with Data Execution Prevention
+    # /MANIFEST:NO:        Do not generate manifest
+    # /INCREMENTAL:NO:     Disable incremental linking for smaller size
+    # /OPT:REF:            Remove unreferenced functions and data
+    # /OPT:ICF:            Enable COMDAT folding for smaller size
+    $optimizationFlags = @(
+        "/O2"
+#        "/GL"      # TODO test
+#        "/LTCG"    # TODO test
         "/SUBSYSTEM:WINDOWS"
         "/DYNAMICBASE"
         "/NXCOMPAT"
@@ -264,6 +288,10 @@ function Build-DLL {
         "/OPT:REF"
         "/OPT:ICF"
     )
+    ################################################################################
+
+    # Build complete linker argument list
+    $linkArgs = $coreFlags + $systemLibs + $optimizationFlags
 
     if ($defPath) {
         $linkArgs += "/DEF:$defPath"
