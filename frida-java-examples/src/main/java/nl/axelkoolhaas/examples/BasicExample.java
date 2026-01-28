@@ -20,13 +20,15 @@
 package nl.axelkoolhaas.examples;
 
 import nl.axelkoolhaas.frida_java.frida.Device;
-import nl.axelkoolhaas.frida_java.DeviceManager;
+import nl.axelkoolhaas.frida_java.frida.DeviceManager;
 import nl.axelkoolhaas.frida_java.frida.Frida;
-import nl.axelkoolhaas.frida_java.ProcessList;
+import nl.axelkoolhaas.frida_java.frida.Process;
+
+import java.util.List;
 
 /**
  * Basic example demonstrating Frida Java bindings usage.
- * This example shows initialization, version information, and device enumeration.
+ * This example shows version information, device enumeration, and process listing.
  */
 public class BasicExample {
 
@@ -35,16 +37,12 @@ public class BasicExample {
         System.out.println("===================================");
 
         try {
-            // Initialize Frida
-            Frida.init();
-            System.out.println("Frida initialized");
+            // Frida is automatically initialized when the class is loaded in v2
+            System.out.println("Frida initialized automatically");
 
             // Get version information
-            String versionString = Frida.getVersionString();
-            int[] version = Frida.getVersion();
-            System.out.println("Frida version: " + versionString);
-            System.out.printf("Version components: %d.%d.%d.%d%n",
-                version[0], version[1], version[2], version[3]);
+            String version = Frida.getVersion();
+            System.out.println("Frida version: " + version);
 
             // Use try-with-resources for proper cleanup
             try (DeviceManager deviceManager = new DeviceManager()) {
@@ -52,8 +50,8 @@ public class BasicExample {
 
                 // Enumerate devices
                 System.out.println("\n--- Device Enumeration ---");
-                Device[] devices = deviceManager.enumerateDevices();
-                System.out.println("Found " + devices.length + " device(s):");
+                List<Device> devices = deviceManager.enumerateDevices();
+                System.out.println("Found " + devices.size() + " device(s):");
 
                 for (Device device : devices) {
                     System.out.printf("  - %s (Type: %s, ID: %s)%n",
@@ -62,32 +60,38 @@ public class BasicExample {
 
                 // Get local device
                 Device localDevice = deviceManager.getLocalDevice();
-                System.out.println("\nLocal device: " + localDevice.getName());
+                if (localDevice != null) {
+                    System.out.println("\nLocal device: " + localDevice.getName());
 
-                // Enumerate processes
-                System.out.println("\n--- Process Enumeration ---");
-                try (ProcessList processList = localDevice.enumerateProcesses()) {
-                    int count = processList.size();
-                    System.out.println("Found " + count + " running processes");
+                    // Enumerate processes
+                    System.out.println("\n--- Process Enumeration ---");
+                    List<Process> processes = localDevice.enumerateProcesses();
+                    System.out.println("Found " + processes.size() + " running processes");
 
                     // Show first 5 processes as example
                     System.out.println("Sample processes:");
-                    for (int i = 0; i < Math.min(5, count); i++) {
-                        nl.axelkoolhaas.frida_java.Process process = processList.get(i);
+                    int limit = Math.min(5, processes.size());
+                    for (int i = 0; i < limit; i++) {
+                        Process process = processes.get(i);
                         System.out.printf("  PID %d: %s%n", process.getPid(), process.getName());
-                        process.close();
                     }
+                } else {
+                    System.out.println("No local device found");
                 }
 
-                System.out.println("Device manager closed");
+                // Clean up devices
+                for (Device device : devices) {
+                    device.close();
+                }
+
+                System.out.println("Device manager will be closed automatically");
             }
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            Frida.deinit();
-            System.out.println("Frida deinitialized");
         }
+
+        System.out.println("Example completed");
     }
 }

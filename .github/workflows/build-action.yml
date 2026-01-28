@@ -137,16 +137,13 @@ jobs:
           name: frida-core-windows-x64
           path: ./frida-java-core/native/
 
-      - name: List native libraries
-        run: ls -la ./frida-java-core/native/
+      - name: Build bindings with Maven and package JAR
+        run: mvn clean compile package -pl frida-java-core -am
 
-      - name: Build with Maven
-        run: mvn clean compile package
-
-      - name: Upload Maven artifacts
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: maven-build-artifacts
+          name: frida-java-core
           path: |
-            **/target/*.jar
-            **/target/*.pom
+            ./frida-java-core/target/frida-java-*.jar
+            ./frida-java-core/target/frida-java-*.pom
