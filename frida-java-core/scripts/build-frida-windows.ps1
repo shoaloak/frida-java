@@ -25,13 +25,11 @@ function Get-FridaConfig {
                 $key = $parts[0].Trim()
                 $value = $parts[1].Trim()
 
-                # Set as script variable (original format)
-                #Set-Variable -Name $key -Value $value -Scope Script
-
                 # Create PascalCase as script variable
-                $pascalKey = $key.Split('_') | ForEach-Object {
+                $pascalParts = $key.Split('_') | ForEach-Object {
                     $_.Substring(0,1).ToUpper() + $_.Substring(1).ToLower()
-                } | Join-String
+                }
+                $pascalKey = $pascalParts -join ''
                 Set-Variable -Name $pascalKey -Value $value -Scope Script
 
                 # Set as environment variable
