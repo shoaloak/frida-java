@@ -3,8 +3,28 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_DIR="${SCRIPT_DIR}/../../"
 readonly TARGET_DIR="${PROJECT_DIR}/frida-java-core/frida-devkit"
-readonly FRIDA_VERSION="17.5.1"
-readonly FRIDA_URL="https://github.com/frida/frida/releases/download"
+
+load_frida_config() {
+    local config_file="${SCRIPT_DIR}/build.properties"
+
+    if [[ ! -f "$config_file" ]]; then
+        echo "Error: Configuration file not found: $config_file"
+        exit 1
+    fi
+
+    while IFS='=' read -r key value || [[ -n "$key" ]]; do
+        # Skip comments and empty lines
+        [[ $key =~ ^[[:space:]]*# ]] && continue
+        [[ -z $key ]] && continue
+
+        # Remove leading/trailing whitespace
+        key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+        # Export the variable
+        export "$key"="$value"
+    done < "$config_file"
+}
 
 get_arch() {
   local arch
@@ -26,7 +46,10 @@ function fetch_arch_devkit() {
     | tar -x -J --directory "linux-${arch}"
 }
 
-# check if curl is installed
+# Load configuration
+load_frida_config
+
+# Check if curl is installed
 if ! command -v curl &> /dev/null
 then
     echo "Curl could not be found. Please install Curl to proceed."

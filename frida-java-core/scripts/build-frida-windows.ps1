@@ -8,8 +8,38 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Resolve-Path "$ScriptDir\..\.."
 $TargetDir = Join-Path $ProjectDir "frida-java-core\frida-devkit"
-$FridaVersion = "17.5.1"
-$FridaUrl = "https://github.com/frida/frida/releases/download"
+
+function Get-FridaConfig {
+    param([string]$ConfigPath = (Join-Path $ScriptDir "build.properties"))
+
+    if (-not (Test-Path $ConfigPath)) {
+        Write-Error "Configuration file not found: $ConfigPath"
+        exit 1
+    }
+
+    Get-Content $ConfigPath | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -and -not $line.StartsWith('#')) {
+            $parts = $line -split '=', 2
+            if ($parts.Length -eq 2) {
+                $key = $parts[0].Trim()
+                $value = $parts[1].Trim()
+
+                # Set as script variable (original format)
+                #Set-Variable -Name $key -Value $value -Scope Script
+
+                # Create PascalCase as script variable
+                $pascalKey = $key.Split('_') | ForEach-Object {
+                    $_.Substring(0,1).ToUpper() + $_.Substring(1).ToLower()
+                } | Join-String
+                Set-Variable -Name $pascalKey -Value $value -Scope Script
+
+                # Set as environment variable
+                [Environment]::SetEnvironmentVariable($key, $value, [EnvironmentVariableTarget]::Process)
+            }
+        }
+    }
+}
 
 # Function to get current architecture
 function Get-Architecture {
@@ -266,6 +296,9 @@ function Build-DLL {
 # Main script execution
 Write-Host "Frida Windows Build Script (Microsoft Toolchain)"
 Write-Host "================================================="
+
+# Load configuration
+Get-FridaConfig
 
 # Prepare directory
 if (-not (Test-Path $TargetDir)) {
