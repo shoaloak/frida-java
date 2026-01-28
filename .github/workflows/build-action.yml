@@ -42,7 +42,7 @@ jobs:
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.so
 
   build-frida-linux-arm64:
-    runs-on: ubuntu-latest-arm
+    runs-on: ubuntu-24.04-arm
     outputs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
