@@ -15,6 +15,13 @@
     <name>Frida Java</name>
     <description>Java bindings for Frida dynamic instrumentation toolkit</description>
 
+    <properties>
+        <native.libs.dir>${project.basedir}/native</native.libs.dir>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>tools.jackson.core</groupId>
@@ -32,17 +39,49 @@
     <!-- Cross-platform build configuration -->
     <build>
         <plugins>
-            <!-- Used to compile Java code  -->
+            <!-- Compile Java code  -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.14.1</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
-            <!-- Used to copy native library to JAR resources -->
+            <!-- Check that native libraries exist before building the JAR -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.2</version>
+                <executions>
+                    <execution>
+                        <id>check-native-libs-exist</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireFilesExist>
+                                    <files>
+                                        <file>${native.libs.dir}/libfrida-core.dylib</file>
+                                        <file>${native.libs.dir}/libfrida-core-arm64.so</file>
+                                        <file>${native.libs.dir}/libfrida-core-x86_64.so</file>
+                                        <file>${native.libs.dir}/libfrida-core-arm64.dll</file>
+                                        <file>${native.libs.dir}/libfrida-core-x86_64.dll</file>
+                                    </files>
+                                    <message>Native libraries not found in ${native.libs.dir}/.
+                                        For CI builds: Run GitHub Actions build first.
+                                        For local development: Download artifacts from ${project.url}/actions</message>
+                                </requireFilesExist>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Copy native libraries to JAR resources -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -58,15 +97,19 @@
                             <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.build.directory}</directory>
+                                    <directory>${native.libs.dir}</directory>
                                     <includes>
-                                        <include>libfrida-java.dylib</include>
-                                        <include>libfrida-java-linux-x86_64.so</include>
-                                        <include>libfrida-java-linux-arm64.so</include>
+                                        <include>libfrida-core.dylib</include>
+                                        <include>libfrida-core-arm64.so</include>
+                                        <include>libfrida-core-x86_64.so</include>
+                                        <include>libfrida-core-arm64.dll</include>
+                                        <include>libfrida-core-x86_64.dll</include>
                                     </includes>
                                 </resource>
                             </resources>
+                            <!-- Prevent filtering (variable substitution) of binary files -->
                             <nonFilteredFileExtensions>
+                                <nonFilteredFileExtension>dll</nonFilteredFileExtension>
                                 <nonFilteredFileExtension>dylib</nonFilteredFileExtension>
                                 <nonFilteredFileExtension>so</nonFilteredFileExtension>
                             </nonFilteredFileExtensions>
@@ -94,7 +137,7 @@
                 </executions>
             </plugin>
 
-            <!-- Used to create JAR -->
+            <!-- Create JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -125,7 +168,7 @@
                 </executions>
             </plugin>
 
-            <!-- Used to run unit tests -->
+            <!-- Run unit tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

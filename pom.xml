@@ -10,7 +10,19 @@
 
     <name>Frida Java Parent</name>
     <description>Parent project for Frida Java bindings and examples</description>
-    <url>https://axelkoolhaas.nl</url>
+    <url>https://github.com/shoaloak/frida-java</url>
+    <developers>
+        <developer>
+            <id>shoaloak</id>
+            <name>Axel Koolhaas</name>
+            <email>dev@axelkoolhaas.nl</email>
+            <url>https://axelkoolhaas.nl</url>
+            <roles>
+                <role>developer</role>
+                <role>maintainer</role>
+            </roles>
+        </developer>
+    </developers>
 
     <modules>
         <module>frida-java-core</module>
@@ -19,7 +31,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>25</maven.compiler.release>
     </properties>
 
     <dependencyManagement>

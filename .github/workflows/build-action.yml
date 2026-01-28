@@ -93,3 +93,60 @@ jobs:
         with:
           name: frida-core-windows-x64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
+
+  build-frida-java:
+    needs: [build-frida-linux-arm64, build-frida-linux-x64, build-frida-macos, build-frida-windows-arm64, build-frida-windows-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Download Linux ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frida-core-linux-arm64
+          path: ./frida-java-core/native/
+
+      - name: Download Linux x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frida-core-linux-x64
+          path: ./frida-java-core/native/
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frida-core-macos-universal
+          path: ./frida-java-core/native/
+
+      - name: Download Windows ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frida-core-windows-arm64
+          path: ./frida-java-core/native/
+
+      - name: Download Windows x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frida-core-windows-x64
+          path: ./frida-java-core/native/
+
+      - name: List native libraries
+        run: ls -la ./frida-java-core/native/
+
+      - name: Build with Maven
+        run: mvn clean compile package
+
+      - name: Upload Maven artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-build-artifacts
+          path: |
+            **/target/*.jar
+            **/target/*.pom
