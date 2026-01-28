@@ -7,22 +7,22 @@ on:
   pull_request:
 
 jobs:
-  build-frida-macos:
-    runs-on: macos-latest
+  build-frida-linux-arm64:
+    runs-on: ubuntu-24.04-arm
     outputs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Build universal macOS dylib
-        run: ./frida-java-core/scripts/build-frida-macos.sh
+      - name: Build Linux so
+        run: ./frida-java-core/scripts/build-frida-linux.sh
 
-      - name: Upload universal dylib artifact
+      - name: Upload library artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: frida-core-macos-universal
-          path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
+          name: frida-core-linux-arm64
+          path: ./frida-java-core/frida-devkit/libfrida-core-arm64.so
 
   build-frida-linux-x64:
     runs-on: ubuntu-latest
@@ -41,40 +41,22 @@ jobs:
           name: frida-core-linux-x64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.so
 
-  build-frida-linux-arm64:
-    runs-on: ubuntu-24.04-arm
+  build-frida-macos:
+    runs-on: macos-latest
     outputs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Build Linux so
-        run: ./frida-java-core/scripts/build-frida-linux.sh
+      - name: Build universal macOS dylib
+        run: ./frida-java-core/scripts/build-frida-macos.sh
 
-      - name: Upload library artifacts
+      - name: Upload universal dylib artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frida-core-linux-arm64
-          path: ./frida-java-core/frida-devkit/libfrida-core-arm64.so
-
-  build-frida-windows-x64:
-    runs-on: windows-latest
-    outputs:
-      artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Build windows dll
-        shell: powershell
-        run: ./frida-java-core/scripts/build-frida-windows.ps1
-
-      - name: Upload library artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frida-core-windows-x64
-          path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
+          name: frida-core-macos-universal
+          path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
 
   build-frida-windows-arm64:
     runs-on: windows-11-arm
@@ -94,3 +76,20 @@ jobs:
           name: frida-core-windows-arm64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.dll
 
+  build-frida-windows-x64:
+    runs-on: windows-latest
+    outputs:
+      artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build windows dll
+        shell: powershell
+        run: ./frida-java-core/scripts/build-frida-windows.ps1
+
+      - name: Upload library artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-core-windows-x64
+          path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
