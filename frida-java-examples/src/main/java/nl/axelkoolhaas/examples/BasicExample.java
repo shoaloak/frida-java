@@ -19,9 +19,9 @@
 
 package nl.axelkoolhaas.examples;
 
-import nl.axelkoolhaas.frida_java.Device;
+import nl.axelkoolhaas.frida_java.frida.Device;
 import nl.axelkoolhaas.frida_java.DeviceManager;
-import nl.axelkoolhaas.frida_java.Frida;
+import nl.axelkoolhaas.frida_java.frida.Frida;
 import nl.axelkoolhaas.frida_java.ProcessList;
 
 /**

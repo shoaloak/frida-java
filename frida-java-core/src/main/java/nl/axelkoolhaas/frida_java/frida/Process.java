@@ -90,17 +90,4 @@ public class Process {
     public String toString() {
         return String.format("Process{pid=%d, name='%s'}", getPid(), getName());
     }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof Process other))
-            return false;
-        return getPid() == other.getPid();
-    }
-
-    @Override
-    public int hashCode() {
-        return Integer.hashCode(getPid());
-    }
 }

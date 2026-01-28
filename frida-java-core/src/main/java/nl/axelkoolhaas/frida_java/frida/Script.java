@@ -25,12 +25,19 @@ import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Represents a Frida script
  */
 public class Script implements AutoCloseable {
     private final MemorySegment scriptPtr;
+    private boolean hasMessageHandler = false;
+    private Closure.MessageCallback messageCallback;
+    private Closure messageClosure; // TODO: REVIEW
 
     private static final MethodHandle FRIDA_SCRIPT_LOAD_SYNC;
     private static final MethodHandle FRIDA_SCRIPT_UNLOAD_SYNC;
@@ -67,6 +74,16 @@ public class Script implements AutoCloseable {
      * Load the script
      */
     public void load() {
+        // Set up default message handler if none exists for RPC functionality
+        if (!hasMessageHandler) {
+            on("message", new Closure.MessageCallback() {
+                @Override
+                public void onMessage(String message, byte[] data) {
+                    // Default empty handler for RPC functionality
+                }
+            });
+        }
+
         try (Arena arena = Arena.ofConfined()) {
             // Error handling
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
@@ -146,10 +163,8 @@ public class Script implements AutoCloseable {
             MemorySegment dataPtr = MemorySegment.NULL;
 
             if (data != null && data.length > 0) {
-                // For now, we'll implement basic data posting without GBytes conversion
-                // This can be enhanced later with proper GBytes handling
-                dataPtr = arena.allocate(data.length);
-                dataPtr.copyFrom(MemorySegment.ofArray(data));
+                // Convert to GBytes for proper binary data handling
+                dataPtr = FridaNativeUtils.bytesToGBytes(data, arena);
             }
 
             // Post to script (script, json, data)
@@ -208,13 +223,151 @@ public class Script implements AutoCloseable {
         }
     }
 
-    // TODO: Implement RPC functionality (ExportsCall, On, event handling)
-    // This would require implementing:
-    // - Event handling infrastructure
-    // - JSON RPC call mechanism
-    // - Message hijacking for RPC responses
-    // - UUID generation for RPC calls
-    // - Concurrent RPC call management
+    /**
+     * Connect to script signals. Available signals:
+     * - "destroyed" with callback as Runnable
+     * - "message" with callback as MessageCallback
+     *
+     * @param signalName Name of the signal to connect to
+     * @param callback Callback object to handle the signal
+     */
+    public void on(String signalName, Object callback) {
+        hasMessageHandler = true;
+
+        if ("message".equals(signalName)) {
+            // Set up message hijacking for RPC functionality
+            this.messageCallback = (callback instanceof Closure.MessageCallback) ?
+                (Closure.MessageCallback) callback :
+                (message, data) -> {
+                    if (callback instanceof Closure.MessageCallback) {
+                        ((Closure.MessageCallback) callback).onMessage(message, data);
+                    }
+                };
+
+            // Create hijacking message handler
+            Closure.MessageCallback hijackingHandler = this::hijackMessage;
+            this.messageClosure = Closure.create(hijackingHandler, signalName);
+            FridaNativeUtils.connectSignal(scriptPtr, signalName, hijackingHandler);
+        } else {
+            // For other signals, connect directly
+            FridaNativeUtils.connectSignal(scriptPtr, signalName, callback);
+        }
+    }
+
+    /**
+     * Call a function exported by the script's RPC interface
+     * @param functionName Name of the function to call
+     * @param args Arguments to pass to the function
+     * @return The result returned by the function
+     */
+    public Object exportsCall(String functionName, Object... args) {
+        try {
+            CompletableFuture<Object> future = makeExportsCall(functionName, args);
+            return future.get(); // Block until result is available
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("RPC call was interrupted", e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException("RPC call failed", e.getCause());
+        }
+    }
+
+    /**
+     * Call a function exported by the script's RPC interface with timeout and cancellation support
+     * @param context CompletableFuture that can be used for cancellation
+     * @param functionName Name of the function to call
+     * @param args Arguments to pass to the function
+     * @return The result returned by the function
+     * @throws ContextCancelledException if the context is cancelled
+     */
+    public Object exportsCallWithContext(CompletableFuture<Void> context, String functionName, Object... args) {
+        try {
+            CompletableFuture<Object> rpcFuture = makeExportsCall(functionName, args);
+
+            // Race between the RPC call and context cancellation
+            CompletableFuture<Object> result = rpcFuture.applyToEither(
+                context.thenApply(v -> {
+                    throw new ContextCancelledException();
+                }),
+                value -> value
+            );
+
+            return result.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("RPC call was interrupted", e);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof ContextCancelledException) {
+                throw (ContextCancelledException) e.getCause();
+            }
+            throw new RuntimeException("RPC call failed", e.getCause());
+        }
+    }
+
+    /**
+     * Call a function exported by the script's RPC interface with timeout
+     * @param functionName Name of the function to call
+     * @param timeoutMs Timeout in milliseconds
+     * @param args Arguments to pass to the function
+     * @return The result returned by the function
+     * @throws TimeoutException if the call times out
+     */
+    public Object exportsCallWithTimeout(String functionName, long timeoutMs, Object... args)
+            throws TimeoutException {
+        try {
+            CompletableFuture<Object> future = makeExportsCall(functionName, args);
+            return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("RPC call was interrupted", e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException("RPC call failed", e.getCause());
+        }
+    }
+
+    /**
+     * Internal method to create and execute RPC calls
+     */
+    private CompletableFuture<Object> makeExportsCall(String functionName, Object... args) {
+        Object[] rpcCall = RpcManager.createRpcCall(functionName, args);
+        String rpcId = (String) rpcCall[1]; // Extract RPC ID
+
+        // Register the call before sending
+        CompletableFuture<Object> future = RpcManager.registerRpcCall(rpcId);
+
+        // Send the RPC call
+        String jsonMessage = RpcManager.toJsonString(rpcCall);
+        post(jsonMessage);
+
+        return future;
+    }
+
+    /**
+     * Hijack message handling to intercept RPC responses
+     */
+    private void hijackMessage(String message, byte[] data) {
+        // Check if this is an RPC response
+        RpcManager.RpcResult rpcResult = RpcManager.extractRpcResult(message);
+
+        if (rpcResult != null) {
+            // This is an RPC response, complete the corresponding future
+            RpcManager.completeRpcCall(rpcResult.getRpcId(), rpcResult.getResult());
+        } else {
+            // This is a regular message, forward to user callback
+            if (messageCallback != null) {
+                messageCallback.onMessage(message, data);
+            }
+        }
+    }
+
+    public void clean() {
+        try {
+            FridaNativeUtils.fridaUnref(this.scriptPtr);
+        } catch (Throwable e) {
+            // Log error but don't throw, cleanup should be safe
+            System.err.println("Warning: Failed to cleanup Script: " + e.getMessage());
+        }
+    }
 
     /**
      * Automatically unload when used in try-with-resources
@@ -222,5 +375,6 @@ public class Script implements AutoCloseable {
     @Override
     public void close() {
         unload();
+        clean();
     }
 }

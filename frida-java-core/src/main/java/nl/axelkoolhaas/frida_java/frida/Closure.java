@@ -30,7 +30,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Manages GObject signal connections between native code and Java callbacks.
- * This is the Java equivalent of the Go closure system.
+ * This is not a closure in the traditional sense, but the name is kept for consistency with GClosure.
+ * This class looks scary, but essentially it just maps native signal C callbacks back to Java methods.
+ * It does this through Linker upcall stubs and a static dispatch method.
  */
 public class Closure {
     private static final AtomicLong CLOSURE_ID_GENERATOR = new AtomicLong(1);

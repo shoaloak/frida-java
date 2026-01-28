@@ -40,18 +40,10 @@ This will:
 3. Run tests for the core library
 4. Install both artifacts to your local Maven repository
 
-### Cross-Platform Builds with Docker
+#### Development
 
-Supported platforms
-- [x] MacOS (x86_64, arm64)
-- [x] Linux (x86_64, arm64)
-- [ ] Windows (x86_64)
-
-```bash
-mvn clean install -Pmacos,linux-docker
-```
-
-Note that this was developed and tested on an Apple Silicon Mac, so please report any issues you encounter on other platforms.
+For FFI bindings, the general best practice is to handle errors at the binding level rather than expecting callers to
+deal with raw FFI errors. Bindings should handle errors because callers shouldn't need to know about FFI implementation details
 
 ## Usage
 
@@ -61,7 +53,7 @@ Add the core library as a dependency to your Maven project:
 <dependency>
     <groupId>nl.axelkoolhaas.frida_java</groupId>
     <artifactId>frida-java</artifactId>
-    <version>1.0</version>
+    <version>2.0</version>
 </dependency>
 ```
 
