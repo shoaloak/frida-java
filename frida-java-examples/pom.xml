@@ -57,6 +57,11 @@
                         <manifest>
                             <mainClass>nl.axelkoolhaas.examples.BasicExample</mainClass>
                         </manifest>
+                        <!-- Allow native restricted method calling -->
+                        <manifestEntries>
+                            <Add-Opens>java.base/java.lang=ALL-UNNAMED java.base/java.lang.foreign=ALL-UNNAMED</Add-Opens>
+                            <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+                        </manifestEntries>
                     </archive>
                     <finalName>frida-java-example</finalName>
                     <appendAssemblyId>true</appendAssemblyId>
@@ -71,36 +76,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-shade-plugin</artifactId>-->
-<!--                <version>3.6.0</version>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>shade</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <filters>-->
-<!--                                <filter>-->
-<!--                                    <artifact>*:*</artifact>-->
-<!--                                    <excludes>-->
-<!--                                        <exclude>META-INF/MANIFEST.MF</exclude>-->
-<!--                                    </excludes>-->
-<!--                                </filter>-->
-<!--                            </filters>-->
-<!--                            <transformers>-->
-<!--                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
-<!--                                    <mainClass>nl.axelkoolhaas.examples.BasicExample</mainClass>-->
-<!--                                </transformer>-->
-<!--                            </transformers>-->
-<!--                            <finalName>frida-java-example</finalName>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
         </plugins>
     </build>
 </project>
