@@ -14,6 +14,7 @@
 
     <name>Frida Java</name>
     <description>Java bindings for Frida dynamic instrumentation toolkit</description>
+    <url>https://github.com/shoaloak/frida-java</url>
 
     <properties>
         <native.libs.dir>${project.basedir}/native</native.libs.dir>
@@ -69,9 +70,17 @@
                                         <file>${native.libs.dir}/libfrida-core-arm64.dll</file>
                                         <file>${native.libs.dir}/libfrida-core-x86_64.dll</file>
                                     </files>
-                                    <message>Native libraries not found in ${native.libs.dir}/.
-                                        For CI builds: Run GitHub Actions build first.
-                                        For local development: Download artifacts from ${project.url}/actions</message>
+                                    <message>
+Native libraries not found in ${native.libs.dir}/.
+
+For CI builds:
+  Run the GitHub Actions workflow to build the shared libraries first.
+
+For local development:
+  Download artifacts from ${project.url}/actions
+
+--------------------------------------------------------------------------------
+</message>
                                 </requireFilesExist>
                             </rules>
                         </configuration>
