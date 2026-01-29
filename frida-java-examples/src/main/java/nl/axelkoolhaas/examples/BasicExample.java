@@ -23,6 +23,9 @@ import nl.axelkoolhaas.frida_java.frida.Device;
 import nl.axelkoolhaas.frida_java.frida.DeviceManager;
 import nl.axelkoolhaas.frida_java.frida.Frida;
 import nl.axelkoolhaas.frida_java.frida.Process;
+import nl.axelkoolhaas.frida_java.frida.Session;
+import nl.axelkoolhaas.frida_java.frida.Script;
+import nl.axelkoolhaas.frida_java.frida.Closure;
 
 import java.util.List;
 
@@ -75,6 +78,102 @@ public class BasicExample {
                         Process process = processes.get(i);
                         System.out.printf("  PID %d: %s%n", process.getPid(), process.getName());
                     }
+
+                    // Demonstrate process spawning and script injection
+                    System.out.println("\n--- Process Spawning and Script Injection ---");
+                    System.out.println("Spawning 'sleep 300' process...");
+
+                    // Spawn a simple process that we can inject into
+                    List<String> sleepArgs = List.of("300");  // Sleep for 300 seconds
+                    int spawnedPid = localDevice.spawn("sleep", sleepArgs);
+                    System.out.println("Spawned process with PID: " + spawnedPid);
+
+                    // Attach to the spawned process
+                    try (Session session = localDevice.attach(spawnedPid)) {
+                        System.out.println("Attached to process");
+
+                        // Create a simple script to get the process arguments
+                        // language=JavaScript
+                        String scriptSource = """
+                            const libcStartMain = Module.findGlobalExportByName("__libc_start_main")
+                            
+                            if (!libcStartMain) {
+                                console.log("__libc_start_main not found")
+                                send({ error: "__libc_start_main not found" })
+                            } else {
+                                Interceptor.attach(libcStartMain, {
+                                    onEnter(args) {
+                                        const mainFunc = args[0]
+                            
+                                        Interceptor.attach(mainFunc, {
+                                            onEnter(args) {
+                                                const argc = args[0].toInt32()
+                                                const argv = args[1]
+                            
+                                                const argList = []
+                            
+                                                for (let i = 0; i < argc; i++) {
+                                                    const argPtr = argv.add(i * Process.pointerSize).readPointer()
+                                                    const argStr = argPtr.readCString()
+                                                    argList.push(argStr)
+                                                }
+                            
+                                                console.log("argc =", argc)
+                                                console.log("argv =", argList)
+                            
+                                                send({
+                                                    type: "argv",
+                                                    argc: argc,
+                                                    argv: argList
+                                                })
+                                            }
+                                        })
+                                    }
+                                })
+                            }
+                            """;
+
+                        // Create and load the script
+                        try (Script script = session.createScript(scriptSource)) {
+                            // Set up message handler to receive messages from the script
+                            script.on("message", (Closure.MessageCallback) (message, data) ->
+                                System.out.println("Message from script: " + message)
+                            );
+
+                            script.load();
+                            System.out.println("Script loaded successfully");
+
+                            // Resume the spawned process
+                            localDevice.resume(spawnedPid);
+                            System.out.println("Resumed spawned process");
+
+                            // Give the script some time to intercept and capture arguments
+                            System.out.println("Waiting for script to capture arguments...");
+                            Thread.sleep(2000);  // Wait 2 seconds for the interception to happen
+
+                            // Clean up - kill the spawned process
+                            System.out.println("Cleaning up spawned process...");
+                            localDevice.kill(spawnedPid);
+                            System.out.println("Process terminated");
+
+                        } catch (Exception scriptEx) {
+                            System.err.println("Script error: " + scriptEx.getMessage());
+                            // Make sure to clean up the process
+                            try {
+                                localDevice.kill(spawnedPid);
+                            } catch (Exception killEx) {
+                                System.err.println("Failed to kill process: " + killEx.getMessage());
+                            }
+                        }
+                    } catch (Exception sessionEx) {
+                        System.err.println("Session error: " + sessionEx.getMessage());
+                        // Make sure to clean up the process
+                        try {
+                            localDevice.kill(spawnedPid);
+                        } catch (Exception killEx) {
+                            System.err.println("Failed to kill process: " + killEx.getMessage());
+                        }
+                    }
                 } else {
                     System.out.println("No local device found");
                 }
@@ -89,7 +188,9 @@ public class BasicExample {
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
+            if (e.getCause() != null) {
+                System.err.println("Caused by: " + e.getCause().getMessage());
+            }
         }
 
         System.out.println("Example completed");
