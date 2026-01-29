@@ -19,13 +19,8 @@
 
 package nl.axelkoolhaas.examples;
 
-import nl.axelkoolhaas.frida_java.frida.Device;
-import nl.axelkoolhaas.frida_java.frida.DeviceManager;
-import nl.axelkoolhaas.frida_java.frida.Frida;
+import nl.axelkoolhaas.frida_java.frida.*;
 import nl.axelkoolhaas.frida_java.frida.Process;
-import nl.axelkoolhaas.frida_java.frida.Session;
-import nl.axelkoolhaas.frida_java.frida.Script;
-import nl.axelkoolhaas.frida_java.frida.Closure;
 
 import java.util.List;
 
@@ -40,10 +35,6 @@ public class BasicExample {
         System.out.println("===================================");
 
         try {
-            // Frida is automatically initialized when the class is loaded in v2
-            System.out.println("Frida initialized automatically");
-
-            // Get version information
             String version = Frida.getVersion();
             System.out.println("Frida version: " + version);
 
@@ -51,7 +42,6 @@ public class BasicExample {
             try (DeviceManager deviceManager = new DeviceManager()) {
                 System.out.println("Device manager created");
 
-                // Enumerate devices
                 System.out.println("\n--- Device Enumeration ---");
                 List<Device> devices = deviceManager.enumerateDevices();
                 System.out.println("Found " + devices.size() + " device(s):");
@@ -61,12 +51,10 @@ public class BasicExample {
                         device.getName(), device.getType(), device.getId());
                 }
 
-                // Get local device
                 Device localDevice = deviceManager.getLocalDevice();
                 if (localDevice != null) {
                     System.out.println("\nLocal device: " + localDevice.getName());
 
-                    // Enumerate processes
                     System.out.println("\n--- Process Enumeration ---");
                     List<Process> processes = localDevice.enumerateProcesses();
                     System.out.println("Found " + processes.size() + " running processes");
@@ -81,11 +69,11 @@ public class BasicExample {
 
                     // Demonstrate process spawning and script injection
                     System.out.println("\n--- Process Spawning and Script Injection ---");
-                    System.out.println("Spawning 'sleep 300' process...");
+                    System.out.println("Spawning 'bash --help' process...");
 
-                    // Spawn a simple process that we can inject into
-                    List<String> sleepArgs = List.of("300");  // Sleep for 300 seconds
-                    int spawnedPid = localDevice.spawn("sleep", sleepArgs);
+                    // Spawn bash with --help argument
+                    List<String> bashArgs = List.of("--help");
+                    int spawnedPid = localDevice.spawn("bash", bashArgs);
                     System.out.println("Spawned process with PID: " + spawnedPid);
 
                     // Attach to the spawned process
@@ -95,50 +83,35 @@ public class BasicExample {
                         // Create a simple script to get the process arguments
                         // language=JavaScript
                         String scriptSource = """
-                            const libcStartMain = Module.findGlobalExportByName("__libc_start_main")
-                            
-                            if (!libcStartMain) {
-                                console.log("__libc_start_main not found")
-                                send({ error: "__libc_start_main not found" })
-                            } else {
-                                Interceptor.attach(libcStartMain, {
-                                    onEnter(args) {
-                                        const mainFunc = args[0]
-                            
-                                        Interceptor.attach(mainFunc, {
-                                            onEnter(args) {
-                                                const argc = args[0].toInt32()
-                                                const argv = args[1]
-                            
-                                                const argList = []
-                            
-                                                for (let i = 0; i < argc; i++) {
-                                                    const argPtr = argv.add(i * Process.pointerSize).readPointer()
-                                                    const argStr = argPtr.readCString()
-                                                    argList.push(argStr)
-                                                }
-                            
-                                                console.log("argc =", argc)
-                                                console.log("argv =", argList)
-                            
-                                                send({
-                                                    type: "argv",
-                                                    argc: argc,
-                                                    argv: argList
-                                                })
-                                            }
-                                        })
-                                    }
+                            (function () {
+                                function sendInfo(obj) {
+                                    send({ type: "info", data: obj })
+                                }
+
+                                const mainModule = Process.enumerateModules()[0]
+
+                                sendInfo({
+                                    name: mainModule.name,
+                                    path: mainModule.path,
+                                    base: mainModule.base.toString(),
+                                    size: mainModule.size
                                 })
-                            }
+                            })();
                             """;
 
                         // Create and load the script
                         try (Script script = session.createScript(scriptSource)) {
                             // Set up message handler to receive messages from the script
-                            script.on("message", (Closure.MessageCallback) (message, data) ->
-                                System.out.println("Message from script: " + message)
-                            );
+                            script.on("message", (Closure.MessageCallback) (message, data) -> {
+                                System.out.println("Message from script: " + message);
+
+                                // Try to parse the message for binary info
+                                if (message.contains("\"type\":\"info\"")) {
+                                    System.out.println("Binary info from agent:");
+                                    // For demonstration, just print the raw message
+                                    // In a real implementation, you'd parse the JSON properly
+                                }
+                            });
 
                             script.load();
                             System.out.println("Script loaded successfully");
@@ -147,9 +120,9 @@ public class BasicExample {
                             localDevice.resume(spawnedPid);
                             System.out.println("Resumed spawned process");
 
-                            // Give the script some time to intercept and capture arguments
-                            System.out.println("Waiting for script to capture arguments...");
-                            Thread.sleep(2000);  // Wait 2 seconds for the interception to happen
+                            // Give the script some time to execute and send info
+                            System.out.println("Waiting for script to send binary info...");
+                            Thread.sleep(1000);  // Wait 1 second for the script to execute
 
                             // Clean up - kill the spawned process
                             System.out.println("Cleaning up spawned process...");
