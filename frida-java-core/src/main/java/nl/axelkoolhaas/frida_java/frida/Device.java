@@ -332,23 +332,23 @@ public class Device implements AutoCloseable {
 
     /**
      * Spawn a new process with arguments
-     * @param program Path to the executable to spawn
+     * @param programPath Full path of the executable to spawn
      * @param args Arguments to pass to the process
      * @return PID of the spawned process
      */
-    public int spawn(String program, List<String> args) {
+    public int spawn(String programPath, List<String> args) {
         try (SpawnOptions options = new SpawnOptions();
              Arena arena = Arena.ofConfined()) {
 
             // Prepend program name to arguments
             String[] fullArgs = new String[args.size() + 1];
-            fullArgs[0] = program;
+            fullArgs[0] = programPath;
             String[] argsArray = args.toArray(new String[0]);
             System.arraycopy(argsArray, 0, fullArgs, 1, args.size());
 
             options.setArgv(fullArgs);
 
-            MemorySegment programPtr = arena.allocateFrom(program);
+            MemorySegment programPtr = arena.allocateFrom(programPath);
 
             // Error handling
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
@@ -359,11 +359,11 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "spawn process: " + program);
+            GErrorUtils.checkAndThrow(error, "spawn process: " + programPath);
 
             return pid;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to spawn process: " + program, e);
+            throw new RuntimeException("Failed to spawn process: " + programPath, e);
         }
     }
 

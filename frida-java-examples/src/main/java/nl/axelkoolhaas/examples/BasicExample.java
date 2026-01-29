@@ -22,6 +22,7 @@ package nl.axelkoolhaas.examples;
 import nl.axelkoolhaas.frida_java.frida.*;
 import nl.axelkoolhaas.frida_java.frida.Process;
 
+import java.nio.file.*;
 import java.util.List;
 
 /**
@@ -29,6 +30,16 @@ import java.util.List;
  * This example shows version information, device enumeration, and process listing.
  */
 public class BasicExample {
+    public static String findBinary(String name) {
+        String pathEnv = System.getenv("PATH");
+        for (String dir : pathEnv.split(":")) {
+            Path p = Paths.get(dir, name);
+            if (Files.isExecutable(p)) {
+                return p.toAbsolutePath().toString();
+            }
+        }
+        return null;
+    }
 
     public static void main(String[] args) {
         System.out.println("Frida Java Bindings - Basic Example");
@@ -73,7 +84,7 @@ public class BasicExample {
 
                     // Spawn bash with --help argument
                     List<String> bashArgs = List.of("--help");
-                    int spawnedPid = localDevice.spawn("bash", bashArgs);
+                    int spawnedPid = localDevice.spawn(findBinary("bash"), bashArgs);
                     System.out.println("Spawned process with PID: " + spawnedPid);
 
                     // Attach to the spawned process
