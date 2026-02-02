@@ -38,6 +38,19 @@ import java.util.Optional;
 
 /**
  * Represents a device that Frida connects to
+ *
+ * <p><b>Note:</b> Some recently added methods have limited test coverage:
+ * <ul>
+ *   <li>{@link #input(int, byte[])} - Input to spawned process</li>
+ *   <li>{@link #injectLibraryFile(int, String, String, String)} - Library file injection</li>
+ *   <li>{@link #injectLibraryBlob(int, byte[], String, String)} - Library blob injection</li>
+ *   <li>{@link #openChannel(String)} - I/O channel operations</li>
+ *   <li>{@link #openService(String)} - Service connection operations</li>
+ * </ul>
+ * These methods have basic tests verifying API availability, but comprehensive integration tests
+ * (especially for Windows platform) are pending. The implementations follow the Frida C API
+ * specifications and should work correctly, but edge cases may not be fully validated.
+ * </p>
  */
 public class Device implements AutoCloseable {
     private final MemorySegment devicePtr;
@@ -69,6 +82,25 @@ public class Device implements AutoCloseable {
     private static final MethodHandle FRIDA_FRONTMOST_QUERY_OPTIONS_NEW;
     private static final MethodHandle FRIDA_FRONTMOST_QUERY_OPTIONS_SET_SCOPE;
     private static final MethodHandle FRIDA_DEVICE_GET_FRONTMOST_APPLICATION_SYNC;
+
+    // Spawn gating
+    private static final MethodHandle FRIDA_DEVICE_ENABLE_SPAWN_GATING_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_DISABLE_SPAWN_GATING_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_ENUMERATE_PENDING_SPAWN_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_ENUMERATE_PENDING_CHILDREN_SYNC;
+    private static final MethodHandle FRIDA_SPAWN_LIST_SIZE;
+    private static final MethodHandle FRIDA_SPAWN_LIST_GET;
+    private static final MethodHandle FRIDA_CHILD_LIST_SIZE;
+    private static final MethodHandle FRIDA_CHILD_LIST_GET;
+
+    // Input and injection
+    private static final MethodHandle FRIDA_DEVICE_INPUT_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_INJECT_LIBRARY_FILE_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_INJECT_LIBRARY_BLOB_SYNC;
+
+    // Channels and services
+    private static final MethodHandle FRIDA_DEVICE_OPEN_CHANNEL_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_OPEN_SERVICE_SYNC;
 
     static {
         Frida.ensureInitialized();
@@ -122,6 +154,38 @@ public class Device implements AutoCloseable {
         FRIDA_FRONTMOST_QUERY_OPTIONS_SET_SCOPE = FridaLibraryLoader.findFunction("frida_frontmost_query_options_set_scope",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
         FRIDA_DEVICE_GET_FRONTMOST_APPLICATION_SYNC = FridaLibraryLoader.findFunction("frida_device_get_frontmost_application_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+        // Spawn gating
+        FRIDA_DEVICE_ENABLE_SPAWN_GATING_SYNC = FridaLibraryLoader.findFunction("frida_device_enable_spawn_gating_sync",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_DISABLE_SPAWN_GATING_SYNC = FridaLibraryLoader.findFunction("frida_device_disable_spawn_gating_sync",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_ENUMERATE_PENDING_SPAWN_SYNC = FridaLibraryLoader.findFunction("frida_device_enumerate_pending_spawn_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_ENUMERATE_PENDING_CHILDREN_SYNC = FridaLibraryLoader.findFunction("frida_device_enumerate_pending_children_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_SPAWN_LIST_SIZE = FridaLibraryLoader.findFunction("frida_spawn_list_size",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+        FRIDA_SPAWN_LIST_GET = FridaLibraryLoader.findFunction("frida_spawn_list_get",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+        FRIDA_CHILD_LIST_SIZE = FridaLibraryLoader.findFunction("frida_child_list_size",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+        FRIDA_CHILD_LIST_GET = FridaLibraryLoader.findFunction("frida_child_list_get",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+
+        // Input and injection
+        FRIDA_DEVICE_INPUT_SYNC = FridaLibraryLoader.findFunction("frida_device_input_sync",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_INJECT_LIBRARY_FILE_SYNC = FridaLibraryLoader.findFunction("frida_device_inject_library_file_sync",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_INJECT_LIBRARY_BLOB_SYNC = FridaLibraryLoader.findFunction("frida_device_inject_library_blob_sync",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+        // Channels and services
+        FRIDA_DEVICE_OPEN_CHANNEL_SYNC = FridaLibraryLoader.findFunction("frida_device_open_channel_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_OPEN_SERVICE_SYNC = FridaLibraryLoader.findFunction("frida_device_open_service_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
@@ -221,6 +285,52 @@ public class Device implements AutoCloseable {
         }
 
         return processes;
+    }
+
+    /**
+     * Find a process by PID
+     * @param pid Process ID to find
+     * @return Optional containing the Process if found, empty otherwise
+     */
+    public Optional<Process> findProcessByPid(int pid) {
+        List<Process> processes = enumerateProcesses();
+        return processes.stream()
+                .filter(p -> p.getPid() == pid)
+                .findFirst();
+    }
+
+    /**
+     * Find a process by name
+     * @param name Process name to find (case-sensitive)
+     * @return Optional containing the Process if found, empty otherwise
+     */
+    public Optional<Process> findProcessByName(String name) {
+        List<Process> processes = enumerateProcesses();
+        return processes.stream()
+                .filter(p -> p.getName().equals(name))
+                .findFirst();
+    }
+
+    /**
+     * Get a process by PID (throws if not found)
+     * @param pid Process ID to get
+     * @return Process object
+     * @throws RuntimeException if process not found
+     */
+    public Process getProcessByPid(int pid) {
+        return findProcessByPid(pid)
+                .orElseThrow(() -> new RuntimeException("Process with PID " + pid + " not found"));
+    }
+
+    /**
+     * Get a process by name (throws if not found)
+     * @param name Process name to get
+     * @return Process object
+     * @throws RuntimeException if process not found
+     */
+    public Process getProcessByName(String name) {
+        return findProcessByName(name)
+                .orElseThrow(() -> new RuntimeException("Process with name '" + name + "' not found"));
     }
 
     /**
@@ -480,6 +590,241 @@ public class Device implements AutoCloseable {
             return new Session(sessionPtr);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to attach to process with PID: " + pid, e);
+        }
+    }
+
+    /**
+     * Enable spawn gating.
+     * When enabled, spawned processes will be suspended until resume() is called.
+     * This allows you to instrument processes from the very beginning.
+     */
+    public void enableSpawnGating() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            FRIDA_DEVICE_ENABLE_SPAWN_GATING_SYNC.invoke(devicePtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "enable spawn gating");
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to enable spawn gating", e);
+        }
+    }
+
+    /**
+     * Disable spawn gating.
+     */
+    public void disableSpawnGating() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            FRIDA_DEVICE_DISABLE_SPAWN_GATING_SYNC.invoke(devicePtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "disable spawn gating");
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to disable spawn gating", e);
+        }
+    }
+
+    /**
+     * Enumerate pending spawns (processes waiting due to spawn gating).
+     * @return List of Spawn objects representing pending spawns
+     */
+    public List<Spawn> enumeratePendingSpawn() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment spawnList = (MemorySegment) FRIDA_DEVICE_ENUMERATE_PENDING_SPAWN_SYNC
+                    .invoke(devicePtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "enumerate pending spawn");
+
+            if (spawnList.equals(MemorySegment.NULL)) {
+                return new ArrayList<>();
+            }
+
+            int spawnCount = (int) FRIDA_SPAWN_LIST_SIZE.invoke(spawnList);
+            List<Spawn> spawns = new ArrayList<>(spawnCount);
+
+            for (int i = 0; i < spawnCount; i++) {
+                MemorySegment spawnPtr = (MemorySegment) FRIDA_SPAWN_LIST_GET.invoke(spawnList, i);
+                if (!spawnPtr.equals(MemorySegment.NULL)) {
+                    spawns.add(new Spawn(spawnPtr));
+                }
+            }
+
+            FridaNativeUtils.fridaUnref(spawnList);
+            return spawns;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to enumerate pending spawn", e);
+        }
+    }
+
+    /**
+     * Enumerate pending children (child processes waiting due to spawn gating).
+     * @return List of Child objects representing pending children
+     */
+    public List<Child> enumeratePendingChildren() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment childList = (MemorySegment) FRIDA_DEVICE_ENUMERATE_PENDING_CHILDREN_SYNC
+                    .invoke(devicePtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "enumerate pending children");
+
+            if (childList.equals(MemorySegment.NULL)) {
+                return new ArrayList<>();
+            }
+
+            int childCount = (int) FRIDA_CHILD_LIST_SIZE.invoke(childList);
+            List<Child> children = new ArrayList<>(childCount);
+
+            for (int i = 0; i < childCount; i++) {
+                MemorySegment childPtr = (MemorySegment) FRIDA_CHILD_LIST_GET.invoke(childList, i);
+                if (!childPtr.equals(MemorySegment.NULL)) {
+                    children.add(new Child(childPtr));
+                }
+            }
+
+            FridaNativeUtils.fridaUnref(childList);
+            return children;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to enumerate pending children", e);
+        }
+    }
+
+    /**
+     * Send input data to a spawned process (typically stdin).
+     * @param pid Process ID
+     * @param data Input data to send
+     */
+    public void input(int pid, byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment gBytesData = nl.axelkoolhaas.frida_java.util.GBytesUtil.fromByteArray(data, arena);
+
+            FRIDA_DEVICE_INPUT_SYNC.invoke(devicePtr, pid, gBytesData, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "input to process: " + pid);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to send input to process with PID: " + pid, e);
+        }
+    }
+
+    /**
+     * Inject a library file into a running process.
+     * @param pid Target process ID
+     * @param path Path to the library file
+     * @param entrypoint Entrypoint function name (or null)
+     * @param data Optional data to pass to entrypoint (or null)
+     * @return Injection ID
+     */
+    public int injectLibraryFile(int pid, String path, String entrypoint, String data) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment pathPtr = arena.allocateFrom(path);
+            MemorySegment entrypointPtr = entrypoint != null ? arena.allocateFrom(entrypoint) : MemorySegment.NULL;
+            MemorySegment dataPtr = data != null ? arena.allocateFrom(data) : MemorySegment.NULL;
+
+            int injectionId = (int) FRIDA_DEVICE_INJECT_LIBRARY_FILE_SYNC.invoke(
+                    devicePtr, pid, pathPtr, entrypointPtr, dataPtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "inject library file into process: " + pid);
+
+            return injectionId;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to inject library file into process with PID: " + pid, e);
+        }
+    }
+
+    /**
+     * Inject a library blob (in-memory bytes) into a running process.
+     * @param pid Target process ID
+     * @param blob Library bytes
+     * @param entrypoint Entrypoint function name (or null)
+     * @param data Optional data to pass to entrypoint (or null)
+     * @return Injection ID
+     */
+    public int injectLibraryBlob(int pid, byte[] blob, String entrypoint, String data) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment gBytesBlob = nl.axelkoolhaas.frida_java.util.GBytesUtil.fromByteArray(blob, arena);
+            MemorySegment entrypointPtr = entrypoint != null ? arena.allocateFrom(entrypoint) : MemorySegment.NULL;
+            MemorySegment dataPtr = data != null ? arena.allocateFrom(data) : MemorySegment.NULL;
+
+            int injectionId = (int) FRIDA_DEVICE_INJECT_LIBRARY_BLOB_SYNC.invoke(
+                    devicePtr, pid, gBytesBlob, entrypointPtr, dataPtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "inject library blob into process: " + pid);
+
+            return injectionId;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to inject library blob into process with PID: " + pid, e);
+        }
+    }
+
+    /**
+     * Open an I/O channel to communicate with the device.
+     * @param address Channel address (e.g., "tcp:host=127.0.0.1,port=27042")
+     * @return IOStream pointer (requires further wrapping for I/O operations)
+     */
+    public MemorySegment openChannel(String address) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment addressPtr = arena.allocateFrom(address);
+
+            MemorySegment ioStream = (MemorySegment) FRIDA_DEVICE_OPEN_CHANNEL_SYNC.invoke(
+                    devicePtr, addressPtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "open channel: " + address);
+
+            return ioStream;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to open channel: " + address, e);
+        }
+    }
+
+    /**
+     * Open a service connection to the device.
+     * @param address Service address
+     * @return Service pointer (requires further wrapping for service operations)
+     */
+    public MemorySegment openService(String address) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            MemorySegment addressPtr = arena.allocateFrom(address);
+
+            MemorySegment service = (MemorySegment) FRIDA_DEVICE_OPEN_SERVICE_SYNC.invoke(
+                    devicePtr, addressPtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "open service: " + address);
+
+            return service;
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to open service: " + address, e);
         }
     }
 
