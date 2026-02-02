@@ -38,13 +38,23 @@ public class SpawnTest {
             Device localDevice = deviceManager.getLocalDevice();
 
             // Try to spawn a simple command that exists on most systems
-            String[] testPrograms = {"/bin/sleep"};
+            //TODO expand to Windows equivalents
+            String[] testPrograms = {"sleep", "cmd.exe"};
             int spawnedPid = -1;
             String usedProgram = null;
 
             for (String program : testPrograms) {
                 try {
-                    spawnedPid = localDevice.spawn(program);
+                    var spawnResult = localDevice.spawnName(program);
+                    if (spawnResult.isEmpty()) {
+                        continue; // Try next program
+                    }
+
+                    spawnedPid = spawnResult.get();
+                    if (spawnedPid <= 0) {
+                        continue; // Try next program
+                    }
+
                     usedProgram = program;
                     break;
                 } catch (RuntimeException e) {

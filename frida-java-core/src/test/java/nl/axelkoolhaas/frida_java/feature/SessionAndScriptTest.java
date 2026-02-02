@@ -235,17 +235,106 @@ public class SessionAndScriptTest {
         }
     }
 
+    @Test
+    @Order(8)
+    void testScriptWithMessageHandling() {
+        try (DeviceManager deviceManager = new DeviceManager()) {
+            Device localDevice = deviceManager.getLocalDevice();
+
+            // Platform-agnostic command selection
+            String[] command = getPlatformCommand();
+
+            var pidOpt = localDevice.spawnName(command[0], List.of(command).subList(1, command.length));
+            assertTrue(pidOpt.isPresent(), "Failed to spawn test process - " + command[0] + " not found in PATH or spawn failed");
+            int targetPid = pidOpt.get();
+
+            System.out.println("Spawned PID: " + targetPid);
+
+            try (Session session = localDevice.attach(targetPid)) {
+                // language=JavaScript
+                String scriptSource = """
+                (function () {
+                    function sendInfo(obj) {
+                        send({ type: "info", data: obj })
+                    }
+
+                    const mainModule = Process.enumerateModules()[0]
+
+                    sendInfo({
+                        name: mainModule.name,
+                        path: mainModule.path,
+                        base: mainModule.base.toString(),
+                        size: mainModule.size
+                    })
+                })();
+                """;
+
+                try (Script script = session.createScript(scriptSource)) {
+                    // Set up message handler to capture script output
+                    final boolean[] messageReceived = {false};
+
+                    script.on("message", (Closure.MessageCallback) (message, data) -> {
+                        System.out.println("Received message: " + message);
+                        messageReceived[0] = true;
+                    });
+
+                    script.load();
+                    System.out.println("Script loaded successfully");
+
+                    // Resume the spawned process
+                    localDevice.resume(targetPid);
+                    System.out.println("Resumed process");
+
+                    // Wait for message processing
+                    Thread.sleep(1000);
+
+                    assertTrue(messageReceived[0], "Should have received at least one message from script");
+                    System.out.println("Script message handling test completed successfully");
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    fail("Test interrupted: " + e.getMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("Attachment failed (can be due to SIP on macOS): " + e.getMessage());
+                assumeTrue(false, "Skipping test due to attachment issue: " + e.getMessage());
+            } finally {
+                cleanupProcess(localDevice, targetPid);
+            }
+        }
+    }
+
+    /**
+     * Returns platform-appropriate command for testing
+     */
+    private String[] getPlatformCommand() {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            return new String[]{"cmd.exe", "/?"};  // Windows help command
+        } else {
+            // Unix-like systems (Linux, macOS)
+            return new String[]{"bash", "--help"};
+        }
+    }
+
     /**
      * Helper method to spawn a test process
      */
     private int spawnTestProcess(Device device) {
         // Spawn a sleep process for testing
         try {
-            int pid = device.spawn("/bin/sleep", List.of("3600"));
-            if (pid > 0) {
-                device.resume(pid); // Resume the process so it's running
-                System.out.println("Spawned test process with PID: " + pid);
-                return pid;
+            var pidOpt = device.spawn("/bin/sleep", List.of("3600"));
+            if (pidOpt.isPresent()) {
+                int pid = pidOpt.get();
+                if (pid > 0) {
+                    device.resume(pid); // Resume the process so it's running
+                    System.out.println("Spawned test process with PID: " + pid);
+                    return pid;
+                } else {
+                    System.out.println("Failed to spawn test process - got invalid PID: " + pid);
+                }
+            } else {
+                System.out.println("Failed to spawn test process - spawn returned empty");
             }
         } catch (Exception e) {
             System.out.println("Could not spawn test process: " + e.getMessage());

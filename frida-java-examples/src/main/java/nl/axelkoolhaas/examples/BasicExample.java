@@ -30,17 +30,6 @@ import java.util.List;
  * This example shows version information, device enumeration, and process listing.
  */
 public class BasicExample {
-    public static String findBinary(String name) {
-        String pathEnv = System.getenv("PATH");
-        for (String dir : pathEnv.split(":")) {
-            Path p = Paths.get(dir, name);
-            if (Files.isExecutable(p)) {
-                return p.toAbsolutePath().toString();
-            }
-        }
-        return null;
-    }
-
     public static void main(String[] args) {
         System.out.println("Frida Java Bindings - Basic Example");
         System.out.println("===================================");
@@ -84,7 +73,14 @@ public class BasicExample {
 
                     // Spawn bash with --help argument
                     List<String> bashArgs = List.of("--help");
-                    int spawnedPid = localDevice.spawn(findBinary("bash"), bashArgs);
+                    var spawnedResult = localDevice.spawnName("bash", bashArgs);
+                    if (spawnedResult.isEmpty() || spawnedResult.get() == -1) {
+                        System.err.println("Failed to spawn process");
+                        return;
+                    }
+
+                    int spawnedPid = spawnedResult.get();
+
                     System.out.println("Spawned process with PID: " + spawnedPid);
 
                     // Attach to the spawned process
@@ -101,7 +97,7 @@ public class BasicExample {
 
                                 const mainModule = Process.enumerateModules()[0]
 
-                                sendInfo({
+                                console.log({
                                     name: mainModule.name,
                                     path: mainModule.path,
                                     base: mainModule.base.toString(),
@@ -113,16 +109,18 @@ public class BasicExample {
                         // Create and load the script
                         try (Script script = session.createScript(scriptSource)) {
                             // Set up message handler to receive messages from the script
-                            script.on("message", (Closure.MessageCallback) (message, data) -> {
-                                System.out.println("Message from script: " + message);
+//                            script.on("message", (Closure.MessageCallback) (message, data) -> {
+//                                System.out.println("Message from script: " + message);
+//
+//                                // Try to parse the message for binary info
+//                                if (message.contains("\"type\":\"info\"")) {
+//                                    System.out.println("Binary info from agent:");
+//                                    // For demonstration, just print the raw message
+//                                    // In a real implementation, you'd parse the JSON properly
+//                                }
+//                            });
 
-                                // Try to parse the message for binary info
-                                if (message.contains("\"type\":\"info\"")) {
-                                    System.out.println("Binary info from agent:");
-                                    // For demonstration, just print the raw message
-                                    // In a real implementation, you'd parse the JSON properly
-                                }
-                            });
+                            System.out.println("working?");
 
                             script.load();
                             System.out.println("Script loaded successfully");
