@@ -17,7 +17,7 @@
  * along with frida-java.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package nl.axelkoolhaas.frida_java.frida;
+package nl.axelkoolhaas.frida_java.exceptions;
 
 /**
  * Exception thrown when RPC operations are cancelled due to context cancellation

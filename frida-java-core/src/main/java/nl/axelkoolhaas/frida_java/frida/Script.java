@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.exceptions.ContextCancelledException;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 

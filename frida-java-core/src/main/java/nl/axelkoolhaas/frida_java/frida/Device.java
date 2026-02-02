@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.model.Icon;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
@@ -484,17 +485,23 @@ public class Device implements AutoCloseable {
 
     /**
      * Get the device icon
-     * @return device icon object, or null if not available
+     * Returns a GVariant pointer representing the icon data.
+     * The icon is typically in a platform-specific format (e.g., PNG data).
+     *
+     * Note: This is an advanced feature. Most applications don't need the device icon.
+     * The returned pointer is a GVariant that needs to be parsed according to GLib semantics.
+     *
+     * @return Icon object wrapping the native GVariant pointer, or null if not available
      */
-    public Object getIcon() {
+    public Icon getIcon() {
         try {
-            MemorySegment icon = (MemorySegment) FRIDA_DEVICE_GET_ICON.invoke(devicePtr);
-            if (icon.equals(MemorySegment.NULL)) {
+            MemorySegment iconVariant = (MemorySegment) FRIDA_DEVICE_GET_ICON.invoke(devicePtr);
+            if (iconVariant.equals(MemorySegment.NULL)) {
                 return null;
             }
-            // Convert GIcon to appropriate Java representation
-            //TODO
-            return icon; // You may need to implement proper GIcon conversion
+            // Return the GVariant pointer wrapped in an Icon object
+            // Users can access the raw pointer if they need to parse the icon data
+            return new Icon(iconVariant);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get device icon", e);
         }
