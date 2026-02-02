@@ -2,6 +2,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
@@ -81,7 +82,7 @@ public class Bus {
 
             MemorySegment gBytesData = MemorySegment.NULL;
             if (data != null && data.length > 0) {
-                gBytesData = FridaNativeUtils.bytesToGBytes(data, arena);
+                gBytesData = GBytesUtil.fromByteArray(data, arena);
             }
 
             FRIDA_BUS_POST.invoke(busPtr, messagePtr, gBytesData);

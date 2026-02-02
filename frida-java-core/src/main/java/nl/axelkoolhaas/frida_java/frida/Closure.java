@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -210,14 +211,12 @@ public class Closure {
                                           MemorySegment script, MemorySegment messagePtr,
                                           MemorySegment dataPtr, MemorySegment userData) {
         try {
-            System.out.println("Message signal received - closureId: " + closureId + ", signalName: " + signalName);
-
-            // Use the existing utility method to safely read the C string
+            // Read the message JSON string from the native pointer
             String message = FridaNativeUtils.memorySegmentToString(messagePtr);
 
-            byte[] data = new byte[0]; // TODO: Extract GBytes data properly if needed
+            // Extract binary data from GBytes if present (for send(message, data) calls)
+            byte[] data = GBytesUtil.toByteArray(dataPtr);
 
-            System.out.println("Dispatching message signal with message: " + message);
             dispatchSignal(closureId, signalName, message, data);
         } catch (Exception e) {
             System.err.println("Error handling message signal: " + e.getMessage());

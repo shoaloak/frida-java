@@ -31,10 +31,6 @@ import java.util.Objects;
 public class FridaNativeUtils {
 
     private static final MethodHandle FRIDA_UNREF;
-    private static final MethodHandle G_BYTES_NEW;
-    // THESE SHOULD NOT BE USED
-//    private static final MethodHandle G_OBJECT_UNREF;
-//    private static final MethodHandle G_OBJECT_REF;
     private static final MethodHandle G_SIGNAL_LOOKUP;
     private static final MethodHandle G_SIGNAL_CONNECT_DATA;
     private static final MethodHandle FRIDA_SCRIPT_GET_TYPE;
@@ -42,8 +38,6 @@ public class FridaNativeUtils {
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
-        G_BYTES_NEW = FridaLibraryLoader.findFunction("g_bytes_new",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
         G_SIGNAL_LOOKUP = FridaLibraryLoader.findFunction("g_signal_lookup",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
         G_SIGNAL_CONNECT_DATA = FridaLibraryLoader.findFunction("g_signal_connect_data",
@@ -95,22 +89,6 @@ public class FridaNativeUtils {
         }
     }
 
-
-    /**
-     * Convert byte array to GBytes
-     * @param data byte array to convert
-     * @param arena Arena for memory allocation
-     * @return GBytes pointer
-     */
-    public static MemorySegment bytesToGBytes(byte[] data, Arena arena) {
-        try {
-            MemorySegment dataPtr = arena.allocate(data.length);
-            dataPtr.copyFrom(MemorySegment.ofArray(data));
-            return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, data.length);
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to convert bytes to GBytes", e);
-        }
-    }
 
     /**
      * Connect a Java callback to a GObject signal

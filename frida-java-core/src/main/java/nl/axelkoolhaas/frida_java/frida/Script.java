@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
@@ -164,7 +165,7 @@ public class Script implements AutoCloseable {
 
             if (data != null && data.length > 0) {
                 // Convert to GBytes for proper binary data handling
-                dataPtr = FridaNativeUtils.bytesToGBytes(data, arena);
+                dataPtr = GBytesUtil.fromByteArray(data, arena);
             }
 
             // Post to script (script, json, data)
