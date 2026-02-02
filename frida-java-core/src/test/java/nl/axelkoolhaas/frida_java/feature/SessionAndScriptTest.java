@@ -269,7 +269,9 @@ public class SessionAndScriptTest {
                 })();
                 """;
 
-                try (Script script = session.createScript(scriptSource)) {
+                Script script = null;
+                try {
+                    script = session.createScript(scriptSource);
                     // Set up message handler to capture script output
                     final boolean[] messageReceived = {false};
 
@@ -294,10 +296,18 @@ public class SessionAndScriptTest {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     fail("Test interrupted: " + e.getMessage());
+                } finally {
+                    // Clean up script - might already be destroyed if process exited
+                    if (script != null) {
+                        try {
+                            script.close();
+                        } catch (Exception e) {
+                            System.out.println("Script cleanup failed (expected if process exited): " + e.getMessage());
+                        }
+                    }
                 }
             } catch (Exception e) {
-                System.err.println("Attachment failed (can be due to SIP on macOS): " + e.getMessage());
-                assumeTrue(false, "Skipping test due to attachment issue: " + e.getMessage());
+                fail("Attachment failed: " + e.getMessage());
             } finally {
                 cleanupProcess(localDevice, targetPid);
             }

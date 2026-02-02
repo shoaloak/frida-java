@@ -32,24 +32,29 @@ import java.lang.invoke.MethodHandle;
  */
 public class GErrorUtils {
 
-    private static final MethodHandle G_ERROR_GET_MESSAGE;
     private static final MethodHandle G_ERROR_FREE;
 
     static {
-        G_ERROR_GET_MESSAGE = FridaLibraryLoader.findFunction("g_error_get_message",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
         G_ERROR_FREE = FridaLibraryLoader.findFunction("g_error_free",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
     }
 
     /**
      * Get the error message from a GError
+     * GError struct: { GQuark domain (4 bytes); gint code (4 bytes); gchar *message (pointer); }
      * @param error GError pointer
      * @return Error message string
      */
     public static String getMessage(MemorySegment error) {
         try {
-            MemorySegment messagePtr = (MemorySegment) G_ERROR_GET_MESSAGE.invoke(error);
+            // GError struct layout on 64-bit: domain (4 bytes), code (4 bytes), message pointer (8 bytes)
+            // Reinterpret the pointer with the size of the GError struct (16 bytes minimum)
+            MemorySegment errorStruct = error.reinterpret(16);
+            // Message pointer is at offset 8 (after domain + code)
+            MemorySegment messagePtr = errorStruct.get(ValueLayout.ADDRESS, 8);
+            if (messagePtr.equals(MemorySegment.NULL)) {
+                return "Unknown error (no message)";
+            }
             return FridaNativeUtils.memorySegmentToString(messagePtr);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to get error message", e);

@@ -19,10 +19,9 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+
+import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.concurrent.ConcurrentHashMap;
@@ -125,35 +124,41 @@ public class Closure {
         }
     }
 
-    /**
-     * Create a native callback function pointer that will call back to Java
-     */
     private static MemorySegment createNativeCallback(long closureId, String signalName) {
         try {
-            // Create a linker for upcall stubs
             Linker linker = Linker.nativeLinker();
+            Arena arena = Arena.ofShared(); // Use shared arena for callbacks that need to persist
 
-            // Store closure ID and signal name in the callback context
-            // Create specialized handlers for each signal type
             return switch (signalName) {
                 case "detached", "lost" -> {
+                    // GObject signal: void callback(GObject *object, gpointer user_data)
                     MethodHandle handler = createSimpleHandler(closureId, signalName);
-                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(ValueLayout.ADDRESS);
-                    yield linker.upcallStub(handler, descriptor, java.lang.foreign.Arena.global());
+                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
+                            ValueLayout.ADDRESS,  // GObject *object
+                            ValueLayout.ADDRESS   // gpointer user_data
+                    );
+                    yield linker.upcallStub(handler, descriptor, arena);
                 }
                 case "message" -> {
+                    // Frida signal: void callback(FridaScript *script, const gchar *message, GBytes *data, gpointer user_data)
                     MethodHandle handler = createMessageHandler(closureId, signalName);
                     FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS);
-                    yield linker.upcallStub(handler, descriptor, java.lang.foreign.Arena.global());
+                            ValueLayout.ADDRESS,  // FridaScript *script
+                            ValueLayout.ADDRESS,  // const gchar *message
+                            ValueLayout.ADDRESS,  // GBytes *data
+                            ValueLayout.ADDRESS   // gpointer user_data
+                    );
+                    yield linker.upcallStub(handler, descriptor, arena);
                 }
                 default -> {
                     MethodHandle handler = createGenericHandler(closureId, signalName);
-                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(ValueLayout.ADDRESS);
-                    yield linker.upcallStub(handler, descriptor, java.lang.foreign.Arena.global());
+                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
+                            ValueLayout.ADDRESS,  // GObject *object
+                            ValueLayout.ADDRESS   // gpointer user_data
+                    );
+                    yield linker.upcallStub(handler, descriptor, arena);
                 }
             };
-
         } catch (Exception e) {
             throw new RuntimeException("Failed to create native callback for signal: " + signalName, e);
         }
@@ -163,7 +168,8 @@ public class Closure {
         try {
             MethodHandle base = java.lang.invoke.MethodHandles.lookup()
                 .findStatic(Closure.class, "handleSimpleSignal",
-                    MethodType.methodType(void.class, long.class, String.class, MemorySegment.class));
+                    MethodType.methodType(void.class, long.class, String.class,
+                        MemorySegment.class, MemorySegment.class));
             return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create simple handler", e);
@@ -175,7 +181,7 @@ public class Closure {
             MethodHandle base = java.lang.invoke.MethodHandles.lookup()
                 .findStatic(Closure.class, "handleMessageSignal",
                     MethodType.methodType(void.class, long.class, String.class,
-                        MemorySegment.class, MemorySegment.class, MemorySegment.class));
+                        MemorySegment.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
             return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create message handler", e);
@@ -194,21 +200,27 @@ public class Closure {
     }
 
     // Native callback handlers
-    public static void handleSimpleSignal(long closureId, String signalName, MemorySegment object) {
+    public static void handleSimpleSignal(long closureId, String signalName,
+                                          MemorySegment object, MemorySegment userData) {
         dispatchSignal(closureId, signalName);
     }
 
-    public static void handleMessageSignal(long closureId, String signalName, MemorySegment object,
-                                         MemorySegment messagePtr, MemorySegment dataPtr) {
+    public static void handleMessageSignal(long closureId, String signalName,
+                                          MemorySegment script, MemorySegment messagePtr,
+                                          MemorySegment dataPtr, MemorySegment userData) {
         try {
-            String message = messagePtr.equals(MemorySegment.NULL) ? "" :
-                messagePtr.reinterpret(Long.MAX_VALUE).getString(0, java.nio.charset.StandardCharsets.UTF_8);
+            System.out.println("Message signal received - closureId: " + closureId + ", signalName: " + signalName);
 
-            byte[] data = new byte[0]; // TODO: Extract GBytes data properly
+            // Use the existing utility method to safely read the C string
+            String message = FridaNativeUtils.memorySegmentToString(messagePtr);
 
+            byte[] data = new byte[0]; // TODO: Extract GBytes data properly if needed
+
+            System.out.println("Dispatching message signal with message: " + message);
             dispatchSignal(closureId, signalName, message, data);
         } catch (Exception e) {
             System.err.println("Error handling message signal: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

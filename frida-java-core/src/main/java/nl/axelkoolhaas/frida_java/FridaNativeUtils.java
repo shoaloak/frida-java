@@ -37,7 +37,7 @@ public class FridaNativeUtils {
 //    private static final MethodHandle G_OBJECT_REF;
     private static final MethodHandle G_SIGNAL_LOOKUP;
     private static final MethodHandle G_SIGNAL_CONNECT_DATA;
-    private static final MethodHandle G_OBJECT_GET_TYPE;
+    private static final MethodHandle FRIDA_SCRIPT_GET_TYPE;
 
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
@@ -49,8 +49,8 @@ public class FridaNativeUtils {
         G_SIGNAL_CONNECT_DATA = FridaLibraryLoader.findFunction("g_signal_connect_data",
                 FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS,
                                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-        G_OBJECT_GET_TYPE = FridaLibraryLoader.findFunction("G_OBJECT_GET_TYPE",
-                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+        FRIDA_SCRIPT_GET_TYPE = FridaLibraryLoader.findFunction("frida_script_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
     }
 
     /**
@@ -122,19 +122,25 @@ public class FridaNativeUtils {
      */
     public static void connectSignal(MemorySegment object, String signalName, Object callback) {
         try (Arena arena = Arena.ofConfined()) {
+            System.out.println("Attempting to connect signal: " + signalName);
+
             Closure closure = Closure.create(callback, signalName);
+            System.out.println("Created closure for signal: " + signalName);
 
             MemorySegment signalNamePtr = arena.allocateFrom(signalName);
 
-            long objectType = (Long) G_OBJECT_GET_TYPE.invoke(object);
+            long objectType = (Long) FRIDA_SCRIPT_GET_TYPE.invoke();
+            System.out.println("Object type: " + objectType);
 
             int signalId = (Integer) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
+            System.out.println("Signal ID for '" + signalName + "': " + signalId);
 
             // Only connect if signal exists (signalId != 0)
             if (signalId != 0) {
+                System.out.println("Connecting signal with native callback...");
                 // Connect the signal using g_signal_connect_data
                 // Parameters: object, detailed_signal, c_handler, data, destroy_data, connect_flags
-                G_SIGNAL_CONNECT_DATA.invoke(
+                long handlerId = (Long) G_SIGNAL_CONNECT_DATA.invoke(
                     object,                          // instance
                     signalNamePtr,                   // detailed_signal
                     closure.getNativeCallback(),     // c_handler
@@ -142,8 +148,13 @@ public class FridaNativeUtils {
                     MemorySegment.NULL,              // destroy_data
                     0                                // connect_flags (0 = G_CONNECT_DEFAULT)
                 );
+                System.out.println("Signal connected successfully with handler ID: " + handlerId);
+            } else {
+                throw new RuntimeException("Signal '" + signalName + "' not found on object type " + objectType);
             }
         } catch (Throwable e) {
+            System.err.println("Failed to connect signal '" + signalName + "': " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Failed to connect signal: " + signalName, e);
         }
     }

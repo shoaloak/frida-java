@@ -186,6 +186,8 @@ For local development:
                     <includes>
                         <include>**/ClassNameOrderTest.java</include>
                     </includes>
+                    <!-- Suppress native stream warnings -->
+                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
                 </configuration>
             </plugin>
         </plugins>
