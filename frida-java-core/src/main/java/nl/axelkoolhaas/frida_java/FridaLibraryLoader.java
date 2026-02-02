@@ -30,8 +30,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 public class FridaLibraryLoader {
-    // TODO implement ALL script features
-
     private static final Linker LINKER = Linker.nativeLinker();
     private static final SymbolLookup LOADED_LIBRARY;
 
