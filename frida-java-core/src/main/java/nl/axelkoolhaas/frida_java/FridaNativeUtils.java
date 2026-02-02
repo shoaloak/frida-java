@@ -89,7 +89,6 @@ public class FridaNativeUtils {
         }
     }
 
-
     /**
      * Connect a Java callback to a GObject signal
      * This is the Java equivalent of the Go connectClosure function
@@ -100,39 +99,25 @@ public class FridaNativeUtils {
      */
     public static void connectSignal(MemorySegment object, String signalName, Object callback) {
         try (Arena arena = Arena.ofConfined()) {
-            System.out.println("Attempting to connect signal: " + signalName);
-
             Closure closure = Closure.create(callback, signalName);
-            System.out.println("Created closure for signal: " + signalName);
-
             MemorySegment signalNamePtr = arena.allocateFrom(signalName);
 
             long objectType = (Long) FRIDA_SCRIPT_GET_TYPE.invoke();
-            System.out.println("Object type: " + objectType);
-
             int signalId = (Integer) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
-            System.out.println("Signal ID for '" + signalName + "': " + signalId);
 
-            // Only connect if signal exists (signalId != 0)
-            if (signalId != 0) {
-                System.out.println("Connecting signal with native callback...");
-                // Connect the signal using g_signal_connect_data
-                // Parameters: object, detailed_signal, c_handler, data, destroy_data, connect_flags
-                long handlerId = (Long) G_SIGNAL_CONNECT_DATA.invoke(
+            if (signalId == 0) {
+                throw new RuntimeException("Signal '" + signalName + "' not found on object type " + objectType);
+            }
+
+            G_SIGNAL_CONNECT_DATA.invoke(
                     object,                          // instance
                     signalNamePtr,                   // detailed_signal
                     closure.getNativeCallback(),     // c_handler
                     MemorySegment.NULL,              // data
                     MemorySegment.NULL,              // destroy_data
                     0                                // connect_flags (0 = G_CONNECT_DEFAULT)
-                );
-                System.out.println("Signal connected successfully with handler ID: " + handlerId);
-            } else {
-                throw new RuntimeException("Signal '" + signalName + "' not found on object type " + objectType);
-            }
+            );
         } catch (Throwable e) {
-            System.err.println("Failed to connect signal '" + signalName + "': " + e.getMessage());
-            e.printStackTrace();
             throw new RuntimeException("Failed to connect signal: " + signalName, e);
         }
     }

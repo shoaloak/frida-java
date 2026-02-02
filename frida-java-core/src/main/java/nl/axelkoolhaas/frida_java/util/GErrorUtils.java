@@ -39,6 +39,10 @@ public class GErrorUtils {
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
     }
 
+    private GErrorUtils() {
+        // Utility class - prevent instantiation
+    }
+
     /**
      * Get the error message from a GError
      * GError struct: { GQuark domain (4 bytes); gint code (4 bytes); gchar *message (pointer); }
@@ -99,9 +103,5 @@ public class GErrorUtils {
             return errorMsg;
         }
         return null;
-    }
-
-    private GErrorUtils() {
-        // Utility class - prevent instantiation
     }
 }

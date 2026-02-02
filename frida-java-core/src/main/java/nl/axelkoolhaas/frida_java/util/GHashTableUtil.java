@@ -72,6 +72,10 @@ public class GHashTableUtil {
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
+    private GHashTableUtil() {
+        // Utility class - prevent instantiation
+    }
+
     /**
      * Convert a GHashTable to a Java Map
      * @param hashTable the GHashTable memory segment
