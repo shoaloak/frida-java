@@ -113,7 +113,7 @@ public class FridaNativeUtils {
                 throw new RuntimeException("Signal '" + signalName + "' not found on object type " + objectType);
             }
 
-            return (long) (Long) G_SIGNAL_CONNECT_DATA.invoke(
+            return (long) G_SIGNAL_CONNECT_DATA.invoke(
                     object,                          // instance
                     signalNamePtr,                   // detailed_signal
                     closure.getNativeCallback(),     // c_handler
