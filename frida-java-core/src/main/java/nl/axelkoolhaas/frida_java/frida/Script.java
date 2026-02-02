@@ -39,7 +39,6 @@ public class Script implements AutoCloseable {
     private final MemorySegment scriptPtr;
     private boolean hasMessageHandler = false;
     private Closure.MessageCallback messageCallback;
-    private Closure messageClosure; // TODO: REVIEW
 
     private static final MethodHandle FRIDA_SCRIPT_LOAD_SYNC;
     private static final MethodHandle FRIDA_SCRIPT_UNLOAD_SYNC;
@@ -248,7 +247,6 @@ public class Script implements AutoCloseable {
 
             // Create hijacking message handler
             Closure.MessageCallback hijackingHandler = this::hijackMessage;
-            this.messageClosure = Closure.create(hijackingHandler, signalName);
             FridaNativeUtils.connectSignal(scriptPtr, signalName, hijackingHandler);
         } else {
             // For other signals, connect directly
@@ -329,6 +327,16 @@ public class Script implements AutoCloseable {
 
     /**
      * Internal method to create and execute RPC calls
+     *
+     * Note: Unlike the Go implementation which uses sync.Pool for channel pooling,
+     * we don't pool CompletableFuture objects here. Modern Java's JVM (especially Java 11+)
+     * handles short-lived object allocation extremely efficiently through:
+     * - Escape analysis (stack allocation for thread-local objects)
+     * - TLAB (Thread-Local Allocation Buffers) for near-zero cost allocation
+     * - Efficient GC (G1/ZGC) that handles high allocation rates with minimal pause times
+     *
+     * Pooling would only be beneficial if profiling shows >10,000 RPC calls/second
+     * causing GC pressure, which is extremely rare in typical Frida workflows.
      */
     private CompletableFuture<Object> makeExportsCall(String functionName, Object... args) {
         Object[] rpcCall = RpcManager.createRpcCall(functionName, args);
