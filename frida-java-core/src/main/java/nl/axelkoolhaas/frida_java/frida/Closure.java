@@ -151,6 +151,7 @@ public class Closure {
                     yield linker.upcallStub(handler, descriptor, arena);
                 }
                 default -> {
+                    // Generic handler for custom signals (Frida scripts can emit any signal)
                     MethodHandle handler = createGenericHandler(closureId, signalName);
                     FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
                             ValueLayout.ADDRESS,  // GObject *object
@@ -192,7 +193,7 @@ public class Closure {
         try {
             MethodHandle base = java.lang.invoke.MethodHandles.lookup()
                 .findStatic(Closure.class, "handleGenericSignal",
-                    MethodType.methodType(void.class, long.class, String.class, MemorySegment.class));
+                    MethodType.methodType(void.class, long.class, String.class, MemorySegment.class, MemorySegment.class));
             return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create generic handler", e);
@@ -224,7 +225,7 @@ public class Closure {
         }
     }
 
-    public static void handleGenericSignal(long closureId, String signalName, MemorySegment object) {
+    public static void handleGenericSignal(long closureId, String signalName, MemorySegment object, MemorySegment userData) {
         dispatchSignal(closureId, signalName, object);
     }
 

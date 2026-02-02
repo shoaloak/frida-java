@@ -187,6 +187,8 @@ For local development:
                         <include>**/ClassNameOrderTest.java</include>
                     </includes>
                     <!-- Suppress native stream warnings -->
+                    <!-- The "corrupted channel" warning is harmless when using native code -->
+<!--                    <forkCount>0</forkCount>-->
                     <redirectTestOutputToFile>false</redirectTestOutputToFile>
                 </configuration>
             </plugin>
