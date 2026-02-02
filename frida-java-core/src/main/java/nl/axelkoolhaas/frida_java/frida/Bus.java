@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Bus {
     private final MemorySegment busPtr;
     private final Map<String, Object> signalHandlers = new ConcurrentHashMap<>();
+    private final Map<String, Long> handlerIds = new ConcurrentHashMap<>();
 
     // Native method handles
     private static final MethodHandle FRIDA_BUS_IS_DETACHED;
@@ -46,8 +47,10 @@ public class Bus {
      */
     public boolean isDetached() {
         try {
+            // frida_bus_is_detached returns gboolean (typedef gint, i.e., int)
+            // gboolean: FALSE = 0, TRUE = non-zero (typically 1)
             int result = (int) FRIDA_BUS_IS_DETACHED.invoke(busPtr);
-            return result == 1;
+            return result != 0;
         } catch (Throwable e) {
             throw new RuntimeException("Failed to check if bus is detached", e);
         }
@@ -101,13 +104,16 @@ public class Bus {
 
     /**
      * Connect to bus signals
-     * TODO: Implement proper signal handling
+     *
      * Available signals:
-     * - "detached": callback should be Runnable
-     * - "message": callback should be BiConsumer<String, byte[]>
+     * - "detached": Emitted when the bus is detached from the device
+     *   Callback should be Runnable
+     * - "message": Emitted when a message is received from the device
+     *   Callback should be Closure.MessageCallback accepting (String message, byte[] data)
      *
      * @param signalName Signal name to connect to
      * @param callback Callback function
+     * @throws IllegalArgumentException if signal name is unknown or callback type is invalid
      */
     public void on(String signalName, Object callback) {
         if (callback == null) {
@@ -116,16 +122,19 @@ public class Bus {
 
         signalHandlers.put(signalName, callback);
 
+        long handlerId;
         switch (signalName) {
             case "detached":
                 if (!(callback instanceof Runnable)) {
                     throw new IllegalArgumentException("Detached signal callback must be Runnable");
                 }
-                FridaNativeUtils.connectSignal(busPtr, signalName, callback);
+                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback);
+                handlerIds.put(signalName, handlerId);
                 break;
             case "message":
                 // Callback should accept (String message, byte[] data)
-                FridaNativeUtils.connectSignal(busPtr, signalName, callback);
+                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback);
+                handlerIds.put(signalName, handlerId);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown signal: " + signalName);
@@ -138,7 +147,11 @@ public class Bus {
      */
     public void off(String signalName) {
         signalHandlers.remove(signalName);
-        // TODO: Implement actual signal disconnection from native GObject
+
+        Long handlerId = handlerIds.remove(signalName);
+        if (handlerId != null) {
+            FridaNativeUtils.disconnectSignal(busPtr, handlerId);
+        }
     }
 
     /**
@@ -149,7 +162,6 @@ public class Bus {
         signalHandlers.keySet().forEach(this::off);
         signalHandlers.clear();
 
-        // Unreference the native object
         FridaNativeUtils.fridaUnref(busPtr);
     }
 

@@ -33,6 +33,7 @@ public class FridaNativeUtils {
     private static final MethodHandle FRIDA_UNREF;
     private static final MethodHandle G_SIGNAL_LOOKUP;
     private static final MethodHandle G_SIGNAL_CONNECT_DATA;
+    private static final MethodHandle G_SIGNAL_HANDLER_DISCONNECT;
     private static final MethodHandle FRIDA_SCRIPT_GET_TYPE;
 
     static {
@@ -43,6 +44,8 @@ public class FridaNativeUtils {
         G_SIGNAL_CONNECT_DATA = FridaLibraryLoader.findFunction("g_signal_connect_data",
                 FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS,
                                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+        G_SIGNAL_HANDLER_DISCONNECT = FridaLibraryLoader.findFunction("g_signal_handler_disconnect",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
         FRIDA_SCRIPT_GET_TYPE = FridaLibraryLoader.findFunction("frida_script_get_type",
                 FunctionDescriptor.of(ValueLayout.JAVA_LONG));
     }
@@ -96,8 +99,9 @@ public class FridaNativeUtils {
      * @param object GObject pointer to connect to
      * @param signalName Name of the signal to connect to
      * @param callback Java callback object
+     * @return Handler ID that can be used to disconnect the signal later
      */
-    public static void connectSignal(MemorySegment object, String signalName, Object callback) {
+    public static long connectSignal(MemorySegment object, String signalName, Object callback) {
         try (Arena arena = Arena.ofConfined()) {
             Closure closure = Closure.create(callback, signalName);
             MemorySegment signalNamePtr = arena.allocateFrom(signalName);
@@ -109,7 +113,7 @@ public class FridaNativeUtils {
                 throw new RuntimeException("Signal '" + signalName + "' not found on object type " + objectType);
             }
 
-            G_SIGNAL_CONNECT_DATA.invoke(
+            return (long) (Long) G_SIGNAL_CONNECT_DATA.invoke(
                     object,                          // instance
                     signalNamePtr,                   // detailed_signal
                     closure.getNativeCallback(),     // c_handler
@@ -119,6 +123,20 @@ public class FridaNativeUtils {
             );
         } catch (Throwable e) {
             throw new RuntimeException("Failed to connect signal: " + signalName, e);
+        }
+    }
+
+    /**
+     * Disconnect a signal handler
+     *
+     * @param object GObject pointer that the signal is connected to
+     * @param handlerId Handler ID returned from connectSignal
+     */
+    public static void disconnectSignal(MemorySegment object, long handlerId) {
+        try {
+            G_SIGNAL_HANDLER_DISCONNECT.invoke(object, handlerId);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to disconnect signal handler: " + handlerId, e);
         }
     }
 }
