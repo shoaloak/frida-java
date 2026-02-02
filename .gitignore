@@ -4,6 +4,9 @@ target/
 **/target/
 dependency-reduced-pom.xml
 
+# Python
+.venv/
+
 # Dependency directories
 **/frida-devkit/
 

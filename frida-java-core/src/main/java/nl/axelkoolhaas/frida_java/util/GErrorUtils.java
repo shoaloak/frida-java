@@ -74,7 +74,7 @@ public class GErrorUtils {
      * @param operation Description of the operation that failed
      * @throws RuntimeException if error is not NULL
      */
-    public static void checkAndThrow(MemorySegment error, String operation) {
+    public static void handleError(MemorySegment error, String operation) {
         if (!error.equals(MemorySegment.NULL)) {
             String errorMsg = getMessage(error);
             free(error);

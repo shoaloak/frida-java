@@ -101,7 +101,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "detach session");
+            GErrorUtils.handleError(error, "detach session");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to detach session", e);
         }
@@ -121,7 +121,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "resume session");
+            GErrorUtils.handleError(error, "resume session");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to resume session", e);
         }
@@ -141,7 +141,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "enable child gating");
+            GErrorUtils.handleError(error, "enable child gating");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to enable child gating", e);
         }
@@ -161,7 +161,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "disable child gating");
+            GErrorUtils.handleError(error, "disable child gating");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to disable child gating", e);
         }
@@ -186,7 +186,7 @@ public class Session implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "create script");
+            GErrorUtils.handleError(error, "create script");
 
             return new Script(scriptObjPtr);
         } catch (Throwable e) {

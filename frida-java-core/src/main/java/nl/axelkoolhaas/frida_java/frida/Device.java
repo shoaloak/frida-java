@@ -27,9 +27,13 @@ import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Represents a device that Frida connects to
@@ -189,7 +193,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "enumerate processes");
+            GErrorUtils.handleError(error, "enumerate processes");
 
             if (processList.equals(MemorySegment.NULL)) {
                 return new ArrayList<>();
@@ -253,7 +257,7 @@ public class Device implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             if (!error.equals(MemorySegment.NULL)) {
                 FridaNativeUtils.fridaUnref(queryOpts);
-                GErrorUtils.checkAndThrow(error, "enumerate applications");
+                GErrorUtils.handleError(error, "enumerate applications");
             }
 
             if (appList.equals(MemorySegment.NULL)) {
@@ -306,12 +310,12 @@ public class Device implements AutoCloseable {
 
     /**
      * Spawn a new process
-     * @param program Path to the executable to spawn
-     * @return PID of the spawned process
+     * @param programPath Path to the executable to spawn
+     * @return Optional containing PID of the spawned process, or empty if spawn failed
      */
-    public int spawn(String program) {
+    public Optional<Integer> spawn(String programPath) {
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment programPtr = arena.allocateFrom(program);
+            MemorySegment programPtr = arena.allocateFrom(programPath);
 
             // Error handling
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
@@ -322,11 +326,13 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "spawn process: " + program);
+            GErrorUtils.handleError(error, "spawn process: " + programPath);
 
-            return pid;
+            return Optional.of(pid);
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to spawn process: " + program, e);
+            // Log all failures internally but don't re-throw
+            System.err.println("Failed to spawn process '" + programPath + "': " + e.getMessage());
+            return Optional.empty();
         }
     }
 
@@ -334,9 +340,9 @@ public class Device implements AutoCloseable {
      * Spawn a new process with arguments
      * @param programPath Full path of the executable to spawn
      * @param args Arguments to pass to the process
-     * @return PID of the spawned process
+     * @return Optional containing PID of the spawned process, or empty if spawn failed
      */
-    public int spawn(String programPath, List<String> args) {
+    public Optional<Integer> spawn(String programPath, List<String> args) {
         try (SpawnOptions options = new SpawnOptions();
              Arena arena = Arena.ofConfined()) {
 
@@ -359,12 +365,54 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "spawn process: " + programPath);
+            GErrorUtils.handleError(error, "spawn process: " + programPath);
 
-            return pid;
+            return Optional.of(pid);
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to spawn process: " + programPath, e);
+            // Log all failures internally but don't re-throw
+            System.err.println("Failed to spawn process '" + programPath + "' with args " + args + ": " + e.getMessage());
+            return Optional.empty();
         }
+    }
+
+    /**
+     * Helper method to spawn by program name (searches PATH)
+     * @param programName name of the program to spawn
+     * @return Optional containing PID of the spawned process, or empty if spawn failed
+     */
+    public Optional<Integer> spawnName(String programName) {
+        String programPath = findBinary(programName);
+        if (programPath == null) {
+            System.err.println("Executable not found in PATH: " + programName);
+            return Optional.empty();
+        }
+        return spawn(programPath);
+    }
+
+    /**
+     * Helper method to spawn by program name (searches PATH)
+     * @param programName name of the program to spawn
+     * @param args Arguments to pass to the process
+     * @return Optional containing PID of the spawned process, or empty if spawn failed
+     */
+    public Optional<Integer> spawnName(String programName, List<String> args) {
+        String programPath = findBinary(programName);
+        if (programPath == null) {
+            System.err.println("Executable not found in PATH: " + programName);
+            return Optional.empty();
+        }
+        return spawn(programPath, args);
+    }
+
+    public static String findBinary(String name) {
+        String pathEnv = System.getenv("PATH");
+        for (String dir : pathEnv.split(":")) {
+            Path p = Paths.get(dir, name);
+            if (Files.isExecutable(p)) {
+                return p.toAbsolutePath().toString();
+            }
+        }
+        return null;
     }
 
     /**
@@ -382,7 +430,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "kill process: " + pid);
+            GErrorUtils.handleError(error, "kill process: " + pid);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to kill process with PID: " + pid, e);
         }
@@ -403,7 +451,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "resume process: " + pid);
+            GErrorUtils.handleError(error, "resume process: " + pid);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to resume process with PID: " + pid, e);
         }
@@ -426,7 +474,7 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "attach process: " + pid);
+            GErrorUtils.handleError(error, "attach process: " + pid);
 
             return new Session(sessionPtr);
         } catch (Throwable e) {
@@ -481,7 +529,7 @@ public class Device implements AutoCloseable {
                     .invoke(devicePtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "get params");
+            GErrorUtils.handleError(error, "get params");
 
             return GHashTableUtil.toMap(hashTable);
         } catch (Throwable e) {
@@ -508,7 +556,7 @@ public class Device implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             if (!error.equals(MemorySegment.NULL)) {
                 FridaNativeUtils.fridaUnref(queryOpts);
-                GErrorUtils.checkAndThrow(error, "get frontmost application");
+                GErrorUtils.handleError(error, "get frontmost application");
                 throw new RuntimeException("Failed to get frontmost application");
             }
 

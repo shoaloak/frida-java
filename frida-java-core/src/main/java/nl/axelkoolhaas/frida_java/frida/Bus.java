@@ -64,7 +64,7 @@ public class Bus {
             FRIDA_BUS_ATTACH_SYNC.invoke(busPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "attach to bus");
+            GErrorUtils.handleError(error, "attach to bus");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to attach to bus", e);
         }

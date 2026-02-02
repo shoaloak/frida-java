@@ -94,7 +94,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "load script");
+            GErrorUtils.handleError(error, "load script");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to load script", e);
         }
@@ -114,7 +114,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "unload script");
+            GErrorUtils.handleError(error, "unload script");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to unload script", e);
         }
@@ -146,7 +146,7 @@ public class Script implements AutoCloseable {
             FRIDA_SCRIPT_ETERNALIZE_SYNC.invoke(scriptPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "eternalize script");
+            GErrorUtils.handleError(error, "eternalize script");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to eternalize script", e);
         }
@@ -197,7 +197,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "enable debugger on port: " + port);
+            GErrorUtils.handleError(error, "enable debugger on port: " + port);
         } catch (Throwable e) {
             throw new RuntimeException("Failed to enable debugger on port: " + port, e);
         }
@@ -217,7 +217,7 @@ public class Script implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "disable debugger");
+            GErrorUtils.handleError(error, "disable debugger");
         } catch (Throwable e) {
             throw new RuntimeException("Failed to disable debugger", e);
         }

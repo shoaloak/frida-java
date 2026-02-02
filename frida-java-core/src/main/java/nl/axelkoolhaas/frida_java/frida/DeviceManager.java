@@ -81,7 +81,7 @@ public class DeviceManager implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "enumerate devices");
+            GErrorUtils.handleError(error, "enumerate devices");
 
             if (deviceList.equals(MemorySegment.NULL)) {
                 return new ArrayList<>();
@@ -140,7 +140,7 @@ public class DeviceManager implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.checkAndThrow(error, "clean device manager");
+            GErrorUtils.handleError(error, "clean device manager");
         } catch (Throwable e) {
             // Log error but don't throw, cleanup should be safe
             System.err.println("Warning: Failed to cleanup DeviceManager: " + e.getMessage());
