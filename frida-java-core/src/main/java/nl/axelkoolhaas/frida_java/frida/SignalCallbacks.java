@@ -13,5 +13,15 @@ public final class SignalCallbacks {
         void onOutput(int pid, int fd, byte[] data);
     }
 
-    // ... other callback types
+    /**
+     * Handler for exceptions thrown by signal callbacks.
+     * Since callbacks are invoked from native code, exceptions cannot propagate
+     * through the native boundary. Register an error handler to be notified
+     * when a callback fails.
+     */
+    @FunctionalInterface
+    public interface ErrorHandler {
+        void onCallbackError(String signal, Exception error);
+    }
+
 }

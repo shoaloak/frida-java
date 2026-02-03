@@ -21,6 +21,8 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -35,18 +37,27 @@ import java.util.concurrent.atomic.AtomicLong;
  * It does this through Linker upcall stubs and a static dispatch method.
  */
 public class Closure {
+    private static final Logger log = LoggerFactory.getLogger(Closure.class);
     private static final AtomicLong CLOSURE_ID_GENERATOR = new AtomicLong(1);
     private static final ConcurrentHashMap<Long, Object> ACTIVE_CLOSURES = new ConcurrentHashMap<>();
 
+    private static volatile SignalCallbacks.ErrorHandler errorHandler = null;
+
+    /**
+     * Set a global error handler for callback exceptions.
+     * The error handler will be invoked when a callback throws an exception.
+     *
+     * @param handler Error handler to register, or null to remove the handler
+     */
+    public static void setErrorHandler(SignalCallbacks.ErrorHandler handler) {
+        errorHandler = handler;
+    }
+
     private final long id;
-    private final Object callback; // accessible through ACTIVE_CLOSURES
-    private final String signalName; // for reference
     private final MemorySegment nativeCallback;
 
-    private Closure(long id, Object callback, String signalName, MemorySegment nativeCallback) {
+    private Closure(long id, MemorySegment nativeCallback) {
         this.id = id;
-        this.callback = callback;
-        this.signalName = signalName;
         this.nativeCallback = nativeCallback;
     }
 
@@ -59,10 +70,12 @@ public class Closure {
         // Create native callback stub that will call back to Java
         MemorySegment nativeCallback = createNativeCallback(id, signalName);
 
-        Closure closure = new Closure(id, callback, signalName, nativeCallback);
+        // Store callback in map for dispatch
         ACTIVE_CLOSURES.put(id, callback);
 
-        return closure;
+        log.debug("Created closure {} for '{}' signal with native callback: {}", id, signalName, nativeCallback);
+
+        return new Closure(id, nativeCallback);
     }
 
     /**
@@ -76,7 +89,10 @@ public class Closure {
      * Clean up the closure
      */
     public void dispose() {
-        ACTIVE_CLOSURES.remove(id);
+        Object removed = ACTIVE_CLOSURES.remove(id);
+        if (removed != null) {
+            log.debug("Disposed closure {}", id);
+        }
         // Native callback cleanup will happen when GClosure is freed
     }
 
@@ -90,8 +106,11 @@ public class Closure {
     public static void dispatchSignal(long closureId, String signalName, Object... args) {
         Object callback = ACTIVE_CLOSURES.get(closureId);
         if (callback == null) {
+            log.trace("No callback found for closure {} signal '{}'", closureId, signalName);
             return;
         }
+
+        log.trace("Dispatching signal '{}' to closure {}", signalName, closureId);
 
         try {
             switch (signalName) {
@@ -117,10 +136,22 @@ public class Closure {
                     break;
                 default:
                     // Unknown signal - silently ignore
+                    log.trace("Unknown signal '{}' dispatched to closure {}", signalName, closureId);
                     break;
             }
         } catch (Exception e) {
-            throw new FridaException("Error dispatching signal '" + signalName + "' to callback", e);
+            // Cannot propagate exceptions through native callback boundary
+            log.error("Callback failed for signal '{}': {}", signalName, e.getMessage(), e);
+
+            // Notify error handler if registered
+            SignalCallbacks.ErrorHandler handler = errorHandler;
+            if (handler != null) {
+                try {
+                    handler.onCallbackError(signalName, e);
+                } catch (Exception handlerError) {
+                    log.error("Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
+                }
+            }
         }
     }
 
@@ -227,8 +258,18 @@ public class Closure {
 
             dispatchSignal(closureId, signalName, message, data);
         } catch (Exception e) {
-            //TODO this gets called from  C.... danger
-//            throw new FridaException("Failed to handle message signal", e);
+            // Cannot propagate through native callback boundary - log only
+            log.error("Failed to handle message signal: {}", e.getMessage(), e);
+
+            // Notify error handler if registered
+            SignalCallbacks.ErrorHandler handler = errorHandler;
+            if (handler != null) {
+                try {
+                    handler.onCallbackError(signalName, e);
+                } catch (Exception handlerError) {
+                    log.error("Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
+                }
+            }
         }
     }
 

@@ -22,15 +22,31 @@
     </properties>
 
     <dependencies>
+        <!-- SLF4J API for optional logging (no backend required) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.17</version>
+        </dependency>
+        <!-- Jackson Databind for JSON serialization/deserialization -->
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>3.0.3</version>
         </dependency>
+
+        <!-- JUnit Jupiter for unit testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.14.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- SLF4J Simple Logger for testing -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.17</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

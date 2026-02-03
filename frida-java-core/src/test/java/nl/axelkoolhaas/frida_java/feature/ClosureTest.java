@@ -248,23 +248,42 @@ public class ClosureTest {
     @Test
     @Order(10)
     void testCallbackExceptionHandling() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch callbackLatch = new CountDownLatch(1);
+        CountDownLatch errorLatch = new CountDownLatch(1);
+        AtomicReference<Exception> caughtError = new AtomicReference<>();
 
-        Runnable faultyCallback = () -> {
-            latch.countDown();
-            throw new RuntimeException("Test exception in callback - IGNORE THIS ERROR");
-        };
+        // Install error handler to capture callback exception
+        Closure.setErrorHandler((signal, error) -> {
+            caughtError.set(error);
+            errorLatch.countDown();
+        });
 
-        Closure closure = Closure.create(faultyCallback, "detached");
+        try {
+            Runnable faultyCallback = () -> {
+                callbackLatch.countDown();
+                throw new RuntimeException("Test exception in callback - IGNORE THIS ERROR");
+            };
 
-        // This should not crash the application even if callback throws
-        assertDoesNotThrow(() -> {
-            Closure.dispatchSignal(closure.getId(), "detached");
-        }, "Exception in callback should be handled gracefully");
+            Closure closure = Closure.create(faultyCallback, "detached");
 
-        assertTrue(latch.await(1, TimeUnit.SECONDS), "Callback should still be invoked despite exception");
+            // This should not crash the application even if callback throws
+            assertDoesNotThrow(() -> {
+                Closure.dispatchSignal(closure.getId(), "detached");
+            }, "Exception in callback should be handled gracefully via error handler");
 
-        System.out.println("Successfully handled exception in callback without crashing");
+            assertTrue(callbackLatch.await(1, TimeUnit.SECONDS),
+                      "Callback should still be invoked despite exception");
+            assertTrue(errorLatch.await(1, TimeUnit.SECONDS),
+                      "Error handler should be notified");
+            assertNotNull(caughtError.get(), "Error handler should capture exception");
+            assertTrue(caughtError.get().getMessage().contains("Test exception"),
+                      "Exception should contain original message");
+
+            System.out.println("Successfully handled exception in callback without crashing");
+        } finally {
+            // Clean up error handler
+            Closure.setErrorHandler(null);
+        }
     }
 
     @Test
