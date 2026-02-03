@@ -62,9 +62,12 @@ public class GBytesUtil {
         try {
             MemorySegment dataPtr = arena.allocate(data.length);
             dataPtr.copyFrom(MemorySegment.ofArray(data));
-            return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, data.length);
+            // Cast to long for FFM binding (Java arrays are limited to int length anyway)
+            return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, (long) data.length);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to convert bytes to GBytes", e);
+            throw new nl.axelkoolhaas.frida_java.frida.FridaException("Failed to convert bytes to GBytes", e);
         }
     }
 

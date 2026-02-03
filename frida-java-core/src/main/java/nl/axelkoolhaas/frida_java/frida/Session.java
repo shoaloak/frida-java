@@ -70,8 +70,10 @@ public class Session implements AutoCloseable {
     public boolean isDetached() {
         try {
             return (boolean) FRIDA_SESSION_IS_DETACHED.invoke(sessionPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to check if session is detached", e);
+            throw new FridaException("Failed to check if session is detached", e);
         }
     }
 
@@ -82,8 +84,10 @@ public class Session implements AutoCloseable {
     public int getPid() {
         try {
             return (int) FRIDA_SESSION_GET_PID.invoke(sessionPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get session PID", e);
+            throw new FridaException("Failed to get session PID", e);
         }
     }
 
@@ -102,8 +106,10 @@ public class Session implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "detach session");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to detach session", e);
+            throw new FridaException("Failed to detach session", e);
         }
     }
 
@@ -122,8 +128,10 @@ public class Session implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "resume session");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to resume session", e);
+            throw new FridaException("Failed to resume session", e);
         }
     }
 
@@ -142,8 +150,10 @@ public class Session implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "enable child gating");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enable child gating", e);
+            throw new FridaException("Failed to enable child gating", e);
         }
     }
 
@@ -162,8 +172,10 @@ public class Session implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "disable child gating");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to disable child gating", e);
+            throw new FridaException("Failed to disable child gating", e);
         }
     }
 
@@ -189,8 +201,10 @@ public class Session implements AutoCloseable {
             GErrorUtils.handleError(error, "create script");
 
             return new Script(scriptObjPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to create script", e);
+            throw new FridaException("Failed to create script", e);
         }
     }
 

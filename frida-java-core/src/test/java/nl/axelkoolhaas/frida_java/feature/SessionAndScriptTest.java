@@ -20,7 +20,7 @@
 package nl.axelkoolhaas.frida_java.feature;
 
 import nl.axelkoolhaas.frida_java.frida.*;
-import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
+import nl.axelkoolhaas.frida_java.frida.SignalCallbacks;
 import org.junit.jupiter.api.*;
 
 import java.util.List;
@@ -39,7 +39,7 @@ public class SessionAndScriptTest {
     @Order(1)
     void testAttachToProcess() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -62,7 +62,7 @@ public class SessionAndScriptTest {
     @Order(2)
     void testSessionProperties() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -87,7 +87,7 @@ public class SessionAndScriptTest {
     @Order(3)
     void testCreateSimpleScript() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -115,7 +115,7 @@ public class SessionAndScriptTest {
     @Order(4)
     void testScriptLoadAndUnload() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -149,7 +149,7 @@ public class SessionAndScriptTest {
     @Order(5)
     void testScriptPostMessage() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -189,7 +189,7 @@ public class SessionAndScriptTest {
     @Order(6)
     void testSessionDetach() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -214,7 +214,7 @@ public class SessionAndScriptTest {
     @Order(7)
     void testSessionChildGating() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             int targetPid = spawnTestProcess(localDevice);
             assertTrue(targetPid > 0, "No test process available");
@@ -240,14 +240,13 @@ public class SessionAndScriptTest {
     @Order(8)
     void testScriptWithMessageHandling() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Platform-agnostic command selection
             String[] command = getPlatformCommand();
 
-            var pidOpt = localDevice.spawnName(command[0], List.of(command).subList(1, command.length));
-            assertTrue(pidOpt.isPresent(), "Failed to spawn test process - " + command[0] + " not found in PATH or spawn failed");
-            int targetPid = pidOpt.get();
+            int targetPid = localDevice.spawnName(command[0], List.of(command).subList(1, command.length));
+            assertTrue(targetPid > 0, "Failed to spawn test process - " + command[0] + " not found in PATH or spawn failed");
 
             System.out.println("Spawned PID: " + targetPid);
 
@@ -334,17 +333,14 @@ public class SessionAndScriptTest {
     private int spawnTestProcess(Device device) {
         // Spawn a sleep process for testing
         try {
-            var pidOpt = device.spawn("/bin/sleep", List.of("3600"));
-            if (pidOpt.isPresent()) {
-                int pid = pidOpt.get();
-                if (pid > 0) {
-                    device.resume(pid); // Resume the process so it's running
-                    System.out.println("Spawned test process with PID: " + pid);
-                    return pid;
-                } else {
-                    System.out.println("Failed to spawn test process - got invalid PID: " + pid);
-                }
+            // TODO: Expand to Windows equivalents
+            int pid = device.spawn("/bin/sleep", List.of("3600"));
+            if (pid > 0) {
+                device.resume(pid); // Resume the process so it's running
+                System.out.println("Spawned test process with PID: " + pid);
+                return pid;
             } else {
+                System.out.println("Failed to spawn test process - got invalid PID: " + pid);
                 System.out.println("Failed to spawn test process - spawn returned empty");
             }
         } catch (Exception e) {

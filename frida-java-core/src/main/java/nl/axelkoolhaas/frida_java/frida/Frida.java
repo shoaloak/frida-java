@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -62,8 +63,10 @@ public class Frida {
                     try {
                         FRIDA_INIT.invoke();
                         isInitialized.set(true);
+                    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+                        throw e;
                     } catch (Throwable e) {
-                        throw new RuntimeException("Failed to initialize Frida", e);
+                        throw new FridaException("Failed to initialize Frida", e);
                     }
                 }
             }
@@ -76,10 +79,12 @@ public class Frida {
      */
     public static String getVersion() {
         try {
-            MemorySegment result = (MemorySegment) FRIDA_VERSION_STRING.invoke();
-            return memorySegmentToString(result);
+            MemorySegment versionPtr = (MemorySegment) FRIDA_VERSION_STRING.invoke();
+            return FridaNativeUtils.memorySegmentToString(versionPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get Frida version", e);
+            throw new FridaException("Failed to get Frida version", e);
         }
     }
 

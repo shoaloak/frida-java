@@ -39,7 +39,7 @@ public class ProcessTest {
     @Order(1)
     void testEnumerateProcesses() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processList = localDevice.enumerateProcesses();
 
             assertNotNull(processList, "ProcessList should not be null");
@@ -52,7 +52,7 @@ public class ProcessTest {
     @Order(2)
     void testProcessProperties() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processList = localDevice.enumerateProcesses();
 
             // Test properties of first few processes
@@ -77,7 +77,7 @@ public class ProcessTest {
     @Order(3)
     void testFindSpecificProcess() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processList = localDevice.enumerateProcesses();
 
             // Look for common system processes
@@ -109,7 +109,7 @@ public class ProcessTest {
     @Order(4)
     void testProcessToString() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processList = localDevice.enumerateProcesses();
 
             if (!processList.isEmpty()) {

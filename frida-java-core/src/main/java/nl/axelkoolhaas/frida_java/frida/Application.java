@@ -56,8 +56,10 @@ public class Application {
         try {
             MemorySegment result = (MemorySegment) FRIDA_APPLICATION_GET_IDENTIFIER.invoke(applicationPtr);
             return FridaNativeUtils.memorySegmentToString(result);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get application identifier", e);
+            throw new FridaException("Failed to get application identifier", e);
         }
     }
 
@@ -65,16 +67,20 @@ public class Application {
         try {
             MemorySegment result = (MemorySegment) FRIDA_APPLICATION_GET_NAME.invoke(applicationPtr);
             return FridaNativeUtils.memorySegmentToString(result);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get application name", e);
+            throw new FridaException("Failed to get application name", e);
         }
     }
 
     public int getPid() {
         try {
             return (int) FRIDA_APPLICATION_GET_PID.invoke(applicationPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get application PID", e);
+            throw new FridaException("Failed to get application PID", e);
         }
     }
 

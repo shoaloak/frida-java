@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java;
 
 import nl.axelkoolhaas.frida_java.frida.Closure;
+import nl.axelkoolhaas.frida_java.frida.FridaException;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -87,8 +88,10 @@ public class FridaNativeUtils {
     public static void fridaUnref(MemorySegment object) {
         try {
             FRIDA_UNREF.invoke(object);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to unref pointer", e);
+            throw new FridaException("Failed to unref pointer", e);
         }
     }
 
@@ -110,7 +113,7 @@ public class FridaNativeUtils {
             int signalId = (Integer) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
 
             if (signalId == 0) {
-                throw new RuntimeException("Signal '" + signalName + "' not found on object type " + objectType);
+                throw new FridaException("Signal '" + signalName + "' not found on object type " + objectType);
             }
 
             return (long) G_SIGNAL_CONNECT_DATA.invoke(
@@ -121,8 +124,10 @@ public class FridaNativeUtils {
                     MemorySegment.NULL,              // destroy_data
                     0                                // connect_flags (0 = G_CONNECT_DEFAULT)
             );
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to connect signal: " + signalName, e);
+            throw new FridaException("Failed to connect signal: " + signalName, e);
         }
     }
 
@@ -135,8 +140,10 @@ public class FridaNativeUtils {
     public static void disconnectSignal(MemorySegment object, long handlerId) {
         try {
             G_SIGNAL_HANDLER_DISCONNECT.invoke(object, handlerId);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to disconnect signal handler: " + handlerId, e);
+            throw new FridaException("Failed to disconnect signal handler: " + handlerId, e);
         }
     }
 }

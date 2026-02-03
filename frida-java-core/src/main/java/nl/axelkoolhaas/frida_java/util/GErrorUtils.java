@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.util;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.frida.FridaException;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -60,8 +61,10 @@ public class GErrorUtils {
                 return "Unknown error (no message)";
             }
             return FridaNativeUtils.memorySegmentToString(messagePtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get error message", e);
+            throw new FridaException("Failed to get error message", e);
         }
     }
 
@@ -72,13 +75,15 @@ public class GErrorUtils {
     public static void free(MemorySegment error) {
         try {
             G_ERROR_FREE.invoke(error);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to free GError", e);
+            throw new FridaException("Failed to free GError", e);
         }
     }
 
     /**
-     * Check if error is not NULL, get message, free it, and throw RuntimeException
+     * Check if error is not NULL, get message, free it, and throw FridaException
      * @param error GError pointer to check
      * @param operation Description of the operation that failed
      * @throws RuntimeException if error is not NULL
@@ -87,7 +92,7 @@ public class GErrorUtils {
         if (!error.equals(MemorySegment.NULL)) {
             String errorMsg = getMessage(error);
             free(error);
-            throw new RuntimeException("Failed to " + operation + ": " + errorMsg);
+            throw new FridaException("Failed to " + operation + ": " + errorMsg);
         }
     }
 

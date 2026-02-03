@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.util;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.frida.FridaException;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -116,8 +117,10 @@ public class GHashTableUtil {
             }
 
             return result;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to convert GHashTable to Map", e);
+            throw new FridaException("Failed to convert GHashTable to Map", e);
         }
     }
 

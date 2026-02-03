@@ -80,15 +80,12 @@ public class ChildTest {
     @Order(3)
     void testChildGatingWithProcessLifecycle() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             //TODO: Expand to Windows equivalents
 
             // Spawn a shell that will create child processes
-            var parentResult = localDevice.spawn("/bin/sh", List.of("-c", "sleep 2 && echo done"));
-            assumeTrue(parentResult.isPresent() && parentResult.get() > 0, "Could not spawn test process");
-
-            int parentPid = parentResult.get();
+            int parentPid = localDevice.spawn("/bin/sh", List.of("-c", "sleep 2 && echo done"));
             assumeTrue(parentPid > 0, "Could not spawn test process");
 
             try (Session session = localDevice.attach(parentPid)) {
@@ -113,13 +110,10 @@ public class ChildTest {
 
     // Helper methods to reduce duplication
     private Session createTestSession(DeviceManager deviceManager) {
-        Device localDevice = deviceManager.getLocalDevice();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
         //TODO: Expand to Windows equivalents
-        var parentResult = localDevice.spawn("/bin/sleep", List.of("10"));
-        assumeTrue(parentResult.isPresent() && parentResult.get() > 0, "Could not spawn test process");
-
-        int pid = parentResult.get();
+        int pid = localDevice.spawn("/bin/sleep", List.of("10"));
         assumeTrue(pid > 0, "Could not spawn test process");
 
         try {

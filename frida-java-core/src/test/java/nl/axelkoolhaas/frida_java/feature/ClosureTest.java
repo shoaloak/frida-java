@@ -20,7 +20,7 @@
 package nl.axelkoolhaas.frida_java.feature;
 
 import nl.axelkoolhaas.frida_java.frida.Closure;
-import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
+import nl.axelkoolhaas.frida_java.frida.SignalCallbacks;
 import org.junit.jupiter.api.*;
 
 import java.lang.foreign.MemorySegment;

@@ -20,7 +20,6 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 
 import java.lang.foreign.*;
@@ -117,12 +116,11 @@ public class Closure {
                     // Handle output events if needed
                     break;
                 default:
-                    // Unknown signal
+                    // Unknown signal - silently ignore
                     break;
             }
         } catch (Exception e) {
-            // Log error but don't let it propagate to native code
-            System.err.println("Error in signal callback: " + e.getMessage());
+            throw new FridaException("Error dispatching signal '" + signalName + "' to callback", e);
         }
     }
 
@@ -162,8 +160,10 @@ public class Closure {
                     yield linker.upcallStub(handler, descriptor, arena);
                 }
             };
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create native callback for signal: " + signalName, e);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new FridaException("Failed to create native callback for signal: " + signalName, e);
         }
     }
 
@@ -174,8 +174,10 @@ public class Closure {
                     MethodType.methodType(void.class, long.class, String.class,
                         MemorySegment.class, MemorySegment.class));
             return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create simple handler", e);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new FridaException("Failed to create simple handler", e);
         }
     }
 
@@ -186,8 +188,10 @@ public class Closure {
                     MethodType.methodType(void.class, long.class, String.class,
                         MemorySegment.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
             return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create message handler", e);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new FridaException("Failed to create message handler", e);
         }
     }
 
@@ -195,10 +199,13 @@ public class Closure {
         try {
             MethodHandle base = java.lang.invoke.MethodHandles.lookup()
                 .findStatic(Closure.class, "handleGenericSignal",
-                    MethodType.methodType(void.class, long.class, String.class, MemorySegment.class, MemorySegment.class));
+                    MethodType.methodType(void.class, long.class, String.class,
+                        MemorySegment.class, MemorySegment.class));
             return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create generic handler", e);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new FridaException("Failed to create generic handler", e);
         }
     }
 
@@ -220,8 +227,8 @@ public class Closure {
 
             dispatchSignal(closureId, signalName, message, data);
         } catch (Exception e) {
-            System.err.println("Error handling message signal: " + e.getMessage());
-            e.printStackTrace();
+            //TODO this gets called from  C.... danger
+//            throw new FridaException("Failed to handle message signal", e);
         }
     }
 

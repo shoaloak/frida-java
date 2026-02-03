@@ -54,8 +54,10 @@ public class Spawn {
     public int getPid() {
         try {
             return (int) FRIDA_SPAWN_GET_PID.invoke(spawnPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get spawn PID", e);
+            throw new FridaException("Failed to get spawn PID", e);
         }
     }
 
@@ -67,8 +69,10 @@ public class Spawn {
         try {
             MemorySegment result = (MemorySegment) FRIDA_SPAWN_GET_IDENTIFIER.invoke(spawnPtr);
             return FridaNativeUtils.memorySegmentToString(result);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get spawn identifier", e);
+            throw new FridaException("Failed to get spawn identifier", e);
         }
     }
 }

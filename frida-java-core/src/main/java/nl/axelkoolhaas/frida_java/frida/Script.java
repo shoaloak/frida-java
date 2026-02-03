@@ -21,17 +21,12 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
-import nl.axelkoolhaas.frida_java.frida.exceptions.ContextCancelledException;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 /**
  * Represents a Frida script
@@ -95,7 +90,7 @@ public class Script implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "load script");
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to load script", e);
+            throw new FridaException("Failed to load script", e);
         }
     }
 
@@ -115,7 +110,7 @@ public class Script implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "unload script");
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to unload script", e);
+            throw new FridaException("Failed to unload script", e);
         }
     }
 
@@ -128,7 +123,7 @@ public class Script implements AutoCloseable {
         try {
             return (boolean) FRIDA_SCRIPT_IS_DESTROYED.invoke(scriptPtr);
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to check if script is destroyed", e);
+            throw new FridaException("Failed to check if script is destroyed", e);
         }
     }
 
@@ -147,7 +142,7 @@ public class Script implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "eternalize script");
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to eternalize script", e);
+            throw new FridaException("Failed to eternalize script", e);
         }
     }
 
@@ -169,7 +164,7 @@ public class Script implements AutoCloseable {
             // Post to script (script, json, data)
             FRIDA_SCRIPT_POST.invoke(scriptPtr, jsonPtr, dataPtr);
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to post message to script", e);
+            throw new FridaException("Failed to post message to script", e);
         }
     }
 
@@ -198,7 +193,7 @@ public class Script implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "enable debugger on port: " + port);
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enable debugger on port: " + port, e);
+            throw new FridaException("Failed to enable debugger on port: " + port, e);
         }
     }
 
@@ -218,7 +213,7 @@ public class Script implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "disable debugger");
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to disable debugger", e);
+            throw new FridaException("Failed to disable debugger", e);
         }
     }
 
@@ -234,11 +229,12 @@ public class Script implements AutoCloseable {
         hasMessageHandler = true;
 
         if ("message".equals(signalName)) {
+            if (!(callback instanceof SignalCallbacks.MessageCallback)) {
+                throw new IllegalArgumentException("Callback must be a MessageCallback for 'message' signal");
+            }
+
             // Set up message hijacking for RPC functionality
-            this.messageCallback = (callback instanceof SignalCallbacks.MessageCallback) ?
-                (SignalCallbacks.MessageCallback) callback :
-                (_, _) -> {
-                };
+            this.messageCallback = (SignalCallbacks.MessageCallback) callback;
 
             // Create hijacking message handler
             SignalCallbacks.MessageCallback hijackingHandler = this::hijackMessage;
@@ -256,14 +252,15 @@ public class Script implements AutoCloseable {
      * @return The result returned by the function
      */
     public Object exportsCall(String functionName, Object... args) {
+        CompletableFuture<Object> future = makeExportsCall(functionName, args);
+
         try {
-            CompletableFuture<Object> future = makeExportsCall(functionName, args);
-            return future.get(); // Block until result is available
+            return future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("RPC call was interrupted", e);
+            throw new FridaException("RPC call was interrupted", e);
         } catch (ExecutionException e) {
-            throw new RuntimeException("RPC call failed", e.getCause());
+            throw new FridaException("RPC call failed", e.getCause());
         }
     }
 
@@ -273,31 +270,33 @@ public class Script implements AutoCloseable {
      * @param functionName Name of the function to call
      * @param args Arguments to pass to the function
      * @return The result returned by the function
-     * @throws ContextCancelledException if the context is cancelled
+     * @throws FridaException if the context is cancelled
      */
     public Object exportsCallWithContext(CompletableFuture<Void> context, String functionName, Object... args) {
-        try {
-            CompletableFuture<Object> rpcFuture = makeExportsCall(functionName, args);
+        CompletableFuture<Object> rpcFuture = makeExportsCall(functionName, args);
 
-            // Race between the RPC call and context cancellation
-            CompletableFuture<Object> result = rpcFuture.applyToEither(
+        // Race between RPC call and context cancellation
+        CompletableFuture<Object> result = rpcFuture.applyToEither(
                 context.thenApply(v -> {
-                    throw new ContextCancelledException();
+                    throw new FridaException("RPC call was cancelled");
                 }),
                 value -> value
-            );
+        );
 
+        try {
             return result.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("RPC call was interrupted", e);
+            throw new FridaException("RPC call was interrupted", e);
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof ContextCancelledException) {
-                throw (ContextCancelledException) e.getCause();
+            Throwable cause = e.getCause();
+            if (cause instanceof FridaException) {
+                throw (FridaException) cause;
             }
-            throw new RuntimeException("RPC call failed", e.getCause());
+            throw new FridaException("RPC call failed", cause);
         }
     }
+
 
     /**
      * Call a function exported by the script's RPC interface with timeout
@@ -309,14 +308,15 @@ public class Script implements AutoCloseable {
      */
     public Object exportsCallWithTimeout(String functionName, long timeoutMs, Object... args)
             throws TimeoutException {
+        CompletableFuture<Object> future = makeExportsCall(functionName, args);
+
         try {
-            CompletableFuture<Object> future = makeExportsCall(functionName, args);
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("RPC call was interrupted", e);
+            throw new FridaException("RPC call was interrupted", e);
         } catch (ExecutionException e) {
-            throw new RuntimeException("RPC call failed", e.getCause());
+            throw new FridaException("RPC call failed", e.getCause());
         }
     }
 
@@ -368,9 +368,10 @@ public class Script implements AutoCloseable {
     public void clean() {
         try {
             FridaNativeUtils.fridaUnref(this.scriptPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            // Log error but don't throw, cleanup should be safe
-            System.err.println("Warning: Failed to cleanup Script: " + e.getMessage());
+            throw new FridaException("Failed to cleanup Script", e);
         }
     }
 

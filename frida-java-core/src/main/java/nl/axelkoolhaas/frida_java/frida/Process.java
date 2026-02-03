@@ -68,8 +68,10 @@ public class Process {
     public int getPid() {
         try {
             return (int) FRIDA_PROCESS_GET_PID.invoke(processPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get process PID", e);
+            throw new FridaException("Failed to get process PID", e);
         }
     }
 
@@ -79,10 +81,12 @@ public class Process {
      */
     public String getName() {
         try {
-            MemorySegment result = (MemorySegment) FRIDA_PROCESS_GET_NAME.invoke(processPtr);
-            return FridaNativeUtils.memorySegmentToString(result);
+            MemorySegment namePtr = (MemorySegment) FRIDA_PROCESS_GET_NAME.invoke(processPtr);
+            return FridaNativeUtils.memorySegmentToString(namePtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get process name", e);
+            throw new FridaException("Failed to get process name", e);
         }
     }
 

@@ -117,8 +117,10 @@ public class RpcManager {
     public static String toJsonString(Object[] rpcCall) {
         try {
             return OBJECT_MAPPER.writeValueAsString(rpcCall);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize RPC call", e);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new FridaException("Failed to serialize RPC call", e);
         }
     }
 

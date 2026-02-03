@@ -51,14 +51,16 @@ public class Bus {
             // gboolean: FALSE = 0, TRUE = non-zero (typically 1)
             int result = (int) FRIDA_BUS_IS_DETACHED.invoke(busPtr);
             return result != 0;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to check if bus is detached", e);
+            throw new FridaException("Failed to check if bus is detached", e);
         }
     }
 
     /**
      * Attach to the device bus
-     * @throws RuntimeException if attachment fails
+     * @throws FridaException if attachment fails
      */
     public void attach() {
         try (Arena arena = Arena.ofConfined()) {
@@ -69,8 +71,10 @@ public class Bus {
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "attach to bus");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to attach to bus", e);
+            throw new FridaException("Failed to attach to bus", e);
         }
     }
 
@@ -89,8 +93,10 @@ public class Bus {
             }
 
             FRIDA_BUS_POST.invoke(busPtr, messagePtr, gBytesData);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to post message to bus", e);
+            throw new FridaException("Failed to post message to bus", e);
         }
     }
 

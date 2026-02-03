@@ -1,4 +1,4 @@
-package nl.axelkoolhaas.frida_java.frida.callbacks;
+package nl.axelkoolhaas.frida_java.frida;
 
 public final class SignalCallbacks {
     private SignalCallbacks() {} // Utility class

@@ -81,8 +81,10 @@ public class SpawnOptions implements AutoCloseable {
         try {
             this.optionsPtr = (MemorySegment) FRIDA_SPAWN_OPTIONS_NEW.invoke();
             FridaNativeUtils.requireValidPointer(optionsPtr, "SpawnOptions pointer");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to create SpawnOptions", e);
+            throw new FridaException("Failed to create SpawnOptions", e);
         }
     }
 
@@ -101,8 +103,10 @@ public class SpawnOptions implements AutoCloseable {
             }
 
             FRIDA_SPAWN_OPTIONS_SET_ARGV.invoke(optionsPtr, argvArray, args.length);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to set argv", e);
+            throw new FridaException("Failed to set argv", e);
         }
     }
 
@@ -128,8 +132,10 @@ public class SpawnOptions implements AutoCloseable {
             }
 
             return args;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get argv", e);
+            throw new FridaException("Failed to get argv", e);
         }
     }
 
@@ -153,8 +159,10 @@ public class SpawnOptions implements AutoCloseable {
             }
 
             FRIDA_SPAWN_OPTIONS_SET_ENVP.invoke(optionsPtr, envpArray, envArray.length);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to set envp", e);
+            throw new FridaException("Failed to set envp", e);
         }
     }
 
@@ -180,8 +188,10 @@ public class SpawnOptions implements AutoCloseable {
             }
 
             return envp;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get envp", e);
+            throw new FridaException("Failed to get envp", e);
         }
     }
 
@@ -204,8 +214,10 @@ public class SpawnOptions implements AutoCloseable {
             }
 
             FRIDA_SPAWN_OPTIONS_SET_ENV.invoke(optionsPtr, envArrayPtr, envArray.length);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to set env", e);
+            throw new FridaException("Failed to set env", e);
         }
     }
 
@@ -231,8 +243,10 @@ public class SpawnOptions implements AutoCloseable {
             }
 
             return env;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get env", e);
+            throw new FridaException("Failed to get env", e);
         }
     }
 
@@ -244,8 +258,10 @@ public class SpawnOptions implements AutoCloseable {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment cwdPtr = arena.allocateFrom(cwd);
             FRIDA_SPAWN_OPTIONS_SET_CWD.invoke(optionsPtr, cwdPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to set cwd", e);
+            throw new FridaException("Failed to set cwd", e);
         }
     }
 
@@ -257,8 +273,10 @@ public class SpawnOptions implements AutoCloseable {
         try {
             MemorySegment result = (MemorySegment) FRIDA_SPAWN_OPTIONS_GET_CWD.invoke(optionsPtr);
             return FridaNativeUtils.memorySegmentToString(result);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get cwd", e);
+            throw new FridaException("Failed to get cwd", e);
         }
     }
 
@@ -269,8 +287,10 @@ public class SpawnOptions implements AutoCloseable {
     public void setStdio(Stdio stdio) {
         try {
             FRIDA_SPAWN_OPTIONS_SET_STDIO.invoke(optionsPtr, stdio.getValue());
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to set stdio", e);
+            throw new FridaException("Failed to set stdio", e);
         }
     }
 
@@ -282,8 +302,10 @@ public class SpawnOptions implements AutoCloseable {
         try {
             int stdioValue = (int) FRIDA_SPAWN_OPTIONS_GET_STDIO.invoke(optionsPtr);
             return Stdio.fromValue(stdioValue);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get stdio", e);
+            throw new FridaException("Failed to get stdio", e);
         }
     }
 
@@ -295,8 +317,10 @@ public class SpawnOptions implements AutoCloseable {
         try {
             MemorySegment auxPtr = (MemorySegment) FRIDA_SPAWN_OPTIONS_GET_AUX.invoke(optionsPtr);
             return GHashTableUtil.toMap(auxPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get aux", e);
+            throw new FridaException("Failed to get aux", e);
         }
     }
 
@@ -307,8 +331,10 @@ public class SpawnOptions implements AutoCloseable {
     public void clean() {
         try {
             FridaNativeUtils.fridaUnref(optionsPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            System.err.println("Warning: Failed to cleanup SpawnOptions: " + e.getMessage());
+            throw new FridaException("Failed to cleanup SpawnOptions", e);
         }
     }
 

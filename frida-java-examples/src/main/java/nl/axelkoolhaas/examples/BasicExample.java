@@ -51,121 +51,74 @@ public class BasicExample {
                         device.getName(), device.getType(), device.getId());
                 }
 
-                Device localDevice = deviceManager.getLocalDevice();
-                if (localDevice != null) {
-                    System.out.println("\nLocal device: " + localDevice.getName());
+                @SuppressWarnings("resource")
+                Device localDevice = deviceManager.getLocalDevice()
+                        .orElseThrow(() -> new RuntimeException("No local device found"));
 
-                    System.out.println("\n--- Process Enumeration ---");
-                    List<Process> processes = localDevice.enumerateProcesses();
-                    System.out.println("Found " + processes.size() + " running processes");
+                System.out.println("\nLocal device: " + localDevice.getName());
 
-                    // Show first 5 processes as example
-                    System.out.println("Sample processes:");
-                    int limit = Math.min(5, processes.size());
-                    for (int i = 0; i < limit; i++) {
-                        Process process = processes.get(i);
-                        System.out.printf("  PID %d: %s%n", process.getPid(), process.getName());
-                    }
+                System.out.println("\n--- Process Enumeration ---");
+                List<Process> processes = localDevice.enumerateProcesses();
+                System.out.println("Found " + processes.size() + " running processes");
 
-                    // Demonstrate process spawning and script injection
-                    System.out.println("\n--- Process Spawning and Script Injection ---");
-                    System.out.println("Spawning 'bash --help' process...");
+                // Show first 5 processes as example
+                System.out.println("Sample processes:");
+                int limit = Math.min(5, processes.size());
+                for (int i = 0; i < limit; i++) {
+                    Process process = processes.get(i);
+                    System.out.printf("  PID %d: %s%n", process.getPid(), process.getName());
+                }
 
-                    // Spawn bash with --help argument
-                    List<String> bashArgs = List.of("--help");
-                    var spawnedResult = localDevice.spawnName("bash", bashArgs);
-                    if (spawnedResult.isEmpty() || spawnedResult.get() == -1) {
-                        System.err.println("Failed to spawn process");
-                        return;
-                    }
+                // Demonstrate process spawning and script injection
+                System.out.println("\n--- Process Spawning and Script Injection ---");
+                System.out.println("Spawning 'bash --help' process...");
 
-                    int spawnedPid = spawnedResult.get();
+                // Spawn bash with --help argument
+                List<String> bashArgs = List.of("--help");
+                int spawnedPid = localDevice.spawnName("bash", bashArgs);
+                System.out.println("Spawned process with PID: " + spawnedPid);
 
-                    System.out.println("Spawned process with PID: " + spawnedPid);
-
+                try {
                     // Attach to the spawned process
-                    try (Session session = localDevice.attach(spawnedPid)) {
+                    try (Session session = localDevice.attach(spawnedPid);
+                         Script script = session.createScript("""
+                             (function () {
+                                 const mainModule = Process.enumerateModules()[0]
+                                 console.log({
+                                     name: mainModule.name,
+                                     path: mainModule.path,
+                                     base: mainModule.base.toString(),
+                                     size: mainModule.size
+                                 })
+                             })();
+                             """)) {
+
                         System.out.println("Attached to process");
+                        System.out.println("Loading script...");
 
-                        // Create a simple script to get the process arguments
-                        // language=JavaScript
-                        String scriptSource = """
-                            (function () {
-                                function sendInfo(obj) {
-                                    send({ type: "info", data: obj })
-                                }
+                        script.load();
+                        System.out.println("Script loaded successfully");
 
-                                const mainModule = Process.enumerateModules()[0]
+                        // Resume the spawned process
+                        localDevice.resume(spawnedPid);
+                        System.out.println("Resumed spawned process");
 
-                                console.log({
-                                    name: mainModule.name,
-                                    path: mainModule.path,
-                                    base: mainModule.base.toString(),
-                                    size: mainModule.size
-                                })
-                            })();
-                            """;
-
-                        // Create and load the script
-                        try (Script script = session.createScript(scriptSource)) {
-                            // Set up message handler to receive messages from the script
-//                            script.on("message", (Closure.MessageCallback) (message, data) -> {
-//                                System.out.println("Message from script: " + message);
-//
-//                                // Try to parse the message for binary info
-//                                if (message.contains("\"type\":\"info\"")) {
-//                                    System.out.println("Binary info from agent:");
-//                                    // For demonstration, just print the raw message
-//                                    // In a real implementation, you'd parse the JSON properly
-//                                }
-//                            });
-
-                            System.out.println("working?");
-
-                            script.load();
-                            System.out.println("Script loaded successfully");
-
-                            // Resume the spawned process
-                            localDevice.resume(spawnedPid);
-                            System.out.println("Resumed spawned process");
-
-                            // Give the script some time to execute and send info
-                            System.out.println("Waiting for script to send binary info...");
-                            Thread.sleep(1000);  // Wait 1 second for the script to execute
-
-                            // Clean up - kill the spawned process
-                            System.out.println("Cleaning up spawned process...");
-                            localDevice.kill(spawnedPid);
-                            System.out.println("Process terminated");
-
-                        } catch (Exception scriptEx) {
-                            System.err.println("Script error: " + scriptEx.getMessage());
-                            // Make sure to clean up the process
-                            try {
-                                localDevice.kill(spawnedPid);
-                            } catch (Exception killEx) {
-                                System.err.println("Failed to kill process: " + killEx.getMessage());
-                            }
-                        }
-                    } catch (Exception sessionEx) {
-                        System.err.println("Session error: " + sessionEx.getMessage());
-                        // Make sure to clean up the process
-                        try {
-                            localDevice.kill(spawnedPid);
-                        } catch (Exception killEx) {
-                            System.err.println("Failed to kill process: " + killEx.getMessage());
-                        }
+                        // Give the script some time to execute
+                        System.out.println("Waiting for script to execute...");
+                        Thread.sleep(1000);
                     }
-                } else {
-                    System.out.println("No local device found");
+                } finally {
+                    // Always clean up the spawned process
+                    try {
+                        System.out.println("Cleaning up spawned process...");
+                        localDevice.kill(spawnedPid);
+                        System.out.println("Process terminated");
+                    } catch (Exception killEx) {
+                        System.err.println("Failed to kill process: " + killEx.getMessage());
+                    }
                 }
 
-                // Clean up devices
-                for (Device device : devices) {
-                    device.close();
-                }
-
-                System.out.println("Device manager will be closed automatically");
+                System.out.println("\nDevice manager will be closed automatically");
             }
 
         } catch (Exception e) {

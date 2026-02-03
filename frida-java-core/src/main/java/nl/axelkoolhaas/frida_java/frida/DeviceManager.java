@@ -27,6 +27,7 @@ import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Device manager for enumerating and managing Frida devices
@@ -62,8 +63,10 @@ public class DeviceManager implements AutoCloseable {
         try {
             MemorySegment managerPtr = (MemorySegment) FRIDA_DEVICE_MANAGER_NEW.invoke();
             this.managerPtr = FridaNativeUtils.requireValidPointer(managerPtr, "Device manager pointer");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to initialize device manager", e);
+            throw new FridaException("Failed to initialize device manager", e);
         }
     }
 
@@ -88,47 +91,46 @@ public class DeviceManager implements AutoCloseable {
             }
 
             return extractDevicesFromList(deviceList);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enumerate devices", e);
+            throw new FridaException("Failed to enumerate devices", e);
         }
     }
 
     /**
      * Get the local device
-     * @return Local Device object or null if not found
+     * @return Optional containing the local Device, or empty if not found
      */
-    public Device getLocalDevice() {
+    public Optional<Device> getLocalDevice() {
         List<Device> devices = enumerateDevices();
         return devices.stream()
                 .filter(device -> device.getId().equals("local"))
-                .findFirst()
-                .orElse(null);
+                .findFirst();
     }
 
     /**
      * Get a device by its ID
      * @param deviceId The device ID to look for
-     * @return Device object or null if not found
+     * @return Optional containing the Device, or empty if not found
      */
-    public Device getDeviceById(String deviceId) {
+    public Optional<Device> getDeviceById(String deviceId) {
         List<Device> devices = enumerateDevices();
         return devices.stream()
                 .filter(device -> deviceId.equals(device.getId()))
-                .findFirst()
-                .orElse(null);
+                .findFirst();
     }
 
     /**
      * Get a device by its name
      * @param deviceName The device name to look for
-     * @return Device object or null if not found
+     * @return Optional containing the Device, or empty if not found
      */
-    public Device getDeviceByName(String deviceName) {
+    public Optional<Device> getDeviceByName(String deviceName) {
         List<Device> devices = enumerateDevices();
         return devices.stream()
                 .filter(device -> deviceName.equals(device.getName()))
-                .findFirst()
-                .orElse(null);
+                .findFirst();
     }
 
     public void clean() {
@@ -141,9 +143,10 @@ public class DeviceManager implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "clean device manager");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            // Log error but don't throw, cleanup should be safe
-            System.err.println("Warning: Failed to cleanup DeviceManager: " + e.getMessage());
+            throw new FridaException("Failed to clean device manager", e);
         }
     }
 

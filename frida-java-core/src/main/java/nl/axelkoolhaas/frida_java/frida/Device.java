@@ -201,8 +201,10 @@ public class Device implements AutoCloseable {
         try {
             MemorySegment result = (MemorySegment) FRIDA_DEVICE_GET_ID.invoke(devicePtr);
             return FridaNativeUtils.memorySegmentToString(result);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get device ID", e);
+            throw new FridaException("Failed to get device ID", e);
         }
     }
 
@@ -214,8 +216,10 @@ public class Device implements AutoCloseable {
         try {
             MemorySegment result = (MemorySegment) FRIDA_DEVICE_GET_NAME.invoke(devicePtr);
             return FridaNativeUtils.memorySegmentToString(result);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get device name", e);
+            throw new FridaException("Failed to get device name", e);
         }
     }
 
@@ -225,10 +229,12 @@ public class Device implements AutoCloseable {
      */
     public DeviceType getType() {
         try {
-            int typeValue = (int) FRIDA_DEVICE_GET_DTYPE.invoke(devicePtr);
-            return DeviceType.fromValue(typeValue);
+            int deviceType = (int) FRIDA_DEVICE_GET_DTYPE.invoke(devicePtr);
+            return DeviceType.fromValue(deviceType);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get device type", e);
+            throw new FridaException("Failed to get device type", e);
         }
     }
 
@@ -239,8 +245,10 @@ public class Device implements AutoCloseable {
     public boolean isLost() {
         try {
             return (boolean) FRIDA_DEVICE_IS_LOST.invoke(devicePtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to check if device is lost", e);
+            throw new FridaException("Failed to check if device is lost", e);
         }
     }
 
@@ -265,8 +273,10 @@ public class Device implements AutoCloseable {
             }
 
             return extractProcessesFromList(processList);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enumerate processes", e);
+            throw new FridaException("Failed to enumerate processes", e);
         }
     }
 
@@ -319,7 +329,7 @@ public class Device implements AutoCloseable {
      */
     public Process getProcessByPid(int pid) {
         return findProcessByPid(pid)
-                .orElseThrow(() -> new RuntimeException("Process with PID " + pid + " not found"));
+                .orElseThrow(() -> new FridaException("Process with PID " + pid + " not found"));
     }
 
     /**
@@ -330,7 +340,7 @@ public class Device implements AutoCloseable {
      */
     public Process getProcessByName(String name) {
         return findProcessByName(name)
-                .orElseThrow(() -> new RuntimeException("Process with name '" + name + "' not found"));
+                .orElseThrow(() -> new FridaException("Process with name '" + name + "' not found"));
     }
 
     /**
@@ -387,10 +397,10 @@ public class Device implements AutoCloseable {
                 FridaNativeUtils.fridaUnref(appList);
             }
 
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            System.err.println("Failed to enumerate applications: " + e.getMessage());
-            e.printStackTrace();
-            return null;
+            throw new FridaException("Failed to enumerate applications", e);
         }
     }
 
@@ -422,9 +432,10 @@ public class Device implements AutoCloseable {
     /**
      * Spawn a new process
      * @param programPath Path to the executable to spawn
-     * @return Optional containing PID of the spawned process, or empty if spawn failed
+     * @return PID of the spawned process
+     * @throws FridaException if spawning fails
      */
-    public Optional<Integer> spawn(String programPath) {
+    public int spawn(String programPath) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment programPtr = arena.allocateFrom(programPath);
 
@@ -439,11 +450,11 @@ public class Device implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "spawn process: " + programPath);
 
-            return Optional.of(pid);
+            return pid;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            // Log all failures internally but don't re-throw
-            System.err.println("Failed to spawn process '" + programPath + "': " + e.getMessage());
-            return Optional.empty();
+            throw new FridaException("Failed to spawn process: " + programPath, e);
         }
     }
 
@@ -451,9 +462,10 @@ public class Device implements AutoCloseable {
      * Spawn a new process with arguments
      * @param programPath Full path of the executable to spawn
      * @param args Arguments to pass to the process
-     * @return Optional containing PID of the spawned process, or empty if spawn failed
+     * @return PID of the spawned process
+     * @throws FridaException if spawning fails
      */
-    public Optional<Integer> spawn(String programPath, List<String> args) {
+    public int spawn(String programPath, List<String> args) {
         try (SpawnOptions options = new SpawnOptions();
              Arena arena = Arena.ofConfined()) {
 
@@ -478,24 +490,24 @@ public class Device implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "spawn process: " + programPath);
 
-            return Optional.of(pid);
+            return pid;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            // Log all failures internally but don't re-throw
-            System.err.println("Failed to spawn process '" + programPath + "' with args " + args + ": " + e.getMessage());
-            return Optional.empty();
+            throw new FridaException("Failed to spawn process '" + programPath + "' with args " + args, e);
         }
     }
 
     /**
      * Helper method to spawn by program name (searches PATH)
      * @param programName name of the program to spawn
-     * @return Optional containing PID of the spawned process, or empty if spawn failed
+     * @return PID of the spawned process
+     * @throws FridaException if executable not found or spawning fails
      */
-    public Optional<Integer> spawnName(String programName) {
+    public int spawnName(String programName) {
         String programPath = findBinary(programName);
         if (programPath == null) {
-            System.err.println("Executable not found in PATH: " + programName);
-            return Optional.empty();
+            throw new FridaException("Executable not found in PATH: " + programName);
         }
         return spawn(programPath);
     }
@@ -504,13 +516,13 @@ public class Device implements AutoCloseable {
      * Helper method to spawn by program name (searches PATH)
      * @param programName name of the program to spawn
      * @param args Arguments to pass to the process
-     * @return Optional containing PID of the spawned process, or empty if spawn failed
+     * @return PID of the spawned process
+     * @throws FridaException if executable not found or spawning fails
      */
-    public Optional<Integer> spawnName(String programName, List<String> args) {
+    public int spawnName(String programName, List<String> args) {
         String programPath = findBinary(programName);
         if (programPath == null) {
-            System.err.println("Executable not found in PATH: " + programName);
-            return Optional.empty();
+            throw new FridaException("Executable not found in PATH: " + programName);
         }
         return spawn(programPath, args);
     }
@@ -541,9 +553,11 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "kill process: " + pid);
+            GErrorUtils.handleError(error, "kill process");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to kill process with PID: " + pid, e);
+            throw new FridaException("Failed to kill process with PID: " + pid, e);
         }
     }
 
@@ -562,9 +576,11 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "resume process: " + pid);
+            GErrorUtils.handleError(error, "resume process");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to resume process with PID: " + pid, e);
+            throw new FridaException("Failed to resume process with PID: " + pid, e);
         }
     }
 
@@ -585,11 +601,13 @@ public class Device implements AutoCloseable {
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "attach process: " + pid);
+            GErrorUtils.handleError(error, "attach to process");
 
             return new Session(sessionPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to attach to process with PID: " + pid, e);
+            throw new FridaException("Failed to attach to process with PID: " + pid, e);
         }
     }
 
@@ -607,8 +625,10 @@ public class Device implements AutoCloseable {
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "enable spawn gating");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enable spawn gating", e);
+            throw new FridaException("Failed to enable spawn gating", e);
         }
     }
 
@@ -624,8 +644,10 @@ public class Device implements AutoCloseable {
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "disable spawn gating");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to disable spawn gating", e);
+            throw new FridaException("Failed to disable spawn gating", e);
         }
     }
 
@@ -660,8 +682,10 @@ public class Device implements AutoCloseable {
 
             FridaNativeUtils.fridaUnref(spawnList);
             return spawns;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enumerate pending spawn", e);
+            throw new FridaException("Failed to enumerate pending spawn", e);
         }
     }
 
@@ -696,8 +720,10 @@ public class Device implements AutoCloseable {
 
             FridaNativeUtils.fridaUnref(childList);
             return children;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to enumerate pending children", e);
+            throw new FridaException("Failed to enumerate pending children", e);
         }
     }
 
@@ -716,9 +742,11 @@ public class Device implements AutoCloseable {
             FRIDA_DEVICE_INPUT_SYNC.invoke(devicePtr, pid, gBytesData, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "input to process: " + pid);
+            GErrorUtils.handleError(error, "send input to process");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to send input to process with PID: " + pid, e);
+            throw new FridaException("Failed to send input to process with PID: " + pid, e);
         }
     }
 
@@ -743,11 +771,13 @@ public class Device implements AutoCloseable {
                     devicePtr, pid, pathPtr, entrypointPtr, dataPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "inject library file into process: " + pid);
+            GErrorUtils.handleError(error, "inject library file");
 
             return injectionId;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to inject library file into process with PID: " + pid, e);
+            throw new FridaException("Failed to inject library file into process with PID: " + pid, e);
         }
     }
 
@@ -772,11 +802,13 @@ public class Device implements AutoCloseable {
                     devicePtr, pid, gBytesBlob, entrypointPtr, dataPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "inject library blob into process: " + pid);
+            GErrorUtils.handleError(error, "inject library blob");
 
             return injectionId;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to inject library blob into process with PID: " + pid, e);
+            throw new FridaException("Failed to inject library blob into process with PID: " + pid, e);
         }
     }
 
@@ -796,11 +828,13 @@ public class Device implements AutoCloseable {
                     devicePtr, addressPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "open channel: " + address);
+            GErrorUtils.handleError(error, "open channel");
 
             return ioStream;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to open channel: " + address, e);
+            throw new FridaException("Failed to open channel: " + address, e);
         }
     }
 
@@ -820,11 +854,13 @@ public class Device implements AutoCloseable {
                     devicePtr, addressPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "open service: " + address);
+            GErrorUtils.handleError(error, "open service");
 
             return service;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to open service: " + address, e);
+            throw new FridaException("Failed to open service: " + address, e);
         }
     }
 
@@ -844,11 +880,11 @@ public class Device implements AutoCloseable {
             if (iconVariant.equals(MemorySegment.NULL)) {
                 return null;
             }
-            // Return the GVariant pointer wrapped in an Icon object
-            // Users can access the raw pointer if they need to parse the icon data
             return new Icon(iconVariant);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get device icon", e);
+            throw new FridaException("Failed to get device icon", e);
         }
     }
 
@@ -863,8 +899,10 @@ public class Device implements AutoCloseable {
                 return null;
             }
             return new Bus(bus);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get device bus", e);
+            throw new FridaException("Failed to get device bus", e);
         }
     }
 
@@ -881,11 +919,13 @@ public class Device implements AutoCloseable {
                     .invoke(devicePtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "get params");
+            GErrorUtils.handleError(error, "query system parameters");
 
             return GHashTableUtil.toMap(hashTable);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get device parameters", e);
+            throw new FridaException("Failed to get device parameters", e);
         }
     }
 
@@ -906,11 +946,7 @@ public class Device implements AutoCloseable {
                     .invoke(devicePtr, queryOpts, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            if (!error.equals(MemorySegment.NULL)) {
-                FridaNativeUtils.fridaUnref(queryOpts);
-                GErrorUtils.handleError(error, "get frontmost application");
-                throw new RuntimeException("Failed to get frontmost application");
-            }
+            GErrorUtils.handleError(error, "get frontmost application");
 
             FridaNativeUtils.fridaUnref(queryOpts);
 
@@ -919,17 +955,20 @@ public class Device implements AutoCloseable {
             }
 
             return new Application(appPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            throw new RuntimeException("Failed to get frontmost application", e);
+            throw new FridaException("Failed to get frontmost application", e);
         }
     }
 
     public void clean() {
         try {
             FridaNativeUtils.fridaUnref(devicePtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
-            // Log error but don't throw, cleanup should be safe
-            System.err.println("Warning: Failed to cleanup Application: " + e.getMessage());
+            throw new FridaException("Failed to cleanup Device", e);
         }
     }
 

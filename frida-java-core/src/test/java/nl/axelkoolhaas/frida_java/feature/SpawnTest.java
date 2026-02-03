@@ -35,7 +35,7 @@ public class SpawnTest {
     @Order(1)
     void testSpawnSimpleProcess() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Try to spawn a simple command that exists on most systems
             //TODO expand to Windows equivalents
@@ -45,19 +45,12 @@ public class SpawnTest {
 
             for (String program : testPrograms) {
                 try {
-                    var spawnResult = localDevice.spawnName(program);
-                    if (spawnResult.isEmpty()) {
-                        continue; // Try next program
+                    spawnedPid = localDevice.spawnName(program);
+                    if (spawnedPid > 0) {
+                        usedProgram = program;
+                        break;
                     }
-
-                    spawnedPid = spawnResult.get();
-                    if (spawnedPid <= 0) {
-                        continue; // Try next program
-                    }
-
-                    usedProgram = program;
-                    break;
-                } catch (RuntimeException e) {
+                } catch (Exception e) {
                     // Try next program
                 }
             }
@@ -82,7 +75,7 @@ public class SpawnTest {
 //    @Order(2)
 //    void testSpawnProcessWithArgs() {
 //        try (DeviceManager deviceManager = new DeviceManager()) {
-//            Device localDevice = deviceManager.getLocalDevice();
+//            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 //
 //            try {
 //                String program = "/bin/sleep";
@@ -113,7 +106,7 @@ public class SpawnTest {
 //    @Order(3)
 //    void testSpawnAndResume() {
 //        try (DeviceManager deviceManager = new DeviceManager()) {
-//            Device localDevice = deviceManager.getLocalDevice();
+//            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 //
 //            try {
 //                String program = "/bin/sleep";
@@ -148,7 +141,7 @@ public class SpawnTest {
 //    @Order(4)
 //    void testAttachToSpawnedProcess() {
 //        try (DeviceManager deviceManager = new DeviceManager()) {
-//            Device localDevice = deviceManager.getLocalDevice();
+//            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 //
 //            try {
 //                String program = "/bin/sleep";
@@ -188,7 +181,7 @@ public class SpawnTest {
 //    @Order(5)
 //    void testKillProcess() {
 //        try (DeviceManager deviceManager = new DeviceManager()) {
-//            Device localDevice = deviceManager.getLocalDevice();
+//            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 //
 //            try {
 //                String program = "/bin/sleep";
@@ -222,7 +215,7 @@ public class SpawnTest {
 //    @Order(6)
 //    void testInvalidSpawn() {
 //        try (DeviceManager deviceManager = new DeviceManager()) {
-//            Device localDevice = deviceManager.getLocalDevice();
+//            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 //
 //            // Try to spawn a non-existent program
 //            assertThrows(RuntimeException.class, () ->

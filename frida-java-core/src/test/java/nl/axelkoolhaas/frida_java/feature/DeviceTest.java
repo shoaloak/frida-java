@@ -68,7 +68,7 @@ public class DeviceTest {
     @Order(3)
     void testDeviceProperties() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device device = deviceManager.getLocalDevice();
+            Device device = deviceManager.getLocalDevice().orElseThrow();
 
             String id = device.getId();
             assertNotNull(id, "Device ID should not be null");
@@ -94,11 +94,11 @@ public class DeviceTest {
     @Order(4)
     void testGetDeviceById() {
          try (DeviceManager deviceManager = new DeviceManager()) {
-             Device localDevice = deviceManager.getDeviceById("local");
+             Device localDevice = deviceManager.getDeviceById("local").orElse(null);
              assertNotNull(localDevice, "Local device should be found by ID");
              assertEquals("local", localDevice.getId(), "Device ID should match");
 
-             Device nonExistentDevice = deviceManager.getDeviceById("non-existent-id");
+             Device nonExistentDevice = deviceManager.getDeviceById("non-existent-id").orElse(null);
              assertNull(nonExistentDevice, "Non-existent device should return null");
          }
     }
@@ -107,14 +107,14 @@ public class DeviceTest {
     @Order(5)
     void testGetDeviceByName() {
          try (DeviceManager deviceManager = new DeviceManager()) {
-             Device localDevice = deviceManager.getLocalDevice();
+             Device localDevice = deviceManager.getLocalDevice().orElseThrow();
              String localDeviceName = localDevice.getName();
 
-             Device foundDevice = deviceManager.getDeviceByName(localDeviceName);
+             Device foundDevice = deviceManager.getDeviceByName(localDeviceName).orElse(null);
              assertNotNull(foundDevice, "Device should be found by name");
              assertEquals(localDeviceName, foundDevice.getName(), "Device name should match");
 
-             Device nonExistentDevice = deviceManager.getDeviceByName("Non-existent Device");
+             Device nonExistentDevice = deviceManager.getDeviceByName("Non-existent Device").orElse(null);
              assertNull(nonExistentDevice, "Non-existent device should return null");
          }
     }
@@ -123,7 +123,7 @@ public class DeviceTest {
     @Order(6)
     void testEnumerateProcesses() {
          try (DeviceManager deviceManager = new DeviceManager()) {
-             Device localDevice = deviceManager.getLocalDevice();
+             Device localDevice = deviceManager.getLocalDevice().orElseThrow();
              List<Process> processList = localDevice.enumerateProcesses();
 
              assertNotNull(processList, "ProcessList should not be null");
@@ -151,7 +151,7 @@ public class DeviceTest {
     @Order(7)
     void testFindProcessByPid() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processes = localDevice.enumerateProcesses();
 
             assertFalse(processes.isEmpty(), "Should have at least one process");
@@ -176,7 +176,7 @@ public class DeviceTest {
     @Order(8)
     void testFindProcessByName() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processes = localDevice.enumerateProcesses();
 
             assertFalse(processes.isEmpty(), "Should have at least one process");
@@ -216,7 +216,7 @@ public class DeviceTest {
     @Order(9)
     void testGetProcessByPid() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processes = localDevice.enumerateProcesses();
 
             assertFalse(processes.isEmpty(), "Should have at least one process");
@@ -257,7 +257,7 @@ public class DeviceTest {
     @Order(10)
     void testGetProcessByName() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
             List<Process> processes = localDevice.enumerateProcesses();
 
             assertFalse(processes.isEmpty(), "Should have at least one process");
@@ -298,7 +298,7 @@ public class DeviceTest {
     @Order(11)
     void testSpawnGatingEnableDisable() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             try {
                 // Enable spawn gating (not supported on macOS with System Integrity Protection enabled)
@@ -320,7 +320,7 @@ public class DeviceTest {
     @Order(12)
     void testEnumeratePendingSpawn() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             try {
                 // Enable spawn gating first (not supported on macOS with SIP)
@@ -349,7 +349,7 @@ public class DeviceTest {
     @Order(13)
     void testEnumeratePendingChildren() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Enumerate pending children (likely empty in test environment)
             var pendingChildren = localDevice.enumeratePendingChildren();
@@ -365,13 +365,12 @@ public class DeviceTest {
     @Order(14)
     void testInputToProcess() {
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Spawn a process that can receive input
-            var pidOpt = localDevice.spawnName("cat", List.of());
+            int pid = localDevice.spawnName("cat", List.of());
 
-            if (pidOpt.isPresent()) {
-                int pid = pidOpt.get();
+            if (pid > 0) {
                 try {
                     // Resume the process first (spawned processes start suspended)
                     localDevice.resume(pid);
@@ -422,7 +421,7 @@ public class DeviceTest {
         }
 
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Note: We can't test with non-existent library files as Frida's native code
             // may crash when trying to load them. A real test would require:
@@ -451,7 +450,7 @@ public class DeviceTest {
         }
 
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Note: We can't test with invalid library bytes as Frida's native code
             // may crash when trying to process them. A real test would require:
@@ -480,7 +479,7 @@ public class DeviceTest {
         }
 
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Note: We can't test with invalid addresses as Frida's native code
             // doesn't validate the address format before trying to parse it,
@@ -507,7 +506,7 @@ public class DeviceTest {
         }
 
         try (DeviceManager deviceManager = new DeviceManager()) {
-            Device localDevice = deviceManager.getLocalDevice();
+            Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Note: We can't test with invalid addresses as Frida's native code
             // doesn't validate the address format before trying to parse it,

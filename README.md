@@ -139,6 +139,6 @@ See the [examples README](frida-java-examples/README.md) for more details.
 
 ## Development
 
-For FFI bindings, the general best practice is to handle errors at the binding level rather than expecting callers to
-deal with raw FFI errors. Bindings should handle errors because callers shouldn't need to know about FFI implementation details
+Instruction for both developers and LLMs are present at `.github/copilot-instructions.md`.
+
 
