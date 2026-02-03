@@ -26,11 +26,14 @@ import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a child process when child gating is enabled
  */
 public class Child {
+    private static final Logger log = LoggerFactory.getLogger(Child.class);
     private final MemorySegment childPtr;
 
     private static final MethodHandle FRIDA_CHILD_GET_PID;
@@ -66,6 +69,7 @@ public class Child {
      */
     public Child(MemorySegment childPtr) {
         this.childPtr = FridaNativeUtils.requireValidPointer(childPtr, "Child pointer");
+        log.debug("Child created");
     }
 
     /**
@@ -74,10 +78,13 @@ public class Child {
      */
     public int getPid() {
         try {
-            return (int) FRIDA_CHILD_GET_PID.invoke(childPtr);
+            int pid = (int) FRIDA_CHILD_GET_PID.invoke(childPtr);
+            log.trace("Got child PID: {}", pid);
+            return pid;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get child PID: {}", e.getMessage());
             throw new FridaException("Failed to get child PID", e);
         }
     }
@@ -88,10 +95,13 @@ public class Child {
      */
     public int getParentPid() {
         try {
-            return (int) FRIDA_CHILD_GET_PARENT_PID.invoke(childPtr);
+            int ppid = (int) FRIDA_CHILD_GET_PARENT_PID.invoke(childPtr);
+            log.trace("Got parent PID: {}", ppid);
+            return ppid;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get parent PID: {}", e.getMessage());
             throw new FridaException("Failed to get child parent PID", e);
         }
     }
@@ -103,10 +113,12 @@ public class Child {
     public ChildOrigin getOrigin() {
         try {
             int origin = (int) FRIDA_CHILD_GET_ORIGIN.invoke(childPtr);
+            log.trace("Got child origin: {}", origin);
             return ChildOrigin.fromValue(origin);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get child origin: {}", e.getMessage());
             throw new FridaException("Failed to get child origin", e);
         }
     }
@@ -118,10 +130,13 @@ public class Child {
     public String getIdentifier() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_CHILD_GET_IDENTIFIER.invoke(childPtr);
-            return FridaNativeUtils.memorySegmentToString(result);
+            String identifier = FridaNativeUtils.memorySegmentToString(result);
+            log.trace("Got child identifier: {}", identifier);
+            return identifier;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get child identifier: {}", e.getMessage());
             throw new FridaException("Failed to get child identifier", e);
         }
     }
@@ -133,10 +148,13 @@ public class Child {
     public String getPath() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_CHILD_GET_PATH.invoke(childPtr);
-            return FridaNativeUtils.memorySegmentToString(result);
+            String path = FridaNativeUtils.memorySegmentToString(result);
+            log.trace("Got child path: {}", path);
+            return path;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get child path: {}", e.getMessage());
             throw new FridaException("Failed to get child path", e);
         }
     }
@@ -151,6 +169,7 @@ public class Child {
             MemorySegment argvPtr = (MemorySegment) FRIDA_CHILD_GET_ARGV.invoke(childPtr, lengthPtr);
 
             if (argvPtr.equals(MemorySegment.NULL)) {
+                log.trace("Child argv is empty");
                 return new ArrayList<>();
             }
 
@@ -160,7 +179,9 @@ public class Child {
             for (int i = 0; i < length; i++) {
                 MemorySegment strPtr = argvPtr.getAtIndex(ValueLayout.ADDRESS, i);
                 if (!strPtr.equals(MemorySegment.NULL)) {
-                    argv.add(FridaNativeUtils.memorySegmentToString(strPtr));
+                    String arg = FridaNativeUtils.memorySegmentToString(strPtr);
+                    argv.add(arg);
+                    log.trace("Child argv[{}]: {}", i, arg);
                 }
             }
 
@@ -168,6 +189,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get child argv: {}", e.getMessage());
             throw new FridaException("Failed to get child argv", e);
         }
     }
@@ -182,6 +204,7 @@ public class Child {
             MemorySegment envpPtr = (MemorySegment) FRIDA_CHILD_GET_ENVP.invoke(childPtr, lengthPtr);
 
             if (envpPtr.equals(MemorySegment.NULL)) {
+                log.trace("Child envp is empty");
                 return new ArrayList<>();
             }
 
@@ -191,7 +214,9 @@ public class Child {
             for (int i = 0; i < length; i++) {
                 MemorySegment strPtr = envpPtr.getAtIndex(ValueLayout.ADDRESS, i);
                 if (!strPtr.equals(MemorySegment.NULL)) {
-                    envp.add(FridaNativeUtils.memorySegmentToString(strPtr));
+                    String env = FridaNativeUtils.memorySegmentToString(strPtr);
+                    envp.add(env);
+                    log.trace("Child envp[{}]: {}", i, env);
                 }
             }
 
@@ -199,6 +224,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get child envp: {}", e.getMessage());
             throw new FridaException("Failed to get child envp", e);
         }
     }

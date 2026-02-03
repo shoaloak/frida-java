@@ -23,6 +23,8 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -32,6 +34,8 @@ import java.util.concurrent.*;
  * Represents a Frida script
  */
 public class Script implements AutoCloseable {
+    private static final Logger log = LoggerFactory.getLogger(Script.class);
+
     private final MemorySegment scriptPtr;
     private boolean hasMessageHandler = false;
     private SignalCallbacks.MessageCallback messageCallback;
@@ -65,12 +69,14 @@ public class Script implements AutoCloseable {
 
     public Script(MemorySegment scriptPtr) {
         this.scriptPtr = FridaNativeUtils.requireValidPointer(scriptPtr, "Script pointer");
+        log.debug("Script object created");
     }
 
     /**
      * Load the script
      */
     public void load() {
+        log.debug("Loading script");
         // Set up default message handler if none exists for RPC functionality
         if (!hasMessageHandler) {
             on("message", (SignalCallbacks.MessageCallback) (_, _) -> {
@@ -83,13 +89,16 @@ public class Script implements AutoCloseable {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
+            log.trace("Native call: frida_script_load_sync()");
             // Load the script (script, cancellable=NULL, error)
             FRIDA_SCRIPT_LOAD_SYNC.invoke(scriptPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "load script");
+            log.debug("Script loaded successfully");
         } catch (Throwable e) {
+            log.error("Failed to load script: {}", e.getMessage());
             throw new FridaException("Failed to load script", e);
         }
     }

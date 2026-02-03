@@ -21,6 +21,8 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -32,6 +34,7 @@ import static nl.axelkoolhaas.frida_java.FridaNativeUtils.memorySegmentToString;
  * Main Frida class with safe initialization/deinitialization
  */
 public class Frida {
+    private static final Logger log = LoggerFactory.getLogger(Frida.class);
     private static final MethodHandle FRIDA_VERSION_STRING;
     private static final MethodHandle FRIDA_INIT;
     private static final MethodHandle FRIDA_DEINIT; // Not used
@@ -60,12 +63,15 @@ public class Frida {
         if (!isInitialized.get()) {
             synchronized (initLock) {
                 if (!isInitialized.get()) {
+                    log.debug("Initializing Frida library");
                     try {
                         FRIDA_INIT.invoke();
                         isInitialized.set(true);
+                        log.debug("Frida library initialized successfully");
                     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
                         throw e;
                     } catch (Throwable e) {
+                        log.error("Failed to initialize Frida: {}", e.getMessage(), e);
                         throw new FridaException("Failed to initialize Frida", e);
                     }
                 }
@@ -79,11 +85,15 @@ public class Frida {
      */
     public static String getVersion() {
         try {
+            log.trace("Getting Frida version");
             MemorySegment versionPtr = (MemorySegment) FRIDA_VERSION_STRING.invoke();
-            return FridaNativeUtils.memorySegmentToString(versionPtr);
+            String version = FridaNativeUtils.memorySegmentToString(versionPtr);
+            log.debug("Frida version: {}", version);
+            return version;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get Frida version: {}", e.getMessage(), e);
             throw new FridaException("Failed to get Frida version", e);
         }
     }

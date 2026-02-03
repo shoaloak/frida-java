@@ -4,6 +4,8 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -14,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Bus represents a communication channel with Frida devices
  */
 public class Bus {
+    private static final Logger log = LoggerFactory.getLogger(Bus.class);
     private final MemorySegment busPtr;
     private final Map<String, Object> signalHandlers = new ConcurrentHashMap<>();
     private final Map<String, Long> handlerIds = new ConcurrentHashMap<>();
@@ -39,6 +42,7 @@ public class Bus {
      */
     public Bus(MemorySegment busPtr) {
         this.busPtr = FridaNativeUtils.requireValidPointer(busPtr, "Bus pointer");
+        log.debug("Bus created");
     }
 
     /**
@@ -50,10 +54,12 @@ public class Bus {
             // frida_bus_is_detached returns gboolean (typedef gint, i.e., int)
             // gboolean: FALSE = 0, TRUE = non-zero (typically 1)
             int result = (int) FRIDA_BUS_IS_DETACHED.invoke(busPtr);
+            log.trace("Checked bus detached state: {}", result != 0);
             return result != 0;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to check if bus is detached: {}", e.getMessage());
             throw new FridaException("Failed to check if bus is detached", e);
         }
     }
@@ -66,14 +72,16 @@ public class Bus {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
-
+            log.debug("Attaching to bus");
             FRIDA_BUS_ATTACH_SYNC.invoke(busPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "attach to bus");
+            log.debug("Bus attached successfully");
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to attach to bus: {}", e.getMessage());
             throw new FridaException("Failed to attach to bus", e);
         }
     }
@@ -96,6 +104,7 @@ public class Bus {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to post message to bus: {}", e.getMessage());
             throw new FridaException("Failed to post message to bus", e);
         }
     }

@@ -24,6 +24,8 @@ import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.model.Icon;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -53,6 +55,8 @@ import java.util.Optional;
  * </p>
  */
 public class Device implements AutoCloseable {
+    private static final Logger log = LoggerFactory.getLogger(Device.class);
+
     private final MemorySegment devicePtr;
 
     private static final MethodHandle FRIDA_DEVICE_GET_DTYPE;
@@ -436,6 +440,7 @@ public class Device implements AutoCloseable {
      * @throws FridaException if spawning fails
      */
     public int spawn(String programPath) {
+        log.debug("Spawning process: {}", programPath);
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment programPtr = arena.allocateFrom(programPath);
 
@@ -443,6 +448,7 @@ public class Device implements AutoCloseable {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
+            log.trace("Native call: frida_device_spawn_sync(program={})", programPath);
             // Spawn the process (program, options=NULL, cancellable=NULL, error)
             int pid = (int) FRIDA_DEVICE_SPAWN_SYNC.invoke(devicePtr, programPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
 
@@ -450,10 +456,12 @@ public class Device implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "spawn process: " + programPath);
 
+            log.debug("Successfully spawned process: {} with pid={}", programPath, pid);
             return pid;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to spawn process '{}': {}", programPath, e.getMessage());
             throw new FridaException("Failed to spawn process: " + programPath, e);
         }
     }
@@ -590,11 +598,13 @@ public class Device implements AutoCloseable {
      * @return Session object representing the attached session
      */
     public Session attach(int pid) {
+        log.debug("Attaching to process pid={}", pid);
         try (Arena arena = Arena.ofConfined()) {
             // Error handling
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
+            log.trace("Native call: frida_device_attach_sync(pid={})", pid);
             // Attach to the process (device, pid, options=NULL, cancellable=NULL, error)
             MemorySegment sessionPtr = (MemorySegment) FRIDA_DEVICE_ATTACH_SYNC.invoke(
                     devicePtr, pid, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
@@ -603,10 +613,12 @@ public class Device implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "attach to process");
 
+            log.debug("Successfully attached to pid={}", pid);
             return new Session(sessionPtr);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to attach to pid={}: {}", pid, e.getMessage());
             throw new FridaException("Failed to attach to process with PID: " + pid, e);
         }
     }

@@ -22,6 +22,8 @@ package nl.axelkoolhaas.frida_java.frida;
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -30,6 +32,8 @@ import java.lang.invoke.MethodHandle;
  * Represents a Frida session with a target process
  */
 public class Session implements AutoCloseable {
+    private static final Logger log = LoggerFactory.getLogger(Session.class);
+
     private final MemorySegment sessionPtr;
 
     private static final MethodHandle FRIDA_SESSION_IS_DETACHED;
@@ -61,6 +65,7 @@ public class Session implements AutoCloseable {
 
     public Session(MemorySegment sessionPtr) {
         this.sessionPtr = FridaNativeUtils.requireValidPointer(sessionPtr, "Session pointer");
+        log.debug("Session created");
     }
 
     /**
@@ -95,20 +100,24 @@ public class Session implements AutoCloseable {
      * Detach the session from the target process
      */
     public void detach() {
+        log.debug("Detaching session from pid={}", getPid());
         try (Arena arena = Arena.ofConfined()) {
             // Error handling
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
+            log.trace("Native call: frida_session_detach_sync()");
             // Detach the session (session, cancellable=NULL, error)
             FRIDA_SESSION_DETACH_SYNC.invoke(sessionPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "detach session");
+            log.debug("Session detached successfully");
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to detach session: {}", e.getMessage());
             throw new FridaException("Failed to detach session", e);
         }
     }
@@ -185,6 +194,7 @@ public class Session implements AutoCloseable {
      * @return Script object
      */
     public Script createScript(String script) {
+        log.debug("Creating script ({} bytes)", script.length());
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment scriptPtr = arena.allocateFrom(script);
 
@@ -192,6 +202,7 @@ public class Session implements AutoCloseable {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
+            log.trace("Native call: frida_session_create_script_sync()");
             // Create script (session, script, options=NULL, cancellable=NULL, error)
             MemorySegment scriptObjPtr = (MemorySegment) FRIDA_SESSION_CREATE_SCRIPT_SYNC.invoke(
                     sessionPtr, scriptPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
@@ -200,10 +211,12 @@ public class Session implements AutoCloseable {
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "create script");
 
+            log.debug("Script created successfully");
             return new Script(scriptObjPtr);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to create script: {}", e.getMessage());
             throw new FridaException("Failed to create script", e);
         }
     }

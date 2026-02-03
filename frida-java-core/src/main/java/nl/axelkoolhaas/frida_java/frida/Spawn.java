@@ -24,11 +24,14 @@ import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a spawned process that can be attached to
  */
 public class Spawn {
+    private static final Logger log = LoggerFactory.getLogger(Spawn.class);
     private final MemorySegment spawnPtr;
 
     private static final MethodHandle FRIDA_SPAWN_GET_PID;
@@ -45,6 +48,7 @@ public class Spawn {
 
     public Spawn(MemorySegment spawnPtr) {
         this.spawnPtr = FridaNativeUtils.requireValidPointer(spawnPtr, "Spawn pointer");
+        log.debug("Spawn created");
     }
 
     /**
@@ -53,10 +57,13 @@ public class Spawn {
      */
     public int getPid() {
         try {
-            return (int) FRIDA_SPAWN_GET_PID.invoke(spawnPtr);
+            int pid = (int) FRIDA_SPAWN_GET_PID.invoke(spawnPtr);
+            log.trace("Got spawn PID: {}", pid);
+            return pid;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get spawn PID: {}", e.getMessage());
             throw new FridaException("Failed to get spawn PID", e);
         }
     }
@@ -68,10 +75,13 @@ public class Spawn {
     public String getIdentifier() {
         try {
             MemorySegment result = (MemorySegment) FRIDA_SPAWN_GET_IDENTIFIER.invoke(spawnPtr);
-            return FridaNativeUtils.memorySegmentToString(result);
+            String identifier = FridaNativeUtils.memorySegmentToString(result);
+            log.trace("Got spawn identifier: {}", identifier);
+            return identifier;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get spawn identifier: {}", e.getMessage());
             throw new FridaException("Failed to get spawn identifier", e);
         }
     }

@@ -22,6 +22,8 @@ package nl.axelkoolhaas.frida_java.frida;
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -33,6 +35,7 @@ import java.util.Optional;
  * Device manager for enumerating and managing Frida devices
  */
 public class DeviceManager implements AutoCloseable {
+    private static final Logger log = LoggerFactory.getLogger(DeviceManager.class);
     private final MemorySegment managerPtr;
 
     private static final MethodHandle FRIDA_DEVICE_MANAGER_NEW;
@@ -60,12 +63,15 @@ public class DeviceManager implements AutoCloseable {
     }
 
     public DeviceManager() {
+        log.debug("Creating DeviceManager");
         try {
             MemorySegment managerPtr = (MemorySegment) FRIDA_DEVICE_MANAGER_NEW.invoke();
             this.managerPtr = FridaNativeUtils.requireValidPointer(managerPtr, "Device manager pointer");
+            log.debug("DeviceManager created successfully");
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to create DeviceManager: {}", e.getMessage(), e);
             throw new FridaException("Failed to initialize device manager", e);
         }
     }
@@ -75,6 +81,7 @@ public class DeviceManager implements AutoCloseable {
      * @return List of Device objects
      */
     public List<Device> enumerateDevices() {
+        log.trace("Enumerating devices");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
@@ -87,13 +94,17 @@ public class DeviceManager implements AutoCloseable {
             GErrorUtils.handleError(error, "enumerate devices");
 
             if (deviceList.equals(MemorySegment.NULL)) {
+                log.debug("No devices found");
                 return new ArrayList<>();
             }
 
-            return extractDevicesFromList(deviceList);
+            List<Device> devices = extractDevicesFromList(deviceList);
+            log.debug("Found {} device(s)", devices.size());
+            return devices;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to enumerate devices: {}", e.getMessage(), e);
             throw new FridaException("Failed to enumerate devices", e);
         }
     }
@@ -134,6 +145,7 @@ public class DeviceManager implements AutoCloseable {
     }
 
     public void clean() {
+        log.debug("Closing DeviceManager");
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
@@ -143,9 +155,11 @@ public class DeviceManager implements AutoCloseable {
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "clean device manager");
+            log.debug("DeviceManager closed successfully");
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to close DeviceManager: {}", e.getMessage(), e);
             throw new FridaException("Failed to clean device manager", e);
         }
     }

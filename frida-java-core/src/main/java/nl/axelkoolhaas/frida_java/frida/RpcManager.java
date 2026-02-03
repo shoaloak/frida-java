@@ -19,6 +19,8 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Manages RPC call infrastructure for Frida scripts
  */
 public class RpcManager {
+    private static final Logger log = LoggerFactory.getLogger(RpcManager.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Map<String, CompletableFuture<Object>> RPC_CALLS = new ConcurrentHashMap<>();
 
@@ -41,6 +44,7 @@ public class RpcManager {
      */
     public static Object[] createRpcCall(String functionName, Object... args) {
         String rpcId = UUID.randomUUID().toString().substring(0, 16);
+        log.debug("Creating RPC call: function={}, rpcId={}", functionName, rpcId);
 
         Object[] rpcData = new Object[] {
             "frida:rpc",
@@ -70,6 +74,7 @@ public class RpcManager {
     public static CompletableFuture<Object> registerRpcCall(String rpcId) {
         CompletableFuture<Object> future = new CompletableFuture<>();
         RPC_CALLS.put(rpcId, future);
+        log.trace("Registered RPC call: rpcId={}", rpcId);
         return future;
     }
 
@@ -80,18 +85,17 @@ public class RpcManager {
      */
     public static RpcResult extractRpcResult(String message) {
         try {
-            JsonNode root = OBJECT_MAPPER.readTree(message);
+            JsonNode node = OBJECT_MAPPER.readTree(message);
 
-            if (root.isArray() && root.size() >= 4) {
-                JsonNode typeNode = root.get(0);
-                if (typeNode.isString() && "frida:rpc".equals(typeNode.stringValue())) {
-                    String rpcId = root.get(1).stringValue();
-                    Object result = parseJsonValue(root.get(3));
-                    return new RpcResult(rpcId, result);
-                }
+            if (node.isArray() && node.size() >= 4 && "frida:rpc".equals(node.get(0).stringValue())) {
+                String rpcId = node.get(1).stringValue();
+                Object result = node.get(3);
+                log.trace("Extracted RPC result: rpcId={}", rpcId);
+                return new RpcResult(rpcId, result);
             }
         } catch (Exception e) {
             // Not an RPC message
+            log.trace("Message is not a valid RPC response: {}", e.getMessage());
         }
 
         return null;

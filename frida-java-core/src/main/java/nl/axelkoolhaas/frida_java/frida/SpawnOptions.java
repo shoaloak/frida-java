@@ -22,6 +22,8 @@ package nl.axelkoolhaas.frida_java.frida;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -33,6 +35,7 @@ import java.util.Map;
  * Options for spawning processes
  */
 public class SpawnOptions implements AutoCloseable {
+    private static final Logger log = LoggerFactory.getLogger(SpawnOptions.class);
     private final MemorySegment optionsPtr;
 
     private static final MethodHandle FRIDA_SPAWN_OPTIONS_NEW;
@@ -81,9 +84,11 @@ public class SpawnOptions implements AutoCloseable {
         try {
             this.optionsPtr = (MemorySegment) FRIDA_SPAWN_OPTIONS_NEW.invoke();
             FridaNativeUtils.requireValidPointer(optionsPtr, "SpawnOptions pointer");
+            log.debug("SpawnOptions created");
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to create SpawnOptions: {}", e.getMessage());
             throw new FridaException("Failed to create SpawnOptions", e);
         }
     }

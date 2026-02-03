@@ -26,11 +26,14 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a process on a Frida device
  */
 public class Process {
+    private static final Logger log = LoggerFactory.getLogger(Process.class);
     private final MemorySegment processPtr;
 
     private static final MethodHandle FRIDA_PROCESS_GET_PID;
@@ -59,6 +62,7 @@ public class Process {
      */
     public Process(MemorySegment processPtr) {
         this.processPtr = FridaNativeUtils.requireValidPointer(processPtr, "Process pointer");
+        log.debug("Process created");
     }
 
     /**
@@ -67,10 +71,13 @@ public class Process {
      */
     public int getPid() {
         try {
-            return (int) FRIDA_PROCESS_GET_PID.invoke(processPtr);
+            int pid = (int) FRIDA_PROCESS_GET_PID.invoke(processPtr);
+            log.trace("Got process PID: {}", pid);
+            return pid;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get process PID: {}", e.getMessage());
             throw new FridaException("Failed to get process PID", e);
         }
     }
@@ -82,10 +89,13 @@ public class Process {
     public String getName() {
         try {
             MemorySegment namePtr = (MemorySegment) FRIDA_PROCESS_GET_NAME.invoke(processPtr);
-            return FridaNativeUtils.memorySegmentToString(namePtr);
+            String name = FridaNativeUtils.memorySegmentToString(namePtr);
+            log.trace("Got process name: {}", name);
+            return name;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to get process name: {}", e.getMessage());
             throw new FridaException("Failed to get process name", e);
         }
     }
