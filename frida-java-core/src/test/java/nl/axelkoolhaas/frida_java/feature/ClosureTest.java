@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java.feature;
 
 import nl.axelkoolhaas.frida_java.frida.Closure;
+import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
 import org.junit.jupiter.api.*;
 
 import java.lang.foreign.MemorySegment;
@@ -62,7 +63,7 @@ public class ClosureTest {
         AtomicReference<String> receivedMessage = new AtomicReference<>();
         AtomicReference<byte[]> receivedData = new AtomicReference<>();
 
-        Closure.MessageCallback callback = (message, data) -> {
+        SignalCallbacks.MessageCallback callback = (message, data) -> {
             messageReceived.set(true);
             receivedMessage.set(message);
             receivedData.set(data);
@@ -107,7 +108,7 @@ public class ClosureTest {
         AtomicReference<String> receivedMessage = new AtomicReference<>();
         AtomicReference<byte[]> receivedData = new AtomicReference<>();
 
-        Closure.MessageCallback callback = (message, data) -> {
+        SignalCallbacks.MessageCallback callback = (message, data) -> {
             receivedMessage.set(message);
             receivedData.set(data);
             latch.countDown();
@@ -273,7 +274,7 @@ public class ClosureTest {
         AtomicReference<String> receivedMessage = new AtomicReference<>();
         AtomicReference<byte[]> receivedData = new AtomicReference<>();
 
-        Closure.MessageCallback callback = (message, data) -> {
+        SignalCallbacks.MessageCallback callback = (message, data) -> {
             receivedMessage.set(message);
             receivedData.set(data);
             latch.countDown();

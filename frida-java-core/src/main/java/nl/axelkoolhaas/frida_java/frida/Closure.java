@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 
 import java.lang.foreign.*;
@@ -102,10 +103,10 @@ public class Closure {
                     }
                     break;
                 case "message":
-                    if (callback instanceof MessageCallback && args.length >= 2) {
+                    if (callback instanceof SignalCallbacks.MessageCallback && args.length >= 2) {
                         String message = (String) args[0];
                         byte[] data = (byte[]) args[1];
-                        ((MessageCallback) callback).onMessage(message, data);
+                        ((SignalCallbacks.MessageCallback) callback).onMessage(message, data);
                     }
                     break;
                 case "spawn_added":
@@ -226,12 +227,5 @@ public class Closure {
 
     public static void handleGenericSignal(long closureId, String signalName, MemorySegment object, MemorySegment userData) {
         dispatchSignal(closureId, signalName, object);
-    }
-
-    /**
-     * Callback interface for message signals
-     */
-    public interface MessageCallback {
-        void onMessage(String message, byte[] data);
     }
 }

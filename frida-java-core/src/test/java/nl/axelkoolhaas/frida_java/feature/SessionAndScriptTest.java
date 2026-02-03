@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java.feature;
 
 import nl.axelkoolhaas.frida_java.frida.*;
+import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
 import org.junit.jupiter.api.*;
 
 import java.util.List;
@@ -275,7 +276,7 @@ public class SessionAndScriptTest {
                     // Set up message handler to capture script output
                     final boolean[] messageReceived = {false};
 
-                    script.on("message", (Closure.MessageCallback) (message, data) -> {
+                    script.on("message", (SignalCallbacks.MessageCallback) (message, _) -> {
                         System.out.println("Received message: " + message);
                         messageReceived[0] = true;
                     });

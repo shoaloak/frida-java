@@ -21,7 +21,8 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-import nl.axelkoolhaas.frida_java.exceptions.ContextCancelledException;
+import nl.axelkoolhaas.frida_java.frida.callbacks.SignalCallbacks;
+import nl.axelkoolhaas.frida_java.frida.exceptions.ContextCancelledException;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
@@ -38,7 +39,7 @@ import java.util.concurrent.TimeoutException;
 public class Script implements AutoCloseable {
     private final MemorySegment scriptPtr;
     private boolean hasMessageHandler = false;
-    private Closure.MessageCallback messageCallback;
+    private SignalCallbacks.MessageCallback messageCallback;
 
     private static final MethodHandle FRIDA_SCRIPT_LOAD_SYNC;
     private static final MethodHandle FRIDA_SCRIPT_UNLOAD_SYNC;
@@ -77,11 +78,8 @@ public class Script implements AutoCloseable {
     public void load() {
         // Set up default message handler if none exists for RPC functionality
         if (!hasMessageHandler) {
-            on("message", new Closure.MessageCallback() {
-                @Override
-                public void onMessage(String message, byte[] data) {
-                    // Default empty handler for RPC functionality
-                }
+            on("message", (SignalCallbacks.MessageCallback) (_, _) -> {
+                // Default empty handler for RPC functionality
             });
         }
 
@@ -237,16 +235,13 @@ public class Script implements AutoCloseable {
 
         if ("message".equals(signalName)) {
             // Set up message hijacking for RPC functionality
-            this.messageCallback = (callback instanceof Closure.MessageCallback) ?
-                (Closure.MessageCallback) callback :
-                (message, data) -> {
-                    if (callback instanceof Closure.MessageCallback) {
-                        ((Closure.MessageCallback) callback).onMessage(message, data);
-                    }
+            this.messageCallback = (callback instanceof SignalCallbacks.MessageCallback) ?
+                (SignalCallbacks.MessageCallback) callback :
+                (_, _) -> {
                 };
 
             // Create hijacking message handler
-            Closure.MessageCallback hijackingHandler = this::hijackMessage;
+            SignalCallbacks.MessageCallback hijackingHandler = this::hijackMessage;
             FridaNativeUtils.connectSignal(scriptPtr, signalName, hijackingHandler);
         } else {
             // For other signals, connect directly
@@ -327,14 +322,14 @@ public class Script implements AutoCloseable {
 
     /**
      * Internal method to create and execute RPC calls
-     *
+     * <hr>
      * Note: Unlike the Go implementation which uses sync.Pool for channel pooling,
      * we don't pool CompletableFuture objects here. Modern Java's JVM (especially Java 11+)
      * handles short-lived object allocation extremely efficiently through:
      * - Escape analysis (stack allocation for thread-local objects)
      * - TLAB (Thread-Local Allocation Buffers) for near-zero cost allocation
      * - Efficient GC (G1/ZGC) that handles high allocation rates with minimal pause times
-     *
+     * <br>
      * Pooling would only be beneficial if profiling shows >10,000 RPC calls/second
      * causing GC pressure, which is extremely rare in typical Frida workflows.
      */
