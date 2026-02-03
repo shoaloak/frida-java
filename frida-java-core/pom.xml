@@ -206,6 +206,11 @@ For local development:
                     <!-- The "corrupted channel" warning is harmless when using native code -->
 <!--                    <forkCount>0</forkCount>-->
                     <redirectTestOutputToFile>false</redirectTestOutputToFile>
+                    <!-- SLF4J log level during tests -->
+                    <systemPropertyVariables>
+                        <org.slf4j.simpleLogger.defaultLogLevel>off</org.slf4j.simpleLogger.defaultLogLevel>
+<!--                        <org.slf4j.simpleLogger.defaultLogLevel>debug</org.slf4j.simpleLogger.defaultLogLevel>-->
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>
