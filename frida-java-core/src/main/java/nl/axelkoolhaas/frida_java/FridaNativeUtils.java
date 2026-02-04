@@ -21,6 +21,8 @@ package nl.axelkoolhaas.frida_java;
 
 import nl.axelkoolhaas.frida_java.frida.Closure;
 import nl.axelkoolhaas.frida_java.frida.FridaException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -30,12 +32,13 @@ import java.lang.invoke.MethodHandle;
 import java.util.Objects;
 
 public class FridaNativeUtils {
+    private static final Logger log = LoggerFactory.getLogger(FridaNativeUtils.class);
 
     private static final MethodHandle FRIDA_UNREF;
     private static final MethodHandle G_SIGNAL_LOOKUP;
     private static final MethodHandle G_SIGNAL_CONNECT_DATA;
     private static final MethodHandle G_SIGNAL_HANDLER_DISCONNECT;
-    private static final MethodHandle FRIDA_SCRIPT_GET_TYPE;
+    private static final MethodHandle G_TYPE_FROM_INSTANCE;
 
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
@@ -47,8 +50,9 @@ public class FridaNativeUtils {
                                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
         G_SIGNAL_HANDLER_DISCONNECT = FridaLibraryLoader.findFunction("g_signal_handler_disconnect",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-        FRIDA_SCRIPT_GET_TYPE = FridaLibraryLoader.findFunction("frida_script_get_type",
-                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        // G_OBJECT_TYPE(obj) macro expands to g_type_from_instance
+        G_TYPE_FROM_INSTANCE = FridaLibraryLoader.findFunction("g_type_from_instance",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
     }
 
     /**
@@ -96,8 +100,11 @@ public class FridaNativeUtils {
     }
 
     /**
-     * Connect a Java callback to a GObject signal
-     * This is the Java equivalent of the Go connectClosure function
+     * Connect a Java callback to a GObject signal.
+     * This is the Java equivalent of the Go connectClosure function.
+     *
+     * Uses g_type_from_instance to get the actual GObject type dynamically,
+     * allowing this to work with any GObject (Device, Session, Script, Bus, etc.)
      *
      * @param object GObject pointer to connect to
      * @param signalName Name of the signal to connect to
@@ -105,18 +112,25 @@ public class FridaNativeUtils {
      * @return Handler ID that can be used to disconnect the signal later
      */
     public static long connectSignal(MemorySegment object, String signalName, Object callback) {
+        log.debug("Connecting signal '{}' to object", signalName);
         try (Arena arena = Arena.ofConfined()) {
             Closure closure = Closure.create(callback, signalName);
             MemorySegment signalNamePtr = arena.allocateFrom(signalName);
 
-            long objectType = (Long) FRIDA_SCRIPT_GET_TYPE.invoke();
-            int signalId = (Integer) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
+            // Get the actual GObject type dynamically
+            long objectType = (long) G_TYPE_FROM_INSTANCE.invoke(object);
+            log.trace("Object type: {}", objectType);
 
+            int signalId = (int) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
+            log.trace("Signal ID for '{}': {}", signalName, signalId);
+
+            // Do nothing if signal is 0 meaning not found (matching Go behavior)
             if (signalId == 0) {
-                throw new FridaException("Signal '" + signalName + "' not found on object type " + objectType);
+                log.debug("Signal '{}' not found on object type {}", signalName, objectType);
+                return 0;
             }
 
-            return (long) G_SIGNAL_CONNECT_DATA.invoke(
+            long handlerId = (long) G_SIGNAL_CONNECT_DATA.invoke(
                     object,                          // instance
                     signalNamePtr,                   // detailed_signal
                     closure.getNativeCallback(),     // c_handler
@@ -124,9 +138,12 @@ public class FridaNativeUtils {
                     MemorySegment.NULL,              // destroy_data
                     0                                // connect_flags (0 = G_CONNECT_DEFAULT)
             );
+            log.debug("Connected signal '{}' with handler ID {}", signalName, handlerId);
+            return handlerId;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to connect signal '{}': {}", signalName, e.getMessage());
             throw new FridaException("Failed to connect signal: " + signalName, e);
         }
     }
@@ -138,11 +155,14 @@ public class FridaNativeUtils {
      * @param handlerId Handler ID returned from connectSignal
      */
     public static void disconnectSignal(MemorySegment object, long handlerId) {
+        log.debug("Disconnecting signal handler {}", handlerId);
         try {
             G_SIGNAL_HANDLER_DISCONNECT.invoke(object, handlerId);
+            log.trace("Successfully disconnected handler {}", handlerId);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
+            log.error("Failed to disconnect signal handler {}: {}", handlerId, e.getMessage());
             throw new FridaException("Failed to disconnect signal handler: " + handlerId, e);
         }
     }
