@@ -116,7 +116,14 @@ public class DeviceManager implements AutoCloseable {
     public Optional<Device> getLocalDevice() {
         List<Device> devices = enumerateDevices();
         return devices.stream()
-                .filter(device -> device.getId().equals("local"))
+                .filter(device -> device.getType() == DeviceType.LOCAL)
+                .findFirst();
+    }
+
+    public Optional<Device> getUsbDevice() {
+        List<Device> devices = enumerateDevices();
+        return devices.stream()
+                .filter(device -> device.getType() == DeviceType.USB)
                 .findFirst();
     }
 
