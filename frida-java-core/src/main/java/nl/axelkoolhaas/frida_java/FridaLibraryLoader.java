@@ -107,11 +107,16 @@ public class FridaLibraryLoader {
     }
 
     /**
-     * Find a function in the Frida library and create a method handle.
+     * Find and return a method handle for a native function.
+     *
+     * @param name The name of the function to find
+     * @param descriptor The function descriptor
+     * @return Method handle for the function
+     * @throws UnsatisfiedLinkError if the function is not found
      */
     public static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
         return LOADED_LIBRARY.find(name)
                 .map(addr -> LINKER.downcallHandle(addr, descriptor))
-                .orElse(null);
+                .orElseThrow(() -> new UnsatisfiedLinkError("Native function '" + name + "' not found in Frida library."));
     }
 }
