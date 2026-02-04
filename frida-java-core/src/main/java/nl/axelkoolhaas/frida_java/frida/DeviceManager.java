@@ -177,6 +177,14 @@ public class DeviceManager implements AutoCloseable {
     }
 
     /**
+     * Get the native pointer to the device manager.
+     * Used internally by other Frida classes (e.g., Compiler).
+     */
+    MemorySegment getPointer() {
+        return managerPtr;
+    }
+
+    /**
      * Extract Device objects from the native device list
      */
     private List<Device> extractDevicesFromList(MemorySegment deviceList) throws Throwable {

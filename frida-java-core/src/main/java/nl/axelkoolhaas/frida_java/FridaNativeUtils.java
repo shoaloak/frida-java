@@ -38,7 +38,14 @@ public class FridaNativeUtils {
     private static final MethodHandle G_SIGNAL_LOOKUP;
     private static final MethodHandle G_SIGNAL_CONNECT_DATA;
     private static final MethodHandle G_SIGNAL_HANDLER_DISCONNECT;
-    private static final MethodHandle G_TYPE_FROM_INSTANCE;
+
+    // Type getter functions for different Frida object types
+    private static final MethodHandle FRIDA_SCRIPT_GET_TYPE;
+    private static final MethodHandle FRIDA_SESSION_GET_TYPE;
+    private static final MethodHandle FRIDA_DEVICE_GET_TYPE;
+    private static final MethodHandle FRIDA_DEVICE_MANAGER_GET_TYPE;
+    private static final MethodHandle FRIDA_COMPILER_GET_TYPE;
+    private static final MethodHandle FRIDA_BUS_GET_TYPE;
 
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
@@ -50,9 +57,20 @@ public class FridaNativeUtils {
                                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
         G_SIGNAL_HANDLER_DISCONNECT = FridaLibraryLoader.findFunction("g_signal_handler_disconnect",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-        // G_OBJECT_TYPE(obj) macro expands to g_type_from_instance
-        G_TYPE_FROM_INSTANCE = FridaLibraryLoader.findFunction("g_type_from_instance",
-                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+        // Type getter functions - these are exported by Frida
+        FRIDA_SCRIPT_GET_TYPE = FridaLibraryLoader.findFunction("frida_script_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        FRIDA_SESSION_GET_TYPE = FridaLibraryLoader.findFunction("frida_session_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        FRIDA_DEVICE_GET_TYPE = FridaLibraryLoader.findFunction("frida_device_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        FRIDA_DEVICE_MANAGER_GET_TYPE = FridaLibraryLoader.findFunction("frida_device_manager_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        FRIDA_COMPILER_GET_TYPE = FridaLibraryLoader.findFunction("frida_compiler_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        FRIDA_BUS_GET_TYPE = FridaLibraryLoader.findFunction("frida_bus_get_type",
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG));
     }
 
     /**
@@ -100,25 +118,87 @@ public class FridaNativeUtils {
     }
 
     /**
+     * Get the GType for FridaScript objects.
+     */
+    public static long getScriptType() {
+        try {
+            return (long) FRIDA_SCRIPT_GET_TYPE.invoke();
+        } catch (Throwable e) {
+            throw new FridaException("Failed to get script type", e);
+        }
+    }
+
+    /**
+     * Get the GType for FridaSession objects.
+     */
+    public static long getSessionType() {
+        try {
+            return (long) FRIDA_SESSION_GET_TYPE.invoke();
+        } catch (Throwable e) {
+            throw new FridaException("Failed to get session type", e);
+        }
+    }
+
+    /**
+     * Get the GType for FridaDevice objects.
+     */
+    public static long getDeviceType() {
+        try {
+            return (long) FRIDA_DEVICE_GET_TYPE.invoke();
+        } catch (Throwable e) {
+            throw new FridaException("Failed to get device type", e);
+        }
+    }
+
+    /**
+     * Get the GType for FridaDeviceManager objects.
+     */
+    public static long getDeviceManagerType() {
+        try {
+            return (long) FRIDA_DEVICE_MANAGER_GET_TYPE.invoke();
+        } catch (Throwable e) {
+            throw new FridaException("Failed to get device manager type", e);
+        }
+    }
+
+    /**
+     * Get the GType for FridaCompiler objects.
+     */
+    public static long getCompilerType() {
+        try {
+            return (long) FRIDA_COMPILER_GET_TYPE.invoke();
+        } catch (Throwable e) {
+            throw new FridaException("Failed to get compiler type", e);
+        }
+    }
+
+    /**
+     * Get the GType for FridaBus objects.
+     */
+    public static long getBusType() {
+        try {
+            return (long) FRIDA_BUS_GET_TYPE.invoke();
+        } catch (Throwable e) {
+            throw new FridaException("Failed to get bus type", e);
+        }
+    }
+
+    /**
      * Connect a Java callback to a GObject signal.
      * This is the Java equivalent of the Go connectClosure function.
-     *
-     * Uses g_type_from_instance to get the actual GObject type dynamically,
-     * allowing this to work with any GObject (Device, Session, Script, Bus, etc.)
      *
      * @param object GObject pointer to connect to
      * @param signalName Name of the signal to connect to
      * @param callback Java callback object
+     * @param objectType The GType of the object (use getScriptType(), getCompilerType(), etc.)
      * @return Handler ID that can be used to disconnect the signal later
      */
-    public static long connectSignal(MemorySegment object, String signalName, Object callback) {
+    public static long connectSignal(MemorySegment object, String signalName, Object callback, long objectType) {
         log.debug("Connecting signal '{}' to object", signalName);
         try (Arena arena = Arena.ofConfined()) {
             Closure closure = Closure.create(callback, signalName);
             MemorySegment signalNamePtr = arena.allocateFrom(signalName);
 
-            // Get the actual GObject type dynamically
-            long objectType = (long) G_TYPE_FROM_INSTANCE.invoke(object);
             log.trace("Object type: {}", objectType);
 
             int signalId = (int) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);

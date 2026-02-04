@@ -22,15 +22,41 @@ package nl.axelkoolhaas.frida_java.frida;
 public final class SignalCallbacks {
     private SignalCallbacks() {} // Utility class
 
+    // ===========================================
+    // General Signal Callbacks
+    // ===========================================
+
     @FunctionalInterface
     public interface MessageCallback {
         void onMessage(String message, byte[] data);
     }
 
+    // ===========================================
+    // Process/Device Signal Callbacks
+    // ===========================================
+
     @FunctionalInterface
-    public interface OutputCallback {
+    public interface ProcessOutputCallback {
         void onOutput(int pid, int fd, byte[] data);
     }
+
+    // ===========================================
+    // Compiler Signal Callbacks
+    // ===========================================
+
+    @FunctionalInterface
+    public interface CompilerOutputCallback {
+        void onOutput(String bundle);
+    }
+
+    @FunctionalInterface
+    public interface CompilerDiagnosticsCallback {
+        void onDiagnostics(String diagnostics);
+    }
+
+    // ===========================================
+    // Error Handling
+    // ===========================================
 
     /**
      * Handler for exceptions thrown by signal callbacks.

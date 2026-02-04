@@ -143,12 +143,12 @@ public class Bus {
                 if (!(callback instanceof Runnable)) {
                     throw new IllegalArgumentException("Detached signal callback must be Runnable");
                 }
-                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback);
+                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback, FridaNativeUtils.getBusType());
                 handlerIds.put(signalName, handlerId);
                 break;
             case "message":
                 // Callback should accept (String message, byte[] data)
-                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback);
+                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback, FridaNativeUtils.getBusType());
                 handlerIds.put(signalName, handlerId);
                 break;
             default:

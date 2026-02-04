@@ -39,6 +39,7 @@ public class Script implements AutoCloseable {
     private final MemorySegment scriptPtr;
     private boolean hasMessageHandler = false;
     private SignalCallbacks.MessageCallback messageCallback;
+    private volatile boolean closed = false;
 
     private static final MethodHandle FRIDA_SCRIPT_LOAD_SYNC;
     private static final MethodHandle FRIDA_SCRIPT_UNLOAD_SYNC;
@@ -247,10 +248,10 @@ public class Script implements AutoCloseable {
 
             // Create hijacking message handler
             SignalCallbacks.MessageCallback hijackingHandler = this::hijackMessage;
-            FridaNativeUtils.connectSignal(scriptPtr, signalName, hijackingHandler);
+            FridaNativeUtils.connectSignal(scriptPtr, signalName, hijackingHandler, FridaNativeUtils.getScriptType());
         } else {
             // For other signals, connect directly
-            FridaNativeUtils.connectSignal(scriptPtr, signalName, callback);
+            FridaNativeUtils.connectSignal(scriptPtr, signalName, callback, FridaNativeUtils.getScriptType());
         }
     }
 
@@ -375,8 +376,15 @@ public class Script implements AutoCloseable {
     }
 
     public void clean() {
+        if (closed) {
+            return; // Already cleaned up
+        }
+
         try {
-            FridaNativeUtils.fridaUnref(this.scriptPtr);
+            if (!scriptPtr.equals(MemorySegment.NULL)) {
+                FridaNativeUtils.fridaUnref(this.scriptPtr);
+            }
+            closed = true;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
@@ -389,7 +397,16 @@ public class Script implements AutoCloseable {
      */
     @Override
     public void close() {
-        unload();
+        if (closed) {
+            return;
+        }
+
+        try {
+            unload();
+        } catch (FridaException e) {
+            // Unload might fail if script is already unloaded, that's OK
+            log.debug("Unload failed during close (may be normal): {}", e.getMessage());
+        }
         clean();
     }
 }

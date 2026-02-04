@@ -42,5 +42,7 @@ public class ClassNameOrderTest {
     class I_ChildTest extends ChildTest {}
     @Nested
     class J_ClosureTest extends ClosureTest {}
+    @Nested
+    class K_CompilerTest extends CompilerTest {}
 }
 
