@@ -19,21 +19,25 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GSignalUtil;
+import nl.axelkoolhaas.frida_java.util.GValueUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Manages GObject signal connections between native code and Java callbacks.
+ * This class implements GClosure with a custom marshal function.
+ * The marshal function receives GValues from the signal and converts them to Java types.
+ * <br>
  * This is not a closure in the traditional sense, but the name is kept for consistency with GClosure.
  * This class looks scary, but essentially it just maps native signal C callbacks back to Java methods.
  * It does this through Linker upcall stubs and a static dispatch method.
@@ -41,9 +45,207 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Closure {
     private static final Logger log = LoggerFactory.getLogger(Closure.class);
     private static final AtomicLong CLOSURE_ID_GENERATOR = new AtomicLong(1);
-    private static final ConcurrentHashMap<Long, Object> ACTIVE_CLOSURES = new ConcurrentHashMap<>();
+
+    // Maps closure ID -> ClosureData (callback + signal name)
+    private static final ConcurrentHashMap<Long, ClosureData> ACTIVE_CLOSURES = new ConcurrentHashMap<>();
+
+    // Maps GClosure pointer address -> closure ID (for marshal dispatch)
+    private static final ConcurrentHashMap<Long, Long> CLOSURE_PTR_TO_ID = new ConcurrentHashMap<>();
+
+    // Shared marshal function upcall stub (created once, reused for all closures)
+    private static final MemorySegment MARSHAL_STUB;
 
     private static volatile SignalCallbacks.ErrorHandler errorHandler = null;
+
+    static {
+        MARSHAL_STUB = createMarshalStub();
+    }
+
+    /**
+     * Internal data structure to hold callback info
+     */
+    private static class ClosureData {
+        final Object callback;
+        final String signalName;
+
+        ClosureData(Object callback, String signalName) {
+            this.callback = callback;
+            this.signalName = signalName;
+        }
+    }
+
+    /**
+     * Create the shared marshal function upcall stub.
+     * This is equivalent to Go's goMarshalCls function.
+     *
+     * GClosureMarshal signature:
+     * void marshal(GClosure *closure, GValue *return_value, guint n_param_values,
+     *              const GValue *param_values, gpointer invocation_hint, gpointer marshal_data)
+     */
+    private static MemorySegment createMarshalStub() {
+        try {
+            MethodHandle marshalHandler = MethodHandles.lookup()
+                    .findStatic(Closure.class, "handleMarshal",
+                            MethodType.methodType(void.class,
+                                    MemorySegment.class,  // GClosure *closure
+                                    MemorySegment.class,  // GValue *return_value
+                                    int.class,            // guint n_param_values
+                                    MemorySegment.class,  // const GValue *param_values
+                                    MemorySegment.class,  // gpointer invocation_hint
+                                    MemorySegment.class   // gpointer marshal_data
+                            ));
+
+            FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
+                    ValueLayout.ADDRESS,    // GClosure *closure
+                    ValueLayout.ADDRESS,    // GValue *return_value
+                    ValueLayout.JAVA_INT,   // guint n_param_values
+                    ValueLayout.ADDRESS,    // const GValue *param_values
+                    ValueLayout.ADDRESS,    // gpointer invocation_hint
+                    ValueLayout.ADDRESS     // gpointer marshal_data
+            );
+
+            // Use global arena so the stub lives for the lifetime of the JVM
+            return Linker.nativeLinker().upcallStub(marshalHandler, descriptor, Arena.global());
+        } catch (Throwable e) {
+            throw new FridaException("Failed to create marshal stub", e);
+        }
+    }
+
+    /**
+     * Marshal function called by GLib when a signal is emitted.
+     * This extracts GValues and dispatches to the appropriate Java callback.
+     */
+    public static void handleMarshal(MemorySegment closurePtr, MemorySegment returnValue,
+                                     int nParams, MemorySegment paramsPtr,
+                                     MemorySegment invocationHint, MemorySegment marshalData) {
+        // Get closure ID from the pointer address
+        long ptrAddr = closurePtr.address();
+        Long closureId = CLOSURE_PTR_TO_ID.get(ptrAddr);
+
+        if (closureId == null) {
+            log.trace("No closure ID found for pointer {}", ptrAddr);
+            return;
+        }
+
+        ClosureData data = ACTIVE_CLOSURES.get(closureId);
+        if (data == null) {
+            log.trace("No callback found for closure ID {}", closureId);
+            return;
+        }
+
+        log.trace("Marshal called for signal '{}', closure ID {}, nParams {}", data.signalName, closureId, nParams);
+
+        try {
+            // Extract values from the GValue array
+            // GValue is typically 24 bytes on 64-bit systems (8 bytes GType + 16 bytes data union)
+            int gvalueSize = 24;
+
+            // First param (index 0) is always the instance (GObject), skip it like Go does
+            // Actual signal parameters start at index 1
+            switch (data.signalName) {
+                case "message" -> handleMessageMarshal(data.callback, nParams, paramsPtr, gvalueSize);
+                case "detached", "lost" -> handleSimpleMarshal(data.callback);
+                default -> log.trace("Unknown signal '{}' in marshal", data.signalName);
+            }
+        } catch (Exception e) {
+            log.error("Marshal failed for signal '{}': {}", data.signalName, e.getMessage(), e);
+
+            SignalCallbacks.ErrorHandler handler = errorHandler;
+            if (handler != null) {
+                try {
+                    handler.onCallbackError(data.signalName, e);
+                } catch (Exception handlerError) {
+                    log.error("Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle the "message" signal marshal.
+     * Signal signature: void callback(FridaScript *script, const gchar *message, GBytes *data)
+     * So nParams = 3 (instance + message + data)
+     */
+    private static void handleMessageMarshal(Object callback, int nParams, MemorySegment paramsPtr, int gvalueSize) {
+        if (!(callback instanceof SignalCallbacks.MessageCallback messageCallback)) {
+            log.trace("Callback is not a MessageCallback");
+            return;
+        }
+
+        if (nParams < 3) {
+            log.trace("Message signal has insufficient params: {}", nParams);
+            return;
+        }
+
+        try {
+            // Reinterpret the params pointer to allow access to GValue array
+            MemorySegment params = paramsPtr.reinterpret((long) nParams * gvalueSize);
+
+            // param[1] = message (const gchar*)
+            MemorySegment messageGValue = params.asSlice((long) gvalueSize, gvalueSize);
+            String message = extractStringFromGValue(messageGValue);
+
+            // param[2] = data (GBytes*)
+            MemorySegment dataGValue = params.asSlice((long) 2 * gvalueSize, gvalueSize);
+            byte[] data = extractBytesFromGValue(dataGValue);
+
+            log.trace("Dispatching message signal: message length={}, data length={}",
+                    message != null ? message.length() : 0, data != null ? data.length : 0);
+
+            messageCallback.onMessage(message, data);
+        } catch (Exception e) {
+            log.error("Failed to handle message marshal: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handle simple signals (detached, lost) that have no extra parameters.
+     */
+    private static void handleSimpleMarshal(Object callback) {
+        if (callback instanceof Runnable runnable) {
+            runnable.run();
+        }
+    }
+
+    /**
+     * Extract a string from a GValue containing a pointer (const gchar*).
+     */
+    private static String extractStringFromGValue(MemorySegment gvalue) {
+        try {
+            Object value = GValueUtil.toJavaObject(gvalue);
+            if (value instanceof String str) {
+                return str;
+            }
+
+            // If GValueUtil doesn't recognize the type, try reading pointer directly
+            // GValue data starts at offset 8 (after GType)
+            MemorySegment strPtr = gvalue.get(ValueLayout.ADDRESS, 8);
+            if (strPtr != null && !strPtr.equals(MemorySegment.NULL)) {
+                return FridaNativeUtils.memorySegmentToString(strPtr);
+            }
+            return null;
+        } catch (Exception e) {
+            log.trace("Failed to extract string from GValue: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Extract bytes from a GValue containing a GBytes pointer.
+     */
+    private static byte[] extractBytesFromGValue(MemorySegment gvalue) {
+        try {
+            // GValue data starts at offset 8 (after GType)
+            MemorySegment gBytesPtr = gvalue.get(ValueLayout.ADDRESS, 8);
+            if (gBytesPtr == null || gBytesPtr.equals(MemorySegment.NULL)) {
+                return new byte[0];
+            }
+            return GBytesUtil.toByteArray(gBytesPtr);
+        } catch (Exception e) {
+            log.trace("Failed to extract bytes from GValue: {}", e.getMessage());
+            return new byte[0];
+        }
+    }
 
     /**
      * Set a global error handler for callback exceptions.
@@ -55,278 +257,61 @@ public class Closure {
         errorHandler = handler;
     }
 
-    private final long id;
-    private final MemorySegment nativeCallback;
-
-    private Closure(long id, MemorySegment nativeCallback) {
-        this.id = id;
-        this.nativeCallback = nativeCallback;
-    }
-
-    /**
-     * Create a new closure for a Java callback
-     */
-    public static Closure create(Object callback, String signalName) {
-        long id = CLOSURE_ID_GENERATOR.getAndIncrement();
-
-        // Create native callback stub that will call back to Java
-        MemorySegment nativeCallback = createNativeCallback(id, signalName);
-
-        // Store callback in map for dispatch
-        ACTIVE_CLOSURES.put(id, callback);
-
-        log.debug("Created closure {} for '{}' signal with native callback: {}", id, signalName, nativeCallback);
-
-        return new Closure(id, nativeCallback);
-    }
-
-    /**
-     * Get the native callback function pointer
-     */
-    public MemorySegment getNativeCallback() {
-        return nativeCallback;
-    }
-
-    /**
-     * Clean up the closure
-     */
-    public void dispose() {
-        Object removed = ACTIVE_CLOSURES.remove(id);
-        if (removed != null) {
-            log.debug("Disposed closure {}", id);
-        }
-        // Native callback cleanup will happen when GClosure is freed
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    /**
-     * Handle signal dispatch from native code
-     */
-    public static void dispatchSignal(long closureId, String signalName, Object... args) {
-        Object callback = ACTIVE_CLOSURES.get(closureId);
-        if (callback == null) {
-            log.trace("No callback found for closure {} signal '{}'", closureId, signalName);
-            return;
-        }
-
-        log.trace("Dispatching signal '{}' to closure {}", signalName, closureId);
-
-        try {
-            switch (signalName) {
-                case "detached":
-                case "lost":
-                    if (callback instanceof Runnable) {
-                        ((Runnable) callback).run();
-                    }
-                    break;
-                case "message":
-                    if (callback instanceof SignalCallbacks.MessageCallback && args.length >= 2) {
-                        String message = (String) args[0];
-                        byte[] data = (byte[]) args[1];
-                        ((SignalCallbacks.MessageCallback) callback).onMessage(message, data);
-                    }
-                    break;
-                case "spawn_added":
-                case "spawn_removed":
-                    // Handle spawn events if needed
-                    break;
-                case "output":
-                    // Handle output events if needed
-                    break;
-                default:
-                    // Unknown signal - silently ignore
-                    log.trace("Unknown signal '{}' dispatched to closure {}", signalName, closureId);
-                    break;
-            }
-        } catch (Exception e) {
-            // Cannot propagate exceptions through native callback boundary
-            log.error("Callback failed for signal '{}': {}", signalName, e.getMessage(), e);
-
-            // Notify error handler if registered
-            SignalCallbacks.ErrorHandler handler = errorHandler;
-            if (handler != null) {
-                try {
-                    handler.onCallbackError(signalName, e);
-                } catch (Exception handlerError) {
-                    log.error("Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
-                }
-            }
-        }
-    }
-
-    private static MemorySegment createNativeCallback(long closureId, String signalName) {
-        try {
-            Linker linker = Linker.nativeLinker();
-            Arena arena = Arena.ofShared(); // Use shared arena for callbacks that need to persist
-
-            return switch (signalName) {
-                case "detached", "lost" -> {
-                    // GObject signal: void callback(GObject *object, gpointer user_data)
-                    MethodHandle handler = createSimpleHandler(closureId, signalName);
-                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
-                            ValueLayout.ADDRESS,  // GObject *object
-                            ValueLayout.ADDRESS   // gpointer user_data
-                    );
-                    yield linker.upcallStub(handler, descriptor, arena);
-                }
-                case "message" -> {
-                    // Frida signal: void callback(FridaScript *script, const gchar *message, GBytes *data, gpointer user_data)
-                    MethodHandle handler = createMessageHandler(closureId, signalName);
-                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
-                            ValueLayout.ADDRESS,  // FridaScript *script
-                            ValueLayout.ADDRESS,  // const gchar *message
-                            ValueLayout.ADDRESS,  // GBytes *data
-                            ValueLayout.ADDRESS   // gpointer user_data
-                    );
-                    yield linker.upcallStub(handler, descriptor, arena);
-                }
-                default -> {
-                    // Generic handler for custom signals (Frida scripts can emit any signal)
-                    MethodHandle handler = createGenericHandler(closureId, signalName);
-                    FunctionDescriptor descriptor = FunctionDescriptor.ofVoid(
-                            ValueLayout.ADDRESS,  // GObject *object
-                            ValueLayout.ADDRESS   // gpointer user_data
-                    );
-                    yield linker.upcallStub(handler, descriptor, arena);
-                }
-            };
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new FridaException("Failed to create native callback for signal: " + signalName, e);
-        }
-    }
-
-    private static MethodHandle createSimpleHandler(long closureId, String signalName) {
-        try {
-            MethodHandle base = java.lang.invoke.MethodHandles.lookup()
-                .findStatic(Closure.class, "handleSimpleSignal",
-                    MethodType.methodType(void.class, long.class, String.class,
-                        MemorySegment.class, MemorySegment.class));
-            return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new FridaException("Failed to create simple handler", e);
-        }
-    }
-
-    private static MethodHandle createMessageHandler(long closureId, String signalName) {
-        try {
-            MethodHandle base = java.lang.invoke.MethodHandles.lookup()
-                .findStatic(Closure.class, "handleMessageSignal",
-                    MethodType.methodType(void.class, long.class, String.class,
-                        MemorySegment.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
-            return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new FridaException("Failed to create message handler", e);
-        }
-    }
-
-    private static MethodHandle createGenericHandler(long closureId, String signalName) {
-        try {
-            MethodHandle base = java.lang.invoke.MethodHandles.lookup()
-                .findStatic(Closure.class, "handleGenericSignal",
-                    MethodType.methodType(void.class, long.class, String.class,
-                        MemorySegment.class, MemorySegment.class));
-            return java.lang.invoke.MethodHandles.insertArguments(base, 0, closureId, signalName);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new FridaException("Failed to create generic handler", e);
-        }
-    }
-
-    // Native callback handlers
-    public static void handleSimpleSignal(long closureId, String signalName,
-                                          MemorySegment object, MemorySegment userData) {
-        dispatchSignal(closureId, signalName);
-    }
-
-    public static void handleMessageSignal(long closureId, String signalName,
-                                          MemorySegment script, MemorySegment messagePtr,
-                                          MemorySegment dataPtr, MemorySegment userData) {
-        try {
-            // Read the message JSON string from the native pointer
-            String message = FridaNativeUtils.memorySegmentToString(messagePtr);
-
-            // Extract binary data from GBytes if present (for send(message, data) calls)
-            byte[] data = GBytesUtil.toByteArray(dataPtr);
-
-            dispatchSignal(closureId, signalName, message, data);
-        } catch (Exception e) {
-            // Cannot propagate through native callback boundary - log only
-            log.error("Failed to handle message signal: {}", e.getMessage(), e);
-
-            // Notify error handler if registered
-            SignalCallbacks.ErrorHandler handler = errorHandler;
-            if (handler != null) {
-                try {
-                    handler.onCallbackError(signalName, e);
-                } catch (Exception handlerError) {
-                    log.error("Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
-                }
-            }
-        }
-    }
-
-    public static void handleGenericSignal(long closureId, String signalName, MemorySegment object, MemorySegment userData) {
-        dispatchSignal(closureId, signalName, object);
-    }
-
     /**
      * Connect a closure to a script signal using GLib's signal system.
-     * This connects the closure's native callback to receive actual script messages.
+     * This uses the Go-style approach:
+     * 1. Create GClosure with g_closure_new_simple
+     * 2. Set custom marshal function with g_closure_set_marshal
+     * 3. Lookup signal ID with g_signal_lookup
+     * 4. Connect with g_signal_connect_closure_by_id
      *
-     * @param object The script object
-     * @param signalName The signal name (typically "message")
+     * @param object The GObject to connect the signal to
+     * @param signalName The signal name (e.g., "message")
      * @param callback The callback to register
      * @return Handler ID for the connection, or 0 if failed
      */
     public static long connectClosure(MemorySegment object, String signalName, Object callback) {
-        log.debug("Connecting script signal: {}", signalName);
+        log.debug("Connecting signal '{}' using GClosure with custom marshal", signalName);
 
         try {
-            // Create closure with native callback stub
-            Closure closure = Closure.create(callback, signalName);
-            MemorySegment nativeCallback = closure.getNativeCallback();
+            // Generate closure ID and store the callback
+            long closureId = CLOSURE_ID_GENERATOR.getAndIncrement();
+            ACTIVE_CLOSURES.put(closureId, new ClosureData(callback, signalName));
 
-            // Create GClosure in native code that will call the native callback stub
-            MemorySegment gClosure = createGClosure(nativeCallback);
+            // Lookup signal ID (equivalent to Go's C.lookup_signal)
+            int signalId = GSignalUtil.lookupSignal(object, signalName);
+            if (signalId == 0) {
+                log.debug("Signal '{}' not found on object", signalName);
+                ACTIVE_CLOSURES.remove(closureId);
+                return 0;
+            }
 
-            // Use GSignalUtil to handle the actual GLib signal connection
-            long handlerId = GSignalUtil.connectSignal(object, signalName, nativeCallback);
+            // Create GClosure with our marshal function (equivalent to Go's newClosure())
+            MemorySegment gClosure = GSignalUtil.createClosureWithMarshal(MARSHAL_STUB);
 
-            log.debug("Connected script signal '{}' with handler ID {}", signalName, handlerId);
+            // Map the GClosure pointer to our closure ID so marshal can find the callback
+            CLOSURE_PTR_TO_ID.put(gClosure.address(), closureId);
+
+            // Connect the closure to the signal (equivalent to Go's g_signal_connect_closure_by_id)
+            long handlerId = GSignalUtil.connectClosureById(object, signalId, gClosure, true);
+
+            log.debug("Connected signal '{}' with handler ID {}, closure ID {}", signalName, handlerId, closureId);
             return handlerId;
         } catch (Exception e) {
-            log.error("Failed to connect script signal '{}': {}", signalName, e.getMessage(), e);
-            throw new FridaException("Failed to connect script signal: " + signalName, e);
+            log.error("Failed to connect signal '{}': {}", signalName, e.getMessage(), e);
+            throw new FridaException("Failed to connect script message signal", e);
         }
     }
 
     /**
-     * Create a GClosure from a function pointer
+     * Disconnect a closure by handler ID.
+     *
+     * @param closureId The closure ID to disconnect
      */
-    private static MemorySegment createGClosure(MemorySegment callback) {
-        try {
-            // Use g_cclosure_new to create a GClosure from function pointer
-            MethodHandle gClosureNew = FridaLibraryLoader.findFunction("g_cclosure_new",
-                    FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-
-            // Create closure: g_cclosure_new(callback_func, user_data, destroy_notify)
-            return (MemorySegment) gClosureNew.invoke(
-                    callback,           // callback function
-                    MemorySegment.NULL, // user_data (not needed)
-                    MemorySegment.NULL  // destroy_notify (not needed for now)
-            );
-        } catch (Throwable e) {
-            throw new FridaException("Failed to create GClosure", e);
+    public static void disconnectClosure(long closureId) {
+        ClosureData removed = ACTIVE_CLOSURES.remove(closureId);
+        if (removed != null) {
+            log.debug("Disconnected closure {}", closureId);
         }
     }
 }

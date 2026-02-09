@@ -245,7 +245,11 @@ public class SessionAndScriptTest {
             // Platform-agnostic command selection
             String[] command = getPlatformCommand();
 
-            int targetPid = localDevice.spawnName(command[0], List.of(command).subList(1, command.length));
+            // Use builder pattern with Stdio.PIPE to prevent stdout corruption in Surefire
+            int targetPid = localDevice.spawnName(command[0], SpawnOptions.builder()
+                    .argv(List.of(command))
+                    .stdio(Stdio.PIPE)
+                    .build());
             assertTrue(targetPid > 0, "Failed to spawn test process - " + command[0] + " not found in PATH or spawn failed");
 
             System.out.println("Spawned PID: " + targetPid);

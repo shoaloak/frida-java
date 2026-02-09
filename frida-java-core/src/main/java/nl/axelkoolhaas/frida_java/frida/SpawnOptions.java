@@ -32,11 +32,27 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Options for spawning processes
+ * Options for spawning processes.
+ *
+ * <p>Can be created directly or via the builder:
+ * <pre>{@code
+ * SpawnOptions options = SpawnOptions.builder()
+ *     .argv("bash", "-c", "echo hello")
+ *     .stdio(Stdio.PIPE)
+ *     .build();
+ * }</pre>
  */
 public class SpawnOptions implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(SpawnOptions.class);
     private final MemorySegment optionsPtr;
+
+    /**
+     * Creates a new builder for SpawnOptions
+     * @return A new SpawnOptionsBuilder instance
+     */
+    public static SpawnOptionsBuilder builder() {
+        return new SpawnOptionsBuilder();
+    }
 
     private static final MethodHandle FRIDA_SPAWN_OPTIONS_NEW;
     private static final MethodHandle FRIDA_SPAWN_OPTIONS_SET_ARGV;

@@ -507,6 +507,40 @@ public class Device implements AutoCloseable {
     }
 
     /**
+     * Spawn a new process with spawn options
+     * @param programPath Full path of the executable to spawn
+     * @param options SpawnOptions containing argv, stdio, cwd, env, etc.
+     * @return PID of the spawned process
+     * @throws FridaException if spawning fails
+     */
+    public int spawn(String programPath, SpawnOptions options) {
+        log.debug("Spawning process: {} with options", programPath);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment programPtr = arena.allocateFrom(programPath);
+
+            // Error handling
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            log.trace("Native call: frida_device_spawn_sync(program={}, options={})", programPath, options.getPointer());
+            // Spawn the process with options
+            int pid = (int) FRIDA_DEVICE_SPAWN_SYNC.invoke(devicePtr, programPtr, options.getPointer(), MemorySegment.NULL, errorPtr);
+
+            // Check for errors
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "spawn process: " + programPath);
+
+            log.debug("Successfully spawned process: {} with pid={}", programPath, pid);
+            return pid;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            log.error("Failed to spawn process '{}': {}", programPath, e.getMessage());
+            throw new FridaException("Failed to spawn process: " + programPath, e);
+        }
+    }
+
+    /**
      * Helper method to spawn by program name (searches PATH)
      * @param programName name of the program to spawn
      * @return PID of the spawned process
@@ -533,6 +567,21 @@ public class Device implements AutoCloseable {
             throw new FridaException("Executable not found in PATH: " + programName);
         }
         return spawn(programPath, args);
+    }
+
+    /**
+     * Helper method to spawn by program name with spawn options (searches PATH)
+     * @param programName name of the program to spawn
+     * @param options SpawnOptions containing argv, stdio, cwd, env, etc.
+     * @return PID of the spawned process
+     * @throws FridaException if executable not found or spawning fails
+     */
+    public int spawnName(String programName, SpawnOptions options) {
+        String programPath = findBinary(programName);
+        if (programPath == null) {
+            throw new FridaException("Executable not found in PATH: " + programName);
+        }
+        return spawn(programPath, options);
     }
 
     public static String findBinary(String name) {
@@ -880,7 +929,7 @@ public class Device implements AutoCloseable {
      * Get the device icon
      * Returns a GVariant pointer representing the icon data.
      * The icon is typically in a platform-specific format (e.g., PNG data).
-     *
+     * <br>
      * Note: This is an advanced feature. Most applications don't need the device icon.
      * The returned pointer is a GVariant that needs to be parsed according to GLib semantics.
      *

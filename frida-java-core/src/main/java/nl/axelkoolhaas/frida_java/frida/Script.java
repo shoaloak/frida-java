@@ -246,12 +246,7 @@ public class Script implements AutoCloseable {
             hasMessageHandler = true;
 
             try {
-                // Create closure with native callback stub
-                Closure closure = Closure.create(callback, signalName);
-                MemorySegment nativeCallback = closure.getNativeCallback();
-
-                // Use GSignalUtil to handle the actual GLib signal connection
-                long handlerId = GSignalUtil.connectSignal(scriptPtr, signalName, nativeCallback);
+                long handlerId = Closure.connectClosure(scriptPtr, signalName, callback);
 
                 if (handlerId > 0) {
                     log.trace("Connected script message signal with handler ID {}", handlerId);

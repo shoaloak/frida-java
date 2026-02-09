@@ -22,17 +22,19 @@
     </properties>
 
     <dependencies>
+        <!-- Jackson Databind for JSON serialization/deserialization -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>3.0.4</version>
+            <scope>compile</scope>
+        </dependency>
         <!-- SLF4J API for optional logging (no backend required) -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>2.0.17</version>
-        </dependency>
-        <!-- Jackson Databind for JSON serialization/deserialization -->
-        <dependency>
-            <groupId>tools.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>3.0.3</version>
+            <scope>compile</scope>
         </dependency>
 
         <!-- JUnit Jupiter for unit testing -->
@@ -202,10 +204,6 @@ For local development:
                     <includes>
                         <include>**/ClassNameOrderTest.java</include>
                     </includes>
-                    <!-- Suppress native stream warnings -->
-                    <!-- The "corrupted channel" warning is harmless when using native code -->
-<!--                    <forkCount>0</forkCount>-->
-                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
                     <!-- SLF4J log level during tests -->
                     <systemPropertyVariables>
                         <org.slf4j.simpleLogger.defaultLogLevel>off</org.slf4j.simpleLogger.defaultLogLevel>

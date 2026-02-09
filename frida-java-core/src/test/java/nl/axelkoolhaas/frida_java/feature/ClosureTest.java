@@ -23,308 +23,143 @@ import nl.axelkoolhaas.frida_java.frida.Closure;
 import nl.axelkoolhaas.frida_java.frida.SignalCallbacks;
 import org.junit.jupiter.api.*;
 
-import java.lang.foreign.MemorySegment;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for Closure functionality.
- * Tests creation, callback dispatch, memory management, and signal handling.
+ *
+ * Note: The Closure class now uses a GClosure-based approach with custom marshal functions,
+ * similar to Go's frida bindings. Signal connections require actual GObjects, so most
+ * closure functionality is tested via integration tests (e.g., SessionAndScriptTest).
+ *
+ * This test class focuses on the public API that can be tested in isolation.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ClosureTest {
 
+    @AfterEach
+    void cleanup() {
+        // Reset error handler after each test to avoid cross-test pollution
+        Closure.setErrorHandler(null);
+    }
+
     @Test
     @Order(1)
-    void testCreateClosureWithSimpleCallback() {
-        AtomicBoolean callbackInvoked = new AtomicBoolean(false);
-        Runnable callback = () -> callbackInvoked.set(true);
+    void testSetErrorHandler() {
+        AtomicReference<String> capturedSignal = new AtomicReference<>();
+        AtomicReference<Exception> capturedException = new AtomicReference<>();
 
-        Closure closure = Closure.create(callback, "detached");
+        SignalCallbacks.ErrorHandler handler = (signal, error) -> {
+            capturedSignal.set(signal);
+            capturedException.set(error);
+        };
 
-        assertNotNull(closure, "Closure should not be null");
-        assertNotNull(closure.getNativeCallback(), "Native callback should not be null");
-        assertFalse(closure.getNativeCallback().equals(MemorySegment.NULL),
-                   "Native callback should not be NULL pointer");
+        // Should not throw when setting handler
+        assertDoesNotThrow(() -> Closure.setErrorHandler(handler),
+                "Setting error handler should not throw");
 
-        System.out.println("Created closure for 'detached' signal with native callback: " +
-                          closure.getNativeCallback());
+        // Should not throw when clearing handler
+        assertDoesNotThrow(() -> Closure.setErrorHandler(null),
+                "Clearing error handler should not throw");
     }
 
     @Test
     @Order(2)
-    void testCreateClosureWithMessageCallback() {
-        AtomicBoolean messageReceived = new AtomicBoolean(false);
-        AtomicReference<String> receivedMessage = new AtomicReference<>();
-        AtomicReference<byte[]> receivedData = new AtomicReference<>();
+    void testErrorHandlerCanBeReplaced() {
+        AtomicReference<String> firstHandlerCalled = new AtomicReference<>();
+        AtomicReference<String> secondHandlerCalled = new AtomicReference<>();
 
-        SignalCallbacks.MessageCallback callback = (message, data) -> {
-            messageReceived.set(true);
-            receivedMessage.set(message);
-            receivedData.set(data);
+        SignalCallbacks.ErrorHandler firstHandler = (signal, error) -> {
+            firstHandlerCalled.set("first");
         };
 
-        Closure closure = Closure.create(callback, "message");
+        SignalCallbacks.ErrorHandler secondHandler = (signal, error) -> {
+            secondHandlerCalled.set("second");
+        };
 
-        assertNotNull(closure, "Closure should not be null");
-        assertNotNull(closure.getNativeCallback(), "Native callback should not be null");
+        Closure.setErrorHandler(firstHandler);
+        Closure.setErrorHandler(secondHandler);
 
-        System.out.println("Created closure for 'message' signal with native callback: " +
-                          closure.getNativeCallback());
+        // Only the second handler should be active now
+        // (Actual invocation happens through native signals, tested in integration tests)
+        assertDoesNotThrow(() -> Closure.setErrorHandler(null),
+                "Should be able to clear handler after replacement");
     }
 
     @Test
     @Order(3)
-    void testDispatchSimpleSignal() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean detachedSignalReceived = new AtomicBoolean(false);
+    void testDisconnectClosureWithInvalidId() {
+        // Disconnecting a non-existent closure should not throw
+        assertDoesNotThrow(() -> Closure.disconnectClosure(999_999),
+                "Disconnecting non-existent closure should not throw");
 
-        Runnable callback = () -> {
-            detachedSignalReceived.set(true);
-            latch.countDown();
-        };
+        assertDoesNotThrow(() -> Closure.disconnectClosure(0),
+                "Disconnecting closure ID 0 should not throw");
 
-        Closure closure = Closure.create(callback, "detached");
-
-        // Manually trigger the signal dispatch to test the mechanism
-        // In real usage, this would be called from native code
-        Closure.dispatchSignal(closure.getId(), "detached"); // Using closure ID 1 since it's the first closure
-
-        assertTrue(latch.await(1, TimeUnit.SECONDS), "Callback should be invoked within timeout");
-        assertTrue(detachedSignalReceived.get(), "Detached signal should have been received");
-
-        System.out.println("Successfully dispatched and received 'detached' signal");
+        assertDoesNotThrow(() -> Closure.disconnectClosure(-1),
+                "Disconnecting negative closure ID should not throw");
     }
 
     @Test
     @Order(4)
-    void testDispatchMessageSignal() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
+    void testMessageCallbackInterface() {
+        // Test that MessageCallback interface works correctly
         AtomicReference<String> receivedMessage = new AtomicReference<>();
         AtomicReference<byte[]> receivedData = new AtomicReference<>();
 
         SignalCallbacks.MessageCallback callback = (message, data) -> {
             receivedMessage.set(message);
             receivedData.set(data);
-            latch.countDown();
         };
 
-        Closure closure = Closure.create(callback, "message");
-
-        String testMessage = "Test message from Frida";
+        // Simulate callback invocation
+        String testMessage = "test message";
         byte[] testData = "test data".getBytes();
 
-        // Manually trigger the message signal dispatch
-        Closure.dispatchSignal(closure.getId(), "message", testMessage, testData);
+        callback.onMessage(testMessage, testData);
 
-        assertTrue(latch.await(1, TimeUnit.SECONDS), "Message callback should be invoked within timeout");
-        assertEquals(testMessage, receivedMessage.get(), "Message should match");
-        assertArrayEquals(testData, receivedData.get(), "Data should match");
-
-        System.out.println("Successfully dispatched and received 'message' signal with data");
+        assertEquals(testMessage, receivedMessage.get(), "Message should be captured");
+        assertArrayEquals(testData, receivedData.get(), "Data should be captured");
     }
 
     @Test
     @Order(5)
-    void testDispatchLostSignal() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean lostSignalReceived = new AtomicBoolean(false);
-
-        Runnable callback = () -> {
-            lostSignalReceived.set(true);
-            latch.countDown();
-        };
-
-        Closure closure = Closure.create(callback, "lost");
-
-        // Dispatch the lost signal
-        Closure.dispatchSignal(closure.getId(), "lost");
-
-        assertTrue(latch.await(1, TimeUnit.SECONDS), "Lost signal callback should be invoked");
-        assertTrue(lostSignalReceived.get(), "Lost signal should have been received");
-
-        System.out.println("Successfully dispatched and received 'lost' signal");
-    }
-
-    @Test
-    @Order(6)
-    void testDispatchUnknownSignal() {
-        AtomicBoolean callbackInvoked = new AtomicBoolean(false);
-
-        Runnable callback = () -> callbackInvoked.set(true);
-
-        Closure closure = Closure.create(callback, "unknown_signal");
-
-        // Dispatch an unknown signal - should not crash but also not invoke callback
-        Closure.dispatchSignal(closure.getId(), "unknown_signal");
-
-        // Give it a moment to process
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        // For unknown signals, the callback won't be invoked in current implementation
-        // This tests that the system handles unknown signals gracefully
-        System.out.println("Successfully handled unknown signal without crashing");
-    }
-
-    @Test
-    @Order(7)
-    void testDispatchWithNonExistentClosure() {
-        // Test dispatching to a closure ID that doesn't exist
-        // Should not crash or throw exceptions
-        assertDoesNotThrow(() -> {
-            Closure.dispatchSignal(999, "detached");
-        }, "Dispatching to non-existent closure should not throw exception");
-
-        System.out.println("Successfully handled dispatch to non-existent closure");
-    }
-
-    @Test
-    @Order(8)
-    void testMultipleClosures() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(2);
-        AtomicInteger callbackCount = new AtomicInteger(0);
-
-        Runnable callback1 = () -> {
-            callbackCount.incrementAndGet();
-            latch.countDown();
-        };
-
-        Runnable callback2 = () -> {
-            callbackCount.incrementAndGet();
-            latch.countDown();
-        };
-
-        Closure closure1 = Closure.create(callback1, "detached");
-        Closure closure2 = Closure.create(callback2, "lost");
-
-        assertNotNull(closure1.getNativeCallback(), "First closure should have native callback");
-        assertNotNull(closure2.getNativeCallback(), "Second closure should have native callback");
-        assertNotEquals(closure1.getNativeCallback().address(),
-                       closure2.getNativeCallback().address(),
-                       "Different closures should have different native callbacks");
-
-        // Dispatch to both closures
-        Closure.dispatchSignal(closure1.getId(), "detached");
-        Closure.dispatchSignal(closure2.getId(), "lost");
-
-        assertTrue(latch.await(2, TimeUnit.SECONDS), "Both callbacks should be invoked");
-        assertEquals(2, callbackCount.get(), "Both callbacks should have been called");
-
-        System.out.println("Successfully created and dispatched to multiple closures");
-    }
-
-    @Test
-    @Order(9)
-    void testClosureDispose() throws InterruptedException {
-        AtomicBoolean callbackInvoked = new AtomicBoolean(false);
-
-        Runnable callback = () -> callbackInvoked.set(true);
-
-        Closure closure = Closure.create(callback, "detached");
-
-        // Dispose the closure
-        closure.dispose();
-
-        // Try to dispatch after disposal - callback should not be invoked
-        Closure.dispatchSignal(closure.getId(), "detached");
-
-        // Give it a moment to process
-        Thread.sleep(100);
-
-        assertFalse(callbackInvoked.get(), "Callback should not be invoked after disposal");
-
-        System.out.println("Successfully tested closure disposal - callback not invoked after dispose");
-    }
-
-    @Test
-    @Order(10)
-    void testCallbackExceptionHandling() throws InterruptedException {
-        CountDownLatch callbackLatch = new CountDownLatch(1);
-        CountDownLatch errorLatch = new CountDownLatch(1);
-        AtomicReference<Exception> caughtError = new AtomicReference<>();
-
-        // Install error handler to capture callback exception
-        Closure.setErrorHandler((signal, error) -> {
-            caughtError.set(error);
-            errorLatch.countDown();
-        });
-
-        try {
-            Runnable faultyCallback = () -> {
-                callbackLatch.countDown();
-                throw new RuntimeException("Test exception in callback - IGNORE THIS ERROR");
-            };
-
-            Closure closure = Closure.create(faultyCallback, "detached");
-
-            // This should not crash the application even if callback throws
-            assertDoesNotThrow(() -> {
-                Closure.dispatchSignal(closure.getId(), "detached");
-            }, "Exception in callback should be handled gracefully via error handler");
-
-            assertTrue(callbackLatch.await(1, TimeUnit.SECONDS),
-                      "Callback should still be invoked despite exception");
-            assertTrue(errorLatch.await(1, TimeUnit.SECONDS),
-                      "Error handler should be notified");
-            assertNotNull(caughtError.get(), "Error handler should capture exception");
-            assertTrue(caughtError.get().getMessage().contains("Test exception"),
-                      "Exception should contain original message");
-
-            System.out.println("Successfully handled exception in callback without crashing");
-        } finally {
-            // Clean up error handler
-            Closure.setErrorHandler(null);
-        }
-    }
-
-    @Test
-    @Order(11)
-    void testMessageCallbackWithNullMessage() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<String> receivedMessage = new AtomicReference<>();
-        AtomicReference<byte[]> receivedData = new AtomicReference<>();
+    void testMessageCallbackWithNullValues() {
+        AtomicReference<String> receivedMessage = new AtomicReference<>("initial");
+        AtomicReference<byte[]> receivedData = new AtomicReference<>(new byte[]{1, 2, 3});
 
         SignalCallbacks.MessageCallback callback = (message, data) -> {
             receivedMessage.set(message);
             receivedData.set(data);
-            latch.countDown();
         };
 
-        Closure closure = Closure.create(callback, "message");
+        // Callback should handle null values gracefully
+        callback.onMessage(null, null);
 
-        // Test with null message and data
-        Closure.dispatchSignal(closure.getId(), "message", null, null);
-
-        assertTrue(latch.await(1, TimeUnit.SECONDS), "Callback should handle null values");
         assertNull(receivedMessage.get(), "Message should be null");
         assertNull(receivedData.get(), "Data should be null");
-
-        System.out.println("Successfully handled message callback with null values");
     }
 
     @Test
-    @Order(12)
-    void testInvalidCallbackType() {
-        // Test with callback that doesn't match expected interface
-        String invalidCallback = "This is not a valid callback";
+    @Order(6)
+    void testErrorHandlerInterface() {
+        AtomicReference<String> capturedSignal = new AtomicReference<>();
+        AtomicReference<Exception> capturedException = new AtomicReference<>();
 
-        assertDoesNotThrow(() -> {
-            Closure closure = Closure.create(invalidCallback, "detached");
-            assertNotNull(closure, "Closure should still be created with invalid callback type");
+        SignalCallbacks.ErrorHandler handler = (signal, error) -> {
+            capturedSignal.set(signal);
+            capturedException.set(error);
+        };
 
-            // Dispatch should not crash even with invalid callback
-            Closure.dispatchSignal(closure.getId(), "detached");
-        }, "Invalid callback type should be handled gracefully");
+        // Simulate error handler invocation
+        String testSignal = "message";
+        RuntimeException testException = new RuntimeException("test error");
 
-        System.out.println("Successfully handled invalid callback type without crashing");
+        handler.onCallbackError(testSignal, testException);
+
+        assertEquals(testSignal, capturedSignal.get(), "Signal should be captured");
+        assertEquals(testException, capturedException.get(), "Exception should be captured");
     }
 }
