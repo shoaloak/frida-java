@@ -23,6 +23,7 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
+import nl.axelkoolhaas.frida_java.util.GSignalUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -228,31 +229,42 @@ public class Script implements AutoCloseable {
     }
 
     /**
-     * Connect to script signals. Available signals:
-     * - "destroyed" with callback as Runnable
+     * Register callbacks for script events. Available signals:
      * - "message" with callback as MessageCallback
      *
-     * @param signalName Name of the signal to connect to
+     * @param signalName Name of the signal to register for
      * @param callback Callback object to handle the signal
      */
     public void on(String signalName, Object callback) {
-        hasMessageHandler = true;
+        log.debug("Registering callback for script signal: {}", signalName);
 
         if ("message".equals(signalName)) {
             if (!(callback instanceof SignalCallbacks.MessageCallback)) {
                 throw new IllegalArgumentException("Callback must be a MessageCallback for 'message' signal");
             }
-
-            // Set up message hijacking for RPC functionality
             this.messageCallback = (SignalCallbacks.MessageCallback) callback;
+            hasMessageHandler = true;
 
-            // Create hijacking message handler
-            SignalCallbacks.MessageCallback hijackingHandler = this::hijackMessage;
-            FridaNativeUtils.connectSignal(scriptPtr, signalName, hijackingHandler, FridaNativeUtils.getScriptType());
-        } else {
-            // For other signals, connect directly
-            FridaNativeUtils.connectSignal(scriptPtr, signalName, callback, FridaNativeUtils.getScriptType());
+            try {
+                // Create closure with native callback stub
+                Closure closure = Closure.create(callback, signalName);
+                MemorySegment nativeCallback = closure.getNativeCallback();
+
+                // Use GSignalUtil to handle the actual GLib signal connection
+                long handlerId = GSignalUtil.connectSignal(scriptPtr, signalName, nativeCallback);
+
+                if (handlerId > 0) {
+                    log.trace("Connected script message signal with handler ID {}", handlerId);
+                } else {
+                    log.warn("Failed to connect script message signal - no handler ID returned");
+                }
+            } catch (Exception e) {
+                log.error("Failed to connect script message signal: {}", e.getMessage());
+                throw new FridaException("Failed to connect script message signal", e);
+            }
         }
+
+        log.trace("Registered callback for script signal '{}'", signalName);
     }
 
     /**

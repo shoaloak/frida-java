@@ -45,9 +45,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Compiler implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(Compiler.class);
     private final MemorySegment compilerPtr;
-    private final Map<String, Long> handlerIds = new ConcurrentHashMap<>();
-    private final DeviceManager ownedDeviceManager; // Track if we own the DeviceManager
+    private final DeviceManager ownedDeviceManager;
     private volatile boolean closed = false;
+
+    // Simple callback storage - no GLib signal system needed
+    private final Map<CompilerSignal, Object> callbacks = new ConcurrentHashMap<>();
 
     private static final MethodHandle FRIDA_COMPILER_NEW;
     private static final MethodHandle FRIDA_COMPILER_BUILD_SYNC;
@@ -224,45 +226,40 @@ public class Compiler implements AutoCloseable {
             throw new IllegalArgumentException("Callback cannot be null");
         }
 
-        log.debug("Connecting to compiler signal: {}", signal.getName());
+        log.debug("Registering callback for compiler signal: {}", signal.getName());
 
-        long handlerId = switch (signal) {
+        // Validate callback types
+        switch (signal) {
             case STARTING, FINISHED, FILE_CHANGED -> {
                 if (!(callback instanceof Runnable)) {
                     throw new IllegalArgumentException("Signal '" + signal.getName() + "' requires a Runnable callback");
                 }
-                yield FridaNativeUtils.connectSignal(compilerPtr, signal.getName(), callback, FridaNativeUtils.getCompilerType());
             }
             case OUTPUT -> {
                 if (!(callback instanceof SignalCallbacks.CompilerOutputCallback)) {
                     throw new IllegalArgumentException("Signal 'output' requires a SignalCallbacks.CompilerOutputCallback");
                 }
-                yield FridaNativeUtils.connectSignal(compilerPtr, signal.getName(), callback, FridaNativeUtils.getCompilerType());
             }
             case DIAGNOSTICS -> {
                 if (!(callback instanceof SignalCallbacks.CompilerDiagnosticsCallback)) {
                     throw new IllegalArgumentException("Signal 'diagnostics' requires a SignalCallbacks.CompilerDiagnosticsCallback");
                 }
-                yield FridaNativeUtils.connectSignal(compilerPtr, signal.getName(), callback, FridaNativeUtils.getCompilerType());
             }
-        };
-
-        if (handlerId > 0) {
-            handlerIds.put(signal.getName(), handlerId);
-            log.trace("Connected to signal '{}' with handler ID {}", signal.getName(), handlerId);
         }
+
+        callbacks.put(signal, callback);
+        log.trace("Registered callback for signal '{}'", signal.getName());
     }
 
     /**
-     * Disconnect from a signal.
+     * Remove callback for a signal.
      *
-     * @param signal Signal to disconnect from
+     * @param signal Signal to remove callback for
      */
     public void off(CompilerSignal signal) {
-        Long handlerId = handlerIds.remove(signal.getName());
-        if (handlerId != null) {
-            log.debug("Disconnecting from compiler signal: {}", signal.getName());
-            FridaNativeUtils.disconnectSignal(compilerPtr, handlerId);
+        Object removed = callbacks.remove(signal);
+        if (removed != null) {
+            log.debug("Removed callback for signal: {}", signal.getName());
         }
     }
 
@@ -275,12 +272,8 @@ public class Compiler implements AutoCloseable {
         }
 
         log.debug("Cleaning up Compiler");
-        // Disconnect all signals
-        for (Map.Entry<String, Long> entry : handlerIds.entrySet()) {
-            log.debug("Disconnecting from compiler signal: {}", entry.getKey());
-            FridaNativeUtils.disconnectSignal(compilerPtr, entry.getValue());
-        }
-        handlerIds.clear();
+        // Clear registered callbacks
+        callbacks.clear();
 
         FridaNativeUtils.fridaUnref(compilerPtr);
 

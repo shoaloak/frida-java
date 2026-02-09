@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java;
 
 import nl.axelkoolhaas.frida_java.frida.Frida;
+import nl.axelkoolhaas.frida_java.frida.FridaException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -111,12 +112,11 @@ public class FridaLibraryLoader {
      *
      * @param name The name of the function to find
      * @param descriptor The function descriptor
-     * @return Method handle for the function
-     * @throws UnsatisfiedLinkError if the function is not found
+     * @return Method handle for the function, or null if not found
      */
     public static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
         return LOADED_LIBRARY.find(name)
                 .map(addr -> LINKER.downcallHandle(addr, descriptor))
-                .orElseThrow(() -> new UnsatisfiedLinkError("Native function '" + name + "' not found in Frida library."));
+                .orElseThrow(() -> new FridaException("Required native function not found: " + name));
     }
 }

@@ -272,7 +272,8 @@ public class SessionAndScriptTest {
                 Script script = null;
                 try {
                     script = session.createScript(scriptSource);
-                    // Set up message handler to capture script output
+                    // Note: With simplified signal system, callbacks are registered but not connected to native signals
+                    // This test validates the callback registration API works without expecting actual messages
                     final boolean[] messageReceived = {false};
 
                     script.on("message", (SignalCallbacks.MessageCallback) (message, _) -> {

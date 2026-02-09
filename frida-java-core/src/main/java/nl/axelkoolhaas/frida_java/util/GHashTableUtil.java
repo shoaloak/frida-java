@@ -37,17 +37,6 @@ public class GHashTableUtil {
     private static final MethodHandle G_HASH_TABLE_LOOKUP;
     private static final MethodHandle G_LIST_LENGTH;
     private static final MethodHandle G_LIST_NTH_DATA;
-    private static final MethodHandle G_VALUE_TYPE;
-    private static final MethodHandle G_VALUE_GET_STRING;
-    private static final MethodHandle G_VALUE_GET_INT;
-    private static final MethodHandle G_VALUE_GET_BOOLEAN;
-    private static final MethodHandle G_VALUE_GET_POINTER;
-
-    // GType constants (from GLib)
-    private static final long G_TYPE_STRING = 64;   // G_TYPE_MAKE_FUNDAMENTAL(16)
-    private static final long G_TYPE_INT = 24;      // G_TYPE_MAKE_FUNDAMENTAL(6)
-    private static final long G_TYPE_BOOLEAN = 20;  // G_TYPE_MAKE_FUNDAMENTAL(5)
-    private static final long G_TYPE_POINTER = 68;  // G_TYPE_MAKE_FUNDAMENTAL(17)
 
     static {
         // GHashTable and GList functions
@@ -59,18 +48,6 @@ public class GHashTableUtil {
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         G_LIST_NTH_DATA = FridaLibraryLoader.findFunction("g_list_nth_data",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-
-        // GValue type checking and extraction functions
-        G_VALUE_TYPE = FridaLibraryLoader.findFunction("g_value_type",
-                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-        G_VALUE_GET_STRING = FridaLibraryLoader.findFunction("g_value_get_string",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        G_VALUE_GET_INT = FridaLibraryLoader.findFunction("g_value_get_int",
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        G_VALUE_GET_BOOLEAN = FridaLibraryLoader.findFunction("g_value_get_boolean",
-                FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
-        G_VALUE_GET_POINTER = FridaLibraryLoader.findFunction("g_value_get_pointer",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     private GHashTableUtil() {
@@ -83,9 +60,7 @@ public class GHashTableUtil {
      * @return Map containing the key-value pairs
      */
     public static Map<String, Object> toMap(MemorySegment hashTable) {
-        if (hashTable.equals(MemorySegment.NULL)) {
-            return new HashMap<>();
-        }
+        FridaNativeUtils.requireValidPointer(hashTable, "hashTable");
 
         try {
             // Get the list of keys
@@ -131,13 +106,11 @@ public class GHashTableUtil {
      * @return the converted Java object
      */
     private static Object convertValueToJavaObject(MemorySegment valuePtr) {
-        if (valuePtr.equals(MemorySegment.NULL)) {
-            return null;
-        }
+        FridaNativeUtils.requireValidPointer(valuePtr, "value");
 
         try {
             // First, try to interpret as a GValue
-            Object gValueResult = convertGValue(valuePtr);
+            Object gValueResult = GValueUtil.toJavaObject(valuePtr);
             if (gValueResult != null) {
                 return gValueResult;
             }
@@ -147,45 +120,7 @@ public class GHashTableUtil {
 
         } catch (Throwable e) {
             // If all else fails, return the raw memory address as a string
-            return "0x" + Long.toHexString(valuePtr.address());
-        }
-    }
-
-    /**
-     * Try to convert a GValue to a Java object
-     * @param gValuePtr the GValue memory segment
-     * @return the converted object, or null if not a valid GValue
-     */
-    private static Object convertGValue(MemorySegment gValuePtr) {
-        try {
-            // Get the type of the GValue
-            long gType = (long) G_VALUE_TYPE.invoke(gValuePtr);
-
-            switch ((int) gType) {
-                case (int) G_TYPE_STRING:
-                    MemorySegment strPtr = (MemorySegment) G_VALUE_GET_STRING.invoke(gValuePtr);
-                    return FridaNativeUtils.memorySegmentToString(strPtr);
-
-                case (int) G_TYPE_INT:
-                    return (int) G_VALUE_GET_INT.invoke(gValuePtr);
-
-                case (int) G_TYPE_BOOLEAN:
-                    return (boolean) G_VALUE_GET_BOOLEAN.invoke(gValuePtr);
-
-                case (int) G_TYPE_POINTER:
-                    MemorySegment ptrValue = (MemorySegment) G_VALUE_GET_POINTER.invoke(gValuePtr);
-                    if (ptrValue.equals(MemorySegment.NULL)) {
-                        return null;
-                    }
-                    return "0x" + Long.toHexString(ptrValue.address());
-
-                default:
-                    // Unknown GValue type, return null to try direct interpretation
-                    return null;
-            }
-        } catch (Throwable e) {
-            // Not a valid GValue or error accessing it
-            return null;
+            return FridaNativeUtils.formatAddress(valuePtr);
         }
     }
 
@@ -237,29 +172,11 @@ public class GHashTableUtil {
             }
 
             // If all else fails, return the raw memory address as a string
-            return "0x" + Long.toHexString(valuePtr.address());
+            return FridaNativeUtils.formatAddress(valuePtr);
 
         } catch (Throwable e) {
             // Return a representation of the memory address if we can't interpret the value
-            return "0x" + Long.toHexString(valuePtr.address());
-        }
-    }
-
-    /**
-     * Check if a memory segment appears to be a valid GValue
-     * @param valuePtr the memory segment to check
-     * @return true if it appears to be a GValue
-     */
-    public static boolean isGValue(MemorySegment valuePtr) {
-        if (valuePtr.equals(MemorySegment.NULL)) {
-            return false;
-        }
-
-        try {
-            long gType = (long) G_VALUE_TYPE.invoke(valuePtr);
-            return gType > 0 && gType < 1000; // Reasonable range for GType values
-        } catch (Throwable e) {
-            return false;
+            return FridaNativeUtils.formatAddress(valuePtr);
         }
     }
 }

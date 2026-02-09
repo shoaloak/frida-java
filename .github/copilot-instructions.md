@@ -202,6 +202,40 @@ This keeps the primary API clean.
 
 ---
 
+## Strategic GLib Usage
+
+### Core Principle
+
+Avoid GLib complexity while handling unavoidable GLib data structures that Frida returns.
+
+**Handle GLib data structures that Frida API returns:**
+- `GHashTable*` → `Map<String, Object>` (system parameters, etc.)
+- `GBytes*` → `byte[]` (binary data)
+- `GVariant*` → Java objects (structured data)
+- `GError*` → domain exceptions
+
+**Do NOT bind GLib's signal/object system:**
+- No `g_signal_connect_data`, `g_signal_lookup`, `G_OBJECT_GET_TYPE`
+- No `g_signal_handler_disconnect`, `G_TYPE_FROM_INSTANCE`
+- No manual GObject introspection or signal management
+
+---
+
+### Why This Approach
+
+**GLib data structures are unavoidable** because Frida's C API returns them:
+```c
+// Frida API returns GHashTable - we must convert it
+GHashTable* frida_device_query_system_parameters_sync(...);
+```
+
+**GLib signals are avoidable** and add unnecessary complexity:
+- Go's Frida bindings succeed by avoiding signal complexity
+- Simple function callbacks are more reliable than GObject signals
+- Signal binding increases surface area for native function failures
+
+---
+
 ## Optional and Absence Handling
 
 For API methods where absence is a normal, expected outcome (such as looking up a process by PID, device by ID, etc.), prefer returning `Optional<T>` rather than throwing an exception. This allows users to check for presence without handling exceptions for normal control flow.
@@ -257,6 +291,7 @@ APIs must feel idiomatic in Java:
 - Use `final` where variables are not reassigned
 - Prefer simple, explicit control flow in low-level FFM code
 - Use streams or lambdas only when they clearly improve readability
+- **NO EMOJIS** in code, comments, commit messages, or documentation - use clear, professional text
 
 ---
 

@@ -19,7 +19,6 @@ public class Bus {
     private static final Logger log = LoggerFactory.getLogger(Bus.class);
     private final MemorySegment busPtr;
     private final Map<String, Object> signalHandlers = new ConcurrentHashMap<>();
-    private final Map<String, Long> handlerIds = new ConcurrentHashMap<>();
 
     // Native method handles
     private static final MethodHandle FRIDA_BUS_IS_DETACHED;
@@ -118,13 +117,13 @@ public class Bus {
     }
 
     /**
-     * Connect to bus signals
+     * Register callbacks for bus events
      *
      * Available signals:
      * - "detached": Emitted when the bus is detached from the device
      *   Callback should be Runnable
      * - "message": Emitted when a message is received from the device
-     *   Callback should be Closure.MessageCallback accepting (String message, byte[] data)
+     *   Callback should be SignalCallbacks.MessageCallback accepting (String message, byte[] data)
      *
      * @param signalName Signal name to connect to
      * @param callback Callback function
@@ -135,37 +134,33 @@ public class Bus {
             throw new IllegalArgumentException("Callback cannot be null");
         }
 
-        signalHandlers.put(signalName, callback);
+        log.debug("Registering callback for bus signal: {}", signalName);
 
-        long handlerId;
         switch (signalName) {
             case "detached":
                 if (!(callback instanceof Runnable)) {
                     throw new IllegalArgumentException("Detached signal callback must be Runnable");
                 }
-                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback, FridaNativeUtils.getBusType());
-                handlerIds.put(signalName, handlerId);
+                signalHandlers.put(signalName, callback);
                 break;
             case "message":
-                // Callback should accept (String message, byte[] data)
-                handlerId = FridaNativeUtils.connectSignal(busPtr, signalName, callback, FridaNativeUtils.getBusType());
-                handlerIds.put(signalName, handlerId);
+                signalHandlers.put(signalName, callback);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown signal: " + signalName);
         }
+
+        log.trace("Registered callback for bus signal '{}'", signalName);
     }
 
     /**
-     * Disconnect from a signal
-     * @param signalName Signal name to disconnect from
+     * Remove callback for a signal
+     * @param signalName Signal name to remove callback for
      */
     public void off(String signalName) {
-        signalHandlers.remove(signalName);
-
-        Long handlerId = handlerIds.remove(signalName);
-        if (handlerId != null) {
-            FridaNativeUtils.disconnectSignal(busPtr, handlerId);
+        Object removed = signalHandlers.remove(signalName);
+        if (removed != null) {
+            log.debug("Removed callback for bus signal: {}", signalName);
         }
     }
 

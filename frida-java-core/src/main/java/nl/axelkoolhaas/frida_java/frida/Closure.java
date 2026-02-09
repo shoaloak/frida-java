@@ -19,8 +19,10 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
+import nl.axelkoolhaas.frida_java.util.GSignalUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -275,5 +277,56 @@ public class Closure {
 
     public static void handleGenericSignal(long closureId, String signalName, MemorySegment object, MemorySegment userData) {
         dispatchSignal(closureId, signalName, object);
+    }
+
+    /**
+     * Connect a closure to a script signal using GLib's signal system.
+     * This connects the closure's native callback to receive actual script messages.
+     *
+     * @param object The script object
+     * @param signalName The signal name (typically "message")
+     * @param callback The callback to register
+     * @return Handler ID for the connection, or 0 if failed
+     */
+    public static long connectClosure(MemorySegment object, String signalName, Object callback) {
+        log.debug("Connecting script signal: {}", signalName);
+
+        try {
+            // Create closure with native callback stub
+            Closure closure = Closure.create(callback, signalName);
+            MemorySegment nativeCallback = closure.getNativeCallback();
+
+            // Create GClosure in native code that will call the native callback stub
+            MemorySegment gClosure = createGClosure(nativeCallback);
+
+            // Use GSignalUtil to handle the actual GLib signal connection
+            long handlerId = GSignalUtil.connectSignal(object, signalName, nativeCallback);
+
+            log.debug("Connected script signal '{}' with handler ID {}", signalName, handlerId);
+            return handlerId;
+        } catch (Exception e) {
+            log.error("Failed to connect script signal '{}': {}", signalName, e.getMessage(), e);
+            throw new FridaException("Failed to connect script signal: " + signalName, e);
+        }
+    }
+
+    /**
+     * Create a GClosure from a function pointer
+     */
+    private static MemorySegment createGClosure(MemorySegment callback) {
+        try {
+            // Use g_cclosure_new to create a GClosure from function pointer
+            MethodHandle gClosureNew = FridaLibraryLoader.findFunction("g_cclosure_new",
+                    FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+            // Create closure: g_cclosure_new(callback_func, user_data, destroy_notify)
+            return (MemorySegment) gClosureNew.invoke(
+                    callback,           // callback function
+                    MemorySegment.NULL, // user_data (not needed)
+                    MemorySegment.NULL  // destroy_notify (not needed for now)
+            );
+        } catch (Throwable e) {
+            throw new FridaException("Failed to create GClosure", e);
+        }
     }
 }

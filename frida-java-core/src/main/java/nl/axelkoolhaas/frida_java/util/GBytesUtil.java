@@ -20,6 +20,7 @@
 package nl.axelkoolhaas.frida_java.util;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -59,6 +60,13 @@ public class GBytesUtil {
      * @return GBytes pointer
      */
     public static MemorySegment fromByteArray(byte[] data, Arena arena) {
+        if (data == null) {
+            throw new IllegalArgumentException("Data array cannot be null");
+        }
+        if (arena == null) {
+            throw new IllegalArgumentException("Arena cannot be null");
+        }
+
         try {
             MemorySegment dataPtr = arena.allocate(data.length);
             dataPtr.copyFrom(MemorySegment.ofArray(data));
@@ -78,9 +86,7 @@ public class GBytesUtil {
      * @return Byte array containing the data, or empty array if null/empty
      */
     public static byte[] toByteArray(MemorySegment gBytesPtr) {
-        if (gBytesPtr == null || gBytesPtr.equals(MemorySegment.NULL)) {
-            return new byte[0];
-        }
+        FridaNativeUtils.requireValidPointer(gBytesPtr, "GBytes pointer");
 
         try {
             // Get the size of the GBytes data

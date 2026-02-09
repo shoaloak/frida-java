@@ -95,18 +95,4 @@ public class GErrorUtils {
             throw new FridaException("Failed to " + operation + ": " + errorMsg);
         }
     }
-
-    /**
-     * Check if error is not NULL, get message, free it, and return the message
-     * @param error GError pointer to check
-     * @return Error message string, or null if no error
-     */
-    public static String checkAndGetMessage(MemorySegment error) {
-        if (!error.equals(MemorySegment.NULL)) {
-            String errorMsg = getMessage(error);
-            free(error);
-            return errorMsg;
-        }
-        return null;
-    }
 }
