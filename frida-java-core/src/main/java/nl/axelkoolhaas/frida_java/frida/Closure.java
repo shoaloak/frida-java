@@ -144,6 +144,7 @@ public class Closure {
             // Actual signal parameters start at index 1
             switch (data.signalName) {
                 case "message" -> handleMessageMarshal(data.callback, nParams, paramsPtr, gvalueSize);
+                case "output" -> handleOutputMarshal(data.callback, nParams, paramsPtr, gvalueSize);
                 case "detached", "lost" -> handleSimpleMarshal(data.callback);
                 default -> log.trace("Unknown signal '{}' in marshal", data.signalName);
             }
@@ -199,6 +200,46 @@ public class Closure {
     }
 
     /**
+     * Handle the "output" signal marshal.
+     * Signal signature: void callback(FridaDevice *device, guint pid, gint fd, GBytes *data)
+     * So nParams = 4 (instance + pid + fd + data)
+     */
+    private static void handleOutputMarshal(Object callback, int nParams, MemorySegment paramsPtr, int gvalueSize) {
+        if (!(callback instanceof Device.OutputCallback outputCallback)) {
+            log.trace("Callback is not an OutputCallback");
+            return;
+        }
+
+        if (nParams < 4) {
+            log.trace("Output signal has insufficient params: {}", nParams);
+            return;
+        }
+
+        try {
+            // Reinterpret the params pointer to allow access to GValue array
+            MemorySegment params = paramsPtr.reinterpret((long) nParams * gvalueSize);
+
+            // param[1] = pid (guint)
+            MemorySegment pidGValue = params.asSlice(gvalueSize, gvalueSize);
+            int pid = extractIntFromGValue(pidGValue);
+
+            // param[2] = fd (gint)
+            MemorySegment fdGValue = params.asSlice((long) 2 * gvalueSize, gvalueSize);
+            int fd = extractIntFromGValue(fdGValue);
+
+            // param[3] = data (GBytes*)
+            MemorySegment dataGValue = params.asSlice((long) 3 * gvalueSize, gvalueSize);
+            byte[] data = extractBytesFromGValue(dataGValue);
+
+            log.trace("Dispatching output signal: pid={}, fd={}, data length={}", pid, fd, data != null ? data.length : 0);
+
+            outputCallback.onOutput(pid, fd, data);
+        } catch (Exception e) {
+            log.error("Failed to handle output marshal: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
      * Handle simple signals (detached, lost) that have no extra parameters.
      */
     private static void handleSimpleMarshal(Object callback) {
@@ -244,6 +285,25 @@ public class Closure {
         } catch (Exception e) {
             log.trace("Failed to extract bytes from GValue: {}", e.getMessage());
             return new byte[0];
+        }
+    }
+
+    /**
+     * Extract an integer from a GValue containing an int/uint.
+     */
+    private static int extractIntFromGValue(MemorySegment gvalue) {
+        try {
+            Object value = GValueUtil.toJavaObject(gvalue);
+            if (value instanceof Integer intVal) {
+                return intVal;
+            }
+
+            // If GValueUtil doesn't recognize the type, try reading int directly
+            // GValue data starts at offset 8 (after GType)
+            return gvalue.get(ValueLayout.JAVA_INT, 8);
+        } catch (Exception e) {
+            log.trace("Failed to extract int from GValue: {}", e.getMessage());
+            return 0;
         }
     }
 

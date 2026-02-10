@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * Represents a device that Frida connects to
@@ -56,7 +58,6 @@ import java.util.Optional;
  */
 public class Device implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(Device.class);
-
     private final MemorySegment devicePtr;
 
     private static final MethodHandle FRIDA_DEVICE_GET_DTYPE;
@@ -1033,6 +1034,46 @@ public class Device implements AutoCloseable {
         }
     }
 
+    /**
+     * Register an event handler for device signals.
+     *
+     * Available signals:
+     * - "output" with handler as OutputCallback(pid, fd, data)
+     * - "spawn-added" with handler as SpawnCallback(spawn)
+     * - "spawn-removed" with handler as SpawnCallback(spawn)
+     * - "child-added" with handler as ChildCallback(child)
+     * - "child-removed" with handler as ChildCallback(child)
+     * - "process-crashed" with handler as CrashCallback(crash)
+     * - "uninjected" with handler as UninjectedCallback(id)
+     * - "lost" with handler as Runnable
+     *
+     * @param signal Signal name to listen for
+     * @param callback Callback function for the signal
+     */
+    public void on(String signal, Object callback) {
+        log.debug("Registering event handler for device signal: {}", signal);
+
+        try {
+            long handlerId = Closure.connectClosure(devicePtr, signal, callback);
+
+            if (handlerId > 0) {
+                log.debug("Successfully registered handler for signal '{}' with handler ID: {}", signal, handlerId);
+            } else {
+                log.warn("Failed to connect signal '{}' - handler ID is 0", signal);
+            }
+        } catch (Exception e) {
+            log.error("Failed to register event handler for signal '{}': {}", signal, e.getMessage());
+            throw new FridaException("Failed to register event handler for signal: " + signal, e);
+        }
+    }
+
+    /**
+     * Callback interface for device output events (stdout/stderr from spawned processes)
+     */
+    @FunctionalInterface
+    public interface OutputCallback {
+        void onOutput(int pid, int fd, byte[] data);
+    }
 
     @Override
     public void close() {
