@@ -74,7 +74,7 @@ public class Session implements AutoCloseable {
      */
     public boolean isDetached() {
         try {
-            return (boolean) FRIDA_SESSION_IS_DETACHED.invoke(sessionPtr);
+            return (boolean) FRIDA_SESSION_IS_DETACHED.invokeExact(sessionPtr);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
@@ -88,7 +88,7 @@ public class Session implements AutoCloseable {
      */
     public int getPid() {
         try {
-            return (int) FRIDA_SESSION_GET_PID.invoke(sessionPtr);
+            return (int) FRIDA_SESSION_GET_PID.invokeExact(sessionPtr);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
@@ -108,16 +108,14 @@ public class Session implements AutoCloseable {
 
             log.trace("Native call: frida_session_detach_sync()");
             // Detach the session (session, cancellable=NULL, error)
-            FRIDA_SESSION_DETACH_SYNC.invoke(sessionPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_SESSION_DETACH_SYNC.invokeExact(sessionPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "detach session");
-            log.debug("Session detached successfully");
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to detach session: {}", e.getMessage());
             throw new FridaException("Failed to detach session", e);
         }
     }
@@ -132,7 +130,7 @@ public class Session implements AutoCloseable {
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
             // Resume the session (session, cancellable=NULL, error)
-            FRIDA_SESSION_RESUME_SYNC.invoke(sessionPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_SESSION_RESUME_SYNC.invokeExact(sessionPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
@@ -154,7 +152,7 @@ public class Session implements AutoCloseable {
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
             // Enable child gating (session, cancellable=NULL, error)
-            FRIDA_SESSION_ENABLE_CHILD_GATING_SYNC.invoke(sessionPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_SESSION_ENABLE_CHILD_GATING_SYNC.invokeExact(sessionPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
@@ -176,7 +174,7 @@ public class Session implements AutoCloseable {
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
             // Disable child gating (session, cancellable=NULL, error)
-            FRIDA_SESSION_DISABLE_CHILD_GATING_SYNC.invoke(sessionPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_SESSION_DISABLE_CHILD_GATING_SYNC.invokeExact(sessionPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
@@ -204,7 +202,7 @@ public class Session implements AutoCloseable {
 
             log.trace("Native call: frida_session_create_script_sync()");
             // Create script (session, script, options=NULL, cancellable=NULL, error)
-            MemorySegment scriptObjPtr = (MemorySegment) FRIDA_SESSION_CREATE_SCRIPT_SYNC.invoke(
+            MemorySegment scriptObjPtr = (MemorySegment) FRIDA_SESSION_CREATE_SCRIPT_SYNC.invokeExact(
                     sessionPtr, scriptPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
 
             // Check for errors

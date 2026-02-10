@@ -93,7 +93,7 @@ public class Script implements AutoCloseable {
 
             log.trace("Native call: frida_script_load_sync()");
             // Load the script (script, cancellable=NULL, error)
-            FRIDA_SCRIPT_LOAD_SYNC.invoke(scriptPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_SCRIPT_LOAD_SYNC.invokeExact(scriptPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
@@ -115,11 +115,13 @@ public class Script implements AutoCloseable {
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
             // Unload the script (script, cancellable=NULL, error)
-            FRIDA_SCRIPT_UNLOAD_SYNC.invoke(scriptPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_SCRIPT_UNLOAD_SYNC.invokeExact(scriptPtr, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "unload script");
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
             throw new FridaException("Failed to unload script", e);
         }
@@ -132,7 +134,9 @@ public class Script implements AutoCloseable {
      */
     public boolean isDestroyed() {
         try {
-            return (boolean) FRIDA_SCRIPT_IS_DESTROYED.invoke(scriptPtr);
+            return (boolean) FRIDA_SCRIPT_IS_DESTROYED.invokeExact(scriptPtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
         } catch (Throwable e) {
             throw new FridaException("Failed to check if script is destroyed", e);
         }

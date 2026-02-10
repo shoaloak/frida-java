@@ -71,7 +71,7 @@ public class Bus {
         try {
             // frida_bus_is_detached returns gboolean (typedef gint, i.e., int)
             // gboolean: FALSE = 0, TRUE = non-zero (typically 1)
-            int result = (int) FRIDA_BUS_IS_DETACHED.invoke(busPtr);
+            int result = (int) FRIDA_BUS_IS_DETACHED.invokeExact(busPtr);
             log.trace("Checked bus detached state: {}", result != 0);
             return result != 0;
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
@@ -91,7 +91,7 @@ public class Bus {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
             log.debug("Attaching to bus");
-            FRIDA_BUS_ATTACH_SYNC.invoke(busPtr, MemorySegment.NULL, errorPtr);
+            FRIDA_BUS_ATTACH_SYNC.invokeExact(busPtr, MemorySegment.NULL, errorPtr);
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "attach to bus");
@@ -118,7 +118,7 @@ public class Bus {
                 gBytesData = GBytesUtil.fromByteArray(data, arena);
             }
 
-            FRIDA_BUS_POST.invoke(busPtr, messagePtr, gBytesData);
+            FRIDA_BUS_POST.invokeExact(busPtr, messagePtr, gBytesData);
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
