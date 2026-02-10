@@ -184,43 +184,6 @@ public class GSignalUtil {
         }
     }
 
-//    /**
-//     * Connect a closure to a GObject signal
-//     */
-//    public static long connectSignal(MemorySegment object, String signalName, MemorySegment closure) {
-//        FridaNativeUtils.requireValidPointer(object, "object");
-//        FridaNativeUtils.requireValidPointer(closure, "closure");
-//        if (signalName == null || signalName.trim().isEmpty()) {
-//            throw new IllegalArgumentException("Signal name cannot be null or empty");
-//        }
-//
-//        try (Arena arena = Arena.ofConfined()) {
-//            // Get GObject type using struct field access
-//            long objectType = getObjectType(object);
-//
-//            // Step 2: Lookup signal ID
-//            MemorySegment signalNamePtr = arena.allocateFrom(signalName);
-//            int signalId = (int) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
-//
-//            if (signalId == 0) {
-//                log.debug("Signal '{}' not found on object", signalName);
-//                return 0;
-//            }
-//
-//            // Step 3: Connect by ID
-//            return (long) G_SIGNAL_CONNECT_CLOSURE_BY_ID.invoke(
-//                    object,           // instance
-//                    signalId,         // signal_id
-//                    0,               // detail (0 for no detail)
-//                    closure,          // closure
-//                    true             // after (connect after default handler)
-//            );
-//        } catch (Throwable e) {
-//            log.error("Failed to connect signal '{}': {}", signalName, e.getMessage());
-//            throw new FridaException("Failed to connect signal: " + signalName, e);
-//        }
-//    }
-
     /**
      * Connect a callback to a GObject signal using g_signal_connect_data
      */
@@ -229,8 +192,8 @@ public class GSignalUtil {
             MemorySegment signalNameNative = arena.allocateFrom(signalName);
 
             long handlerId = (long) G_SIGNAL_CONNECT_DATA.invoke(
-                    instance,
-                    signalNameNative,
+                    instance,       // GObject instance
+                    signalNameNative,      // detailed_signal (signal name)
                     callback,              // GCallback (function pointer)
                     MemorySegment.NULL,    // user_data
                     MemorySegment.NULL,    // destroy_data

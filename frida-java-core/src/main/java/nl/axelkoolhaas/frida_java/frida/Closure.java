@@ -19,8 +19,6 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GSignalUtil;
 import nl.axelkoolhaas.frida_java.util.GValueUtil;
 import org.slf4j.Logger;
@@ -40,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <br>
  * This is not a closure in the traditional sense, but the name is kept for consistency with GClosure.
  * This class looks scary, but essentially it just maps native signal C callbacks back to Java methods.
- * It does this through Linker upcall stubs and a static dispatch method.
+ * It does this through Linker upcall stub (MarshalStub) and a static dispatch method.
  */
 public class Closure {
     private static final Logger log = LoggerFactory.getLogger(Closure.class);
@@ -76,7 +74,6 @@ public class Closure {
 
     /**
      * Create the shared marshal function upcall stub.
-     * This is equivalent to Go's goMarshalCls function.
      *
      * GClosureMarshal signature:
      * void marshal(GClosure *closure, GValue *return_value, guint n_param_values,
@@ -184,11 +181,11 @@ public class Closure {
 
             // param[1] = message (const gchar*)
             MemorySegment messageGValue = params.asSlice((long) gvalueSize, gvalueSize);
-            String message = extractStringFromGValue(messageGValue);
+            String message = GValueUtil.extractString(messageGValue);
 
             // param[2] = data (GBytes*)
             MemorySegment dataGValue = params.asSlice((long) 2 * gvalueSize, gvalueSize);
-            byte[] data = extractBytesFromGValue(dataGValue);
+            byte[] data = GValueUtil.extractBytes(dataGValue);
 
             log.trace("Dispatching message signal: message length={}, data length={}",
                     message != null ? message.length() : 0, data != null ? data.length : 0);
@@ -221,15 +218,15 @@ public class Closure {
 
             // param[1] = pid (guint)
             MemorySegment pidGValue = params.asSlice(gvalueSize, gvalueSize);
-            int pid = extractIntFromGValue(pidGValue);
+            int pid = GValueUtil.extractInt(pidGValue);
 
             // param[2] = fd (gint)
             MemorySegment fdGValue = params.asSlice((long) 2 * gvalueSize, gvalueSize);
-            int fd = extractIntFromGValue(fdGValue);
+            int fd = GValueUtil.extractInt(fdGValue);
 
             // param[3] = data (GBytes*)
             MemorySegment dataGValue = params.asSlice((long) 3 * gvalueSize, gvalueSize);
-            byte[] data = extractBytesFromGValue(dataGValue);
+            byte[] data = GValueUtil.extractBytes(dataGValue);
 
             log.trace("Dispatching output signal: pid={}, fd={}, data length={}", pid, fd, data != null ? data.length : 0);
 
@@ -248,64 +245,6 @@ public class Closure {
         }
     }
 
-    /**
-     * Extract a string from a GValue containing a pointer (const gchar*).
-     */
-    private static String extractStringFromGValue(MemorySegment gvalue) {
-        try {
-            Object value = GValueUtil.toJavaObject(gvalue);
-            if (value instanceof String str) {
-                return str;
-            }
-
-            // If GValueUtil doesn't recognize the type, try reading pointer directly
-            // GValue data starts at offset 8 (after GType)
-            MemorySegment strPtr = gvalue.get(ValueLayout.ADDRESS, 8);
-            if (strPtr != null && !strPtr.equals(MemorySegment.NULL)) {
-                return FridaNativeUtils.memorySegmentToString(strPtr);
-            }
-            return null;
-        } catch (Exception e) {
-            log.trace("Failed to extract string from GValue: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Extract bytes from a GValue containing a GBytes pointer.
-     */
-    private static byte[] extractBytesFromGValue(MemorySegment gvalue) {
-        try {
-            // GValue data starts at offset 8 (after GType)
-            MemorySegment gBytesPtr = gvalue.get(ValueLayout.ADDRESS, 8);
-            if (gBytesPtr == null || gBytesPtr.equals(MemorySegment.NULL)) {
-                return new byte[0];
-            }
-            return GBytesUtil.toByteArray(gBytesPtr);
-        } catch (Exception e) {
-            log.trace("Failed to extract bytes from GValue: {}", e.getMessage());
-            return new byte[0];
-        }
-    }
-
-    /**
-     * Extract an integer from a GValue containing an int/uint.
-     */
-    private static int extractIntFromGValue(MemorySegment gvalue) {
-        try {
-            Object value = GValueUtil.toJavaObject(gvalue);
-            if (value instanceof Integer intVal) {
-                return intVal;
-            }
-
-            // If GValueUtil doesn't recognize the type, try reading int directly
-            // GValue data starts at offset 8 (after GType)
-            return gvalue.get(ValueLayout.JAVA_INT, 8);
-        } catch (Exception e) {
-            log.trace("Failed to extract int from GValue: {}", e.getMessage());
-            return 0;
-        }
-    }
 
     /**
      * Set a global error handler for callback exceptions.
