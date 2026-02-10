@@ -137,11 +137,8 @@ jobs:
           name: frida-core-windows-x64
           path: ./frida-java-core/native/
 
-      - name: Unzip native libraries
-        run: |
-          for f in ./frida-java-core/native/*.zip; do
-            unzip -o "$f" -d ./frida-java-core/native/
-          done
+      - name: Verify library artifacts
+        run: ls -l ./frida-java-core/native/
 
       - name: Build bindings with Maven and package JAR
         run: mvn --batch-mode --no-transfer-progress clean compile package --projects frida-java-core --also-make
