@@ -111,6 +111,17 @@ public class FridaNativeUtils {
     }
 
     /**
+     * Helper method to convert a MemorySegment to a string and then unref the segment
+     * @param segment the memory segment to convert and unref
+     * @return the string value, or empty string if segment is NULL
+     */
+    public static String memorySegmentToStringAndFree(MemorySegment segment) {
+        String result = memorySegmentToString(segment);
+        fridaUnref(segment);
+        return result;
+    }
+
+    /**
      * Convert byte array to GBytes
      * @param data byte array to convert
      * @param arena Arena for memory allocation
