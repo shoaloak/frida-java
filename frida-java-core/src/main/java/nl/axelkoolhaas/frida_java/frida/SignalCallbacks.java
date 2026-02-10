@@ -19,31 +19,53 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
+/**
+ * Utility class containing all signal callback interfaces for Frida device and process events.
+ */
 public final class SignalCallbacks {
-    private SignalCallbacks() {} // Utility class
+    private SignalCallbacks() {}
 
-    // ===========================================
     // General Signal Callbacks
-    // ===========================================
-
     @FunctionalInterface
     public interface MessageCallback {
         void onMessage(String message, byte[] data);
     }
 
-    // ===========================================
-    // Process/Device Signal Callbacks
-    // ===========================================
-
+    // Device/Process Signal Callbacks
     @FunctionalInterface
     public interface ProcessOutputCallback {
         void onOutput(int pid, int fd, byte[] data);
     }
 
-    // ===========================================
-    // Compiler Signal Callbacks
-    // ===========================================
+    /**
+     * Callback interface for device output events (stdout/stderr from spawned processes)
+     */
+    @FunctionalInterface
+    public interface OutputCallback {
+        void onOutput(int pid, int fd, byte[] data);
+    }
 
+    @FunctionalInterface
+    public interface SpawnCallback {
+        void onSpawn(Spawn spawn);
+    }
+
+    @FunctionalInterface
+    public interface ChildCallback {
+        void onChild(Child child);
+    }
+
+    @FunctionalInterface
+    public interface CrashCallback {
+        void onCrash(Crash crash);
+    }
+
+    @FunctionalInterface
+    public interface UninjectedCallback {
+        void onUninjected(String id);
+    }
+
+    // Compiler Signal Callbacks
     @FunctionalInterface
     public interface CompilerOutputCallback {
         void onOutput(String bundle);
@@ -53,10 +75,6 @@ public final class SignalCallbacks {
     public interface CompilerDiagnosticsCallback {
         void onDiagnostics(String diagnostics);
     }
-
-    // ===========================================
-    // Error Handling
-    // ===========================================
 
     /**
      * Handler for exceptions thrown by signal callbacks.
@@ -68,5 +86,4 @@ public final class SignalCallbacks {
     public interface ErrorHandler {
         void onCallbackError(String signal, Exception error);
     }
-
 }

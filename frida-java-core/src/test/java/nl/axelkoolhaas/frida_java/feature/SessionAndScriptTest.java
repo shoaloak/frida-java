@@ -243,7 +243,7 @@ public class SessionAndScriptTest {
             Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
             // Register output handler to capture stdout/stderr from spawned process with Stdio.PIPE
-            localDevice.on("output", (Device.OutputCallback) (pid, fd, data) -> {
+            localDevice.on(DeviceSignal.OUTPUT, (SignalCallbacks.OutputCallback) (pid, fd, data) -> {
                 String output = new String(data);
                 System.out.printf("[PID=%d, FD=%d] %s", pid, fd, output);
             });

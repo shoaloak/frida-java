@@ -62,14 +62,7 @@ public class Closure {
     /**
      * Internal data structure to hold callback info
      */
-    private static class ClosureData {
-        final Object callback;
-        final String signalName;
-
-        ClosureData(Object callback, String signalName) {
-            this.callback = callback;
-            this.signalName = signalName;
-        }
+    private record ClosureData(Object callback, String signalName) {
     }
 
     /**
@@ -135,7 +128,7 @@ public class Closure {
         try {
             // Extract values from the GValue array
             // GValue is typically 24 bytes on 64-bit systems (8 bytes GType + 16 bytes data union)
-            int gvalueSize = 24;
+            int gvalueSize = 24; // TODO: This should be determined dynamically based on the platform and GLib version
 
             // First param (index 0) is always the instance (GObject), skip it like Go does
             // Actual signal parameters start at index 1
@@ -202,7 +195,7 @@ public class Closure {
      * So nParams = 4 (instance + pid + fd + data)
      */
     private static void handleOutputMarshal(Object callback, int nParams, MemorySegment paramsPtr, int gvalueSize) {
-        if (!(callback instanceof Device.OutputCallback outputCallback)) {
+        if (!(callback instanceof SignalCallbacks.OutputCallback outputCallback)) {
             log.trace("Callback is not an OutputCallback");
             return;
         }

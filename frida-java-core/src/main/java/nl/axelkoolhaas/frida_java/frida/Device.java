@@ -1035,24 +1035,55 @@ public class Device implements AutoCloseable {
     /**
      * Register an event handler for device signals.
      *
-     * Available signals:
-     * - "output" with handler as OutputCallback(pid, fd, data)
-     * - "spawn-added" with handler as SpawnCallback(spawn)
-     * - "spawn-removed" with handler as SpawnCallback(spawn)
-     * - "child-added" with handler as ChildCallback(child)
-     * - "child-removed" with handler as ChildCallback(child)
-     * - "process-crashed" with handler as CrashCallback(crash)
-     * - "uninjected" with handler as UninjectedCallback(id)
-     * - "lost" with handler as Runnable
-     *
-     * @param signal Signal name to listen for
+     * @param signal DeviceSignal to listen for
      * @param callback Callback function for the signal
+     * @throws IllegalArgumentException if callback type does not match signal contract
+     * @throws FridaException on registration failure
      */
-    public void on(String signal, Object callback) {
+    public void on(DeviceSignal signal, Object callback) {
+        if (callback == null) {
+            throw new IllegalArgumentException("Callback cannot be null");
+        }
+
+        // Validate callback type for each signal
+        switch (signal) {
+            case OUTPUT -> {
+                if (!(callback instanceof SignalCallbacks.OutputCallback)) {
+                    throw new IllegalArgumentException("Signal 'output' requires a SignalCallbacks.OutputCallback");
+                }
+            }
+            case SPAWN_ADDED, SPAWN_REMOVED -> {
+                if (!(callback instanceof SignalCallbacks.SpawnCallback)) {
+                    throw new IllegalArgumentException("Signal '" + signal.getName() + "' requires a SignalCallbacks.SpawnCallback");
+                }
+            }
+            case CHILD_ADDED, CHILD_REMOVED -> {
+                if (!(callback instanceof SignalCallbacks.ChildCallback)) {
+                    throw new IllegalArgumentException("Signal '" + signal.getName() + "' requires a SignalCallbacks.ChildCallback");
+                }
+            }
+            case PROCESS_CRASHED -> {
+                if (!(callback instanceof SignalCallbacks.CrashCallback)) {
+                    throw new IllegalArgumentException("Signal 'process-crashed' requires a SignalCallbacks.CrashCallback");
+                }
+            }
+            case UNINJECTED -> {
+                if (!(callback instanceof SignalCallbacks.UninjectedCallback)) {
+                    throw new IllegalArgumentException("Signal 'uninjected' requires a SignalCallbacks.UninjectedCallback");
+                }
+            }
+            case LOST -> {
+                if (!(callback instanceof Runnable)) {
+                    throw new IllegalArgumentException("Signal 'lost' requires a Runnable callback");
+                }
+            }
+            default -> throw new IllegalArgumentException("Unknown signal: " + signal);
+        }
+
         log.debug("Registering event handler for device signal: {}", signal);
 
         try {
-            long handlerId = Closure.connectClosure(devicePtr, signal, callback);
+            long handlerId = Closure.connectClosure(devicePtr, signal.getName(), callback);
 
             if (handlerId > 0) {
                 log.debug("Successfully registered handler for signal '{}' with handler ID: {}", signal, handlerId);
@@ -1063,14 +1094,6 @@ public class Device implements AutoCloseable {
             log.error("Failed to register event handler for signal '{}': {}", signal, e.getMessage());
             throw new FridaException("Failed to register event handler for signal: " + signal, e);
         }
-    }
-
-    /**
-     * Callback interface for device output events (stdout/stderr from spawned processes)
-     */
-    @FunctionalInterface
-    public interface OutputCallback {
-        void onOutput(int pid, int fd, byte[] data);
     }
 
     @Override

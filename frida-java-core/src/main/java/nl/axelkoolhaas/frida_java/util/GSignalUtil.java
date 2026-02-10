@@ -39,7 +39,7 @@ public class GSignalUtil {
 
     // sizeof(GClosure) - the struct size needed for g_closure_new_simple
     // GClosure contains bit fields and pointers, on 64-bit systems it's typically 32 bytes
-    private static final int SIZEOF_GCLOSURE = 32;
+    private static final int SIZEOF_GCLOSURE = 32; // TODO: Verify this size for the target platform, adjust if necessary
 
     static {
         G_SIGNAL_LOOKUP = FridaLibraryLoader.findFunction("g_signal_lookup",
