@@ -140,5 +140,8 @@ See the [examples README](frida-java-examples/README.md) for more details.
 ## Development
 
 Instruction for both developers and LLMs are present at `.github/copilot-instructions.md`.
+To enable SLF4J logging, see `org.slf4j.simpleLogger.defaultLogLevel` inside the `pom.xml` of
+the `frida-java-core` module.
+
 
 
