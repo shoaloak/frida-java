@@ -25,17 +25,13 @@ import nl.axelkoolhaas.frida_java.frida.FridaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
+import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 
 /**
  * Utility class for working with GLib GValue structures.
- * Encapsulates type checking and value extraction.
  */
 public class GValueUtil {
-
     private static final Logger log = LoggerFactory.getLogger(GValueUtil.class);
 
     // private static final MethodHandle G_VALUE_TYPE; // This is a macro, not a function!
@@ -60,6 +56,33 @@ public class GValueUtil {
 
     private GValueUtil() {
         // Utility class
+    }
+
+    /**
+     * The GValue struct is defined as:
+     *   typedef gsize GType;
+     *   struct _GValue { GType g_type; union { ... } data[2]; };
+     * <br>
+     * We use ValueLayout.ADDRESS for GType because gsize is platform-dependent
+     * (matching the pointer size), and sequenceLayout(2, JAVA_LONG) for the
+     * 16-byte data union.
+     */
+    public static final StructLayout LAYOUT = MemoryLayout.structLayout(
+            // GType is an alias for gsize (size_t).
+            // ValueLayout.ADDRESS correctly represents a platform-native word size.
+            ValueLayout.ADDRESS.withName("g_type"),
+
+            // The data union array. In C, it's defined as data[2].
+            // We model this as a sequence of two 8-byte values (on 64-bit).
+            MemoryLayout.sequenceLayout(2, ValueLayout.JAVA_LONG).withName("data")
+    ).withByteAlignment(ValueLayout.ADDRESS.byteSize());
+
+    /**
+     * GLib passes signal parameters as an array of GValues.
+     * This method skips to the correct GValue in that array using the calculated layout size.
+     */
+    public static MemorySegment getAt(MemorySegment paramsArray, int index) {
+        return paramsArray.asSlice(index * LAYOUT.byteSize(), LAYOUT.byteSize());
     }
 
     /**
@@ -127,12 +150,10 @@ public class GValueUtil {
         return (boolean) G_VALUE_GET_BOOLEAN.invoke(gvalue);
     }
 
-    private static String extractPointer(MemorySegment gvalue) throws Throwable {
-        MemorySegment ptrValue = (MemorySegment) G_VALUE_GET_POINTER.invoke(gvalue);
-        if (ptrValue.equals(MemorySegment.NULL)) {
-            return null;
-        }
-        return FridaNativeUtils.formatAddress(ptrValue);
+    public static MemorySegment extractPointer(MemorySegment gvalue) {
+        try {
+            return (MemorySegment) G_VALUE_GET_POINTER.invoke(gvalue);
+        } catch (Throwable t) { return MemorySegment.NULL; }
     }
 
     /**
@@ -181,8 +202,8 @@ public class GValueUtil {
         FridaNativeUtils.requireValidPointer(gvalue, "GValue");
 
         try {
-            // GValue data starts at offset 8 (after GType)
-            MemorySegment gBytesPtr = gvalue.get(ValueLayout.ADDRESS, 8);
+            // Skip the GType field to get to the union data
+            MemorySegment gBytesPtr = gvalue.get(ValueLayout.ADDRESS, ValueLayout.ADDRESS.byteSize());
             if (gBytesPtr == null || gBytesPtr.equals(MemorySegment.NULL)) {
                 return new byte[0];
             }
