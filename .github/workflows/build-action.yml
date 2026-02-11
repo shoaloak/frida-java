@@ -141,7 +141,7 @@ jobs:
         run: ls -l ./frida-java-core/native/
 
       - name: Build bindings with Maven and package JAR
-        run: mvn --batch-mode --no-transfer-progress clean compile package --projects frida-java-core --also-make
+        run: mvn --batch-mode --no-transfer-progress --projects frida-java-core --also-make clean compile package
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
