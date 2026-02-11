@@ -226,15 +226,15 @@ public class DeviceTest {
             for (Process p : processes) {
                 String name = p.getName();
                 if (name.equals("kernel_task") || name.equals("launchd") || name.equals("init") ||
-                    name.equals("systemd") || p.getPid() == 1) {
+                    name.equals("systemd")) {
                     stableProcess = p;
                     break;
                 }
             }
 
             if (stableProcess == null) {
-                // Fall back to PID 1 which should always exist
-                stableProcess = localDevice.getProcessByPid(1);
+                // Fallback: use the first process in the list
+                stableProcess = processes.getFirst();
             }
 
             int targetPid = stableProcess.getPid();
@@ -274,8 +274,8 @@ public class DeviceTest {
             }
 
             if (stableProcess == null) {
-                // Use PID 1 which should always exist
-                stableProcess = localDevice.getProcessByPid(1);
+                // Fallback: use the first process in the list
+                stableProcess = processes.getFirst();
             }
 
             String targetName = stableProcess.getName();
