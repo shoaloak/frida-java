@@ -22,6 +22,7 @@ package nl.axelkoolhaas.frida_java.frida;
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.model.Icon;
+import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 import org.slf4j.Logger;
@@ -797,7 +798,7 @@ public class Device implements AutoCloseable {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
-            MemorySegment gBytesData = nl.axelkoolhaas.frida_java.util.GBytesUtil.fromByteArray(data, arena);
+            MemorySegment gBytesData = GBytesUtil.fromByteArray(data, arena);
 
             FRIDA_DEVICE_INPUT_SYNC.invoke(devicePtr, pid, gBytesData, MemorySegment.NULL, errorPtr);
 
@@ -854,7 +855,7 @@ public class Device implements AutoCloseable {
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
-            MemorySegment gBytesBlob = nl.axelkoolhaas.frida_java.util.GBytesUtil.fromByteArray(blob, arena);
+            MemorySegment gBytesBlob = GBytesUtil.fromByteArray(blob, arena);
             MemorySegment entrypointPtr = entrypoint != null ? arena.allocateFrom(entrypoint) : MemorySegment.NULL;
             MemorySegment dataPtr = data != null ? arena.allocateFrom(data) : MemorySegment.NULL;
 
