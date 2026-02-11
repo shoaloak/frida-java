@@ -29,8 +29,10 @@ import java.lang.invoke.MethodHandle;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 
 public class FridaLibraryLoader {
+    private static OperatingSystem currentOs;
     private static final Linker LINKER = Linker.nativeLinker();
     private static final SymbolLookup LOADED_LIBRARY;
 
@@ -44,7 +46,7 @@ public class FridaLibraryLoader {
     private static SymbolLookup loadFridaLibrary() {
         String osName = System.getProperty("os.name").toLowerCase();
         String arch = System.getProperty("os.arch").toLowerCase();
-        String libName = getLibraryName(osName, arch);
+        String libName = getLibraryNameAndSetOs(osName, arch);
 
         // Try to load from bins directory first
         Path binsPath = Path.of("bins", libName);
@@ -84,11 +86,13 @@ public class FridaLibraryLoader {
     /**
      * Get the platform and architecture-specific library name.
      */
-    private static String getLibraryName(String osName, String arch) {
+    private static String getLibraryNameAndSetOs(String osName, String arch) {
         if (osName.contains("mac")) {
+            currentOs = OperatingSystem.MACOS;
             return "libfrida-core.dylib";
         }
         if (osName.contains("linux")) {
+            currentOs = OperatingSystem.LINUX;
             if (arch.contains("amd64") || arch.contains("x86_64")) {
                 return "libfrida-core-x86_64.so";
             } else if (arch.contains("aarch64") || arch.contains("arm64")) {
@@ -97,6 +101,7 @@ public class FridaLibraryLoader {
             throw new UnsatisfiedLinkError("Unsupported Linux architecture: " + arch);
         }
         if (osName.contains("windows")) {
+            currentOs = OperatingSystem.WINDOWS;
             if (arch.contains("amd64") || arch.contains("x86_64")) {
                 return "libfrida-core-x86_64.dll";
             } else if (arch.contains("aarch64") || arch.contains("arm64")) {
@@ -115,8 +120,21 @@ public class FridaLibraryLoader {
      * @return Method handle for the function, or null if not found
      */
     public static MethodHandle findFunction(String name, FunctionDescriptor descriptor) {
-        return LOADED_LIBRARY.find(name)
-                .map(addr -> LINKER.downcallHandle(addr, descriptor))
+        // Try the exact name first (works for Windows and some Linux/macOS symbols)
+        Optional<MemorySegment> addr = LOADED_LIBRARY.find(name);
+
+        // If not found, fall back to OS-specific mangling
+        if (addr.isEmpty()) {
+            addr = switch (currentOs) {
+                case LINUX -> LOADED_LIBRARY.find("_frida_" + name);
+                case MACOS -> LOADED_LIBRARY.find("_" + name);
+                default -> Optional.empty();
+            };
+        }
+
+        // Map to Handle or throw
+        return addr.map(a -> LINKER.downcallHandle(a, descriptor))
                 .orElseThrow(() -> new FridaException("Required native function not found: " + name));
     }
+
 }
