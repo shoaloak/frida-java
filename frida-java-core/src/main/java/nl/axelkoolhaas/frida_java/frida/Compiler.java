@@ -50,6 +50,8 @@ public class Compiler implements AutoCloseable {
 
     // Simple callback storage - no GLib signal system needed
     private final Map<CompilerSignal, Object> callbacks = new ConcurrentHashMap<>();
+    // Store handler IDs for signal connections
+    private final Map<CompilerSignal, Long> handlerIds = new ConcurrentHashMap<>();
 
     private static final MethodHandle FRIDA_COMPILER_NEW;
     private static final MethodHandle FRIDA_COMPILER_BUILD_SYNC;
@@ -251,8 +253,7 @@ public class Compiler implements AutoCloseable {
         log.trace("Registered callback for signal '{}'", signal.getName());
 
         long handlerId = Closure.connectClosure(compilerPtr, signal.getName(), callback);
-
-        // TODO store handlerId in map to call g_signal_handler_disconnect when off()/clean() is called
+        handlerIds.put(signal, handlerId);
     }
 
     /**
@@ -262,6 +263,11 @@ public class Compiler implements AutoCloseable {
      */
     public void off(CompilerSignal signal) {
         Object removed = callbacks.remove(signal);
+        Long handlerId = handlerIds.remove(signal);
+        if (handlerId != null) {
+            Closure.disconnectClosure(handlerId);
+            log.debug("Disconnected native handler for signal: {}", signal.getName());
+        }
         if (removed != null) {
             log.debug("Removed callback for signal: {}", signal.getName());
         }
@@ -276,6 +282,12 @@ public class Compiler implements AutoCloseable {
         }
 
         log.debug("Cleaning up Compiler");
+        // Disconnect all signal handlers
+        for (Map.Entry<CompilerSignal, Long> entry : handlerIds.entrySet()) {
+            Closure.disconnectClosure(entry.getValue());
+            log.debug("Disconnected native handler for signal: {}", entry.getKey().getName());
+        }
+        handlerIds.clear();
         // Clear registered callbacks
         callbacks.clear();
 
