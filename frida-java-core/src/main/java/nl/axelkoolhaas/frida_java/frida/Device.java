@@ -1046,11 +1046,12 @@ public class Device implements AutoCloseable {
             throw new IllegalArgumentException("Callback cannot be null");
         }
 
-        // Validate callback type for each signal
+        // TODO: do we need this check?
+        // Validate callback type against the SignalCallbacks contract
         switch (signal) {
             case OUTPUT -> {
-                if (!(callback instanceof SignalCallbacks.OutputCallback)) {
-                    throw new IllegalArgumentException("Signal 'output' requires a SignalCallbacks.OutputCallback");
+                if (!(callback instanceof SignalCallbacks.DeviceOutputCallback)) {
+                    throw new IllegalArgumentException("Signal 'output' requires a SignalCallbacks.DeviceOutputCallback");
                 }
             }
             case SPAWN_ADDED, SPAWN_REMOVED -> {
@@ -1063,9 +1064,14 @@ public class Device implements AutoCloseable {
                     throw new IllegalArgumentException("Signal '" + signal.getName() + "' requires a SignalCallbacks.ChildCallback");
                 }
             }
+            case PROCESS_ADDED, PROCESS_REMOVED -> {
+                if (!(callback instanceof SignalCallbacks.ProcessCallback)) {
+                    throw new IllegalArgumentException("Signal '" + signal.getName() + "' requires a SignalCallbacks.ProcessCallback");
+                }
+            }
             case PROCESS_CRASHED -> {
                 if (!(callback instanceof SignalCallbacks.CrashCallback)) {
-                    throw new IllegalArgumentException("Signal 'process-crashed' requires a SignalCallbacks.CrashCallback");
+                    throw new IllegalArgumentException("Signal 'crashed' requires a SignalCallbacks.CrashCallback");
                 }
             }
             case UNINJECTED -> {
@@ -1074,26 +1080,27 @@ public class Device implements AutoCloseable {
                 }
             }
             case LOST -> {
-                if (!(callback instanceof Runnable)) {
-                    throw new IllegalArgumentException("Signal 'lost' requires a Runnable callback");
+                if (!(callback instanceof SignalCallbacks.VoidCallback || callback instanceof Runnable)) {
+                    throw new IllegalArgumentException("Signal 'lost' requires a SignalCallbacks.VoidCallback or Runnable");
                 }
             }
             default -> throw new IllegalArgumentException("Unknown signal: " + signal);
         }
 
-        log.debug("Registering event handler for device signal: {}", signal);
+        log.debug("Registering event handler for device signal: {}", signal.getName());
 
         try {
             long handlerId = Closure.connectClosure(devicePtr, signal.getName(), callback);
 
             if (handlerId > 0) {
-                log.debug("Successfully registered handler for signal '{}' with handler ID: {}", signal, handlerId);
+                log.debug("Successfully registered handler for native signal '{}' with handler ID: {}",
+                        signal.getName(), handlerId);
             } else {
-                log.warn("Failed to connect signal '{}' - handler ID is 0", signal);
+                log.warn("Failed to connect signal '{}' - native lookup failed", signal.getName());
             }
         } catch (Exception e) {
-            log.error("Failed to register event handler for signal '{}': {}", signal, e.getMessage());
-            throw new FridaException("Failed to register event handler for signal: " + signal, e);
+            log.error("Failed to register event handler for signal '{}': {}", signal.getName(), e.getMessage());
+            throw new FridaException("Failed to register event handler for signal: " + signal.getName(), e);
         }
     }
 

@@ -19,57 +19,26 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Available signals for the Device.
  */
 public enum DeviceSignal {
-    /** Emitted with output from the device. Callback: {@code SignalCallbacks.OutputCallback} */
-    OUTPUT("output"),
-    /** Emitted when a spawn is added. Callback: {@code SignalCallbacks.SpawnCallback} */
     SPAWN_ADDED("spawn-added"),
-    /** Emitted when a spawn is removed. Callback: {@code SignalCallbacks.SpawnCallback} */
     SPAWN_REMOVED("spawn-removed"),
-    /** Emitted when a child process is added. Callback: {@code SignalCallbacks.ChildCallback} */
     CHILD_ADDED("child-added"),
-    /** Emitted when a child process is removed. Callback: {@code SignalCallbacks.ChildCallback} */
     CHILD_REMOVED("child-removed"),
-    /** Emitted when a process crashes. Callback: {@code SignalCallbacks.CrashCallback} */
-    PROCESS_CRASHED("process-crashed"),
-    /** Emitted when a process is uninjected. Callback: {@code SignalCallbacks.UninjectedCallback} */
+    PROCESS_ADDED("process-added"),
+    PROCESS_REMOVED("process-removed"),
+    PROCESS_CRASHED("crashed"),
+    OUTPUT("output"),
     UNINJECTED("uninjected"),
-    /** Emitted when the device is lost. Callback: {@code Runnable} */
     LOST("lost");
 
-    // Map for reverse lookup by native signal name
-    private static final Map<String, DeviceSignal> BY_NAME = new HashMap<>();
-    static {
-        for (DeviceSignal s : values()) {
-            BY_NAME.put(s.name, s);
-        }
-    }
-
     private final String name;
-
     DeviceSignal(String name) {
         this.name = name;
     }
-
-    /**
-     * Get the native signal name.
-     */
     public String getName() {
         return name;
-    }
-
-    /**
-     * Lookup a DeviceSignals enum by its native signal name.
-     * @param name the native signal name
-     * @return the corresponding DeviceSignals, or null if not found
-     */
-    public static DeviceSignal fromName(String name) {
-        return BY_NAME.get(name);
     }
 }
