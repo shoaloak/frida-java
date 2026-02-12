@@ -107,29 +107,26 @@ public class CompilerTest {
     @Order(10)
     void testWatchAndOutputSignal() throws Exception {
         Path script = createScript("watcher.js", "var value = 1;");
-
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<String> updatedBundle = new AtomicReference<>();
+        AtomicReference<String> output = new AtomicReference<>();
 
-        // Register the output callback
-        compiler.on(CompilerSignal.OUTPUT, (SignalCallbacks.CompilerOutputCallback) (bundle, options) -> {
-            updatedBundle.set(bundle);
+        // 1. Setup Callback
+        compiler.on(CompilerSignal.OUTPUT, (SignalCallbacks.CompilerOutputCallback) (bundle, opts) -> {
+            output.set(bundle);
             latch.countDown();
         });
 
-        // Start the watcher
+        // 2. Start Watching (Internal GLib loop handles the file watcher now)
         compiler.watch(script.toString());
 
-        // Modify the file to trigger a re-compile and an 'output' signal
-        // Note: Frida's file watcher might need a tiny moment to initialize
-        Thread.sleep(100);
+        // 3. Trigger Change
+        // We sleep briefly to ensure the OS file watcher registered (inotify is async)
+        Thread.sleep(50);
         Files.writeString(script, "var value = 2;");
 
-        // Verify the signal was received (signals fire on a background thread)
-        boolean received = latch.await(10, TimeUnit.SECONDS);
-
-        assertTrue(received, "Output signal should have fired after file modification");
-        assertTrue(updatedBundle.get().contains("value = 2"), "The bundle should contain the updated code");
+        // 4. Wait
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "Timed out waiting for recompile");
+        assertTrue(output.get().contains("value = 2"));
     }
 
     @Test

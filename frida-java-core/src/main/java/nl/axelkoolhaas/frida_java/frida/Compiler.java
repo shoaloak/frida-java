@@ -32,15 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Compiler is used to compile TypeScript/JavaScript scripts for Frida.
- *
- * <p>Available signals:
- * <ul>
- *   <li>{@link CompilerSignal#STARTING} - Emitted when compilation starts. Callback: {@code Runnable}</li>
- *   <li>{@link CompilerSignal#FINISHED} - Emitted when compilation finishes. Callback: {@code Runnable}</li>
- *   <li>{@link CompilerSignal#OUTPUT} - Emitted with compiled bundle. Callback: {@code OutputCallback}</li>
- *   <li>{@link CompilerSignal#DIAGNOSTICS} - Emitted with diagnostic messages. Callback: {@code DiagnosticsCallback}</li>
- *   <li>{@link CompilerSignal#FILE_CHANGED} - Emitted when a watched file changes. Callback: {@code Runnable}</li>
- * </ul>
  */
 public class Compiler implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(Compiler.class);
@@ -48,7 +39,7 @@ public class Compiler implements AutoCloseable {
     private final DeviceManager ownedDeviceManager;
     private volatile boolean closed = false;
 
-    // Simple callback storage - no GLib signal system needed
+    // Simple callback storage
     private final Map<CompilerSignal, Object> callbacks = new ConcurrentHashMap<>();
     // Store handler IDs for signal connections
     private final Map<CompilerSignal, Long> handlerIds = new ConcurrentHashMap<>();
@@ -56,6 +47,9 @@ public class Compiler implements AutoCloseable {
     private static final MethodHandle FRIDA_COMPILER_NEW;
     private static final MethodHandle FRIDA_COMPILER_BUILD_SYNC;
     private static final MethodHandle FRIDA_COMPILER_WATCH_SYNC;
+
+    // Used to remove listeners
+    private static final MethodHandle G_SIGNAL_HANDLER_DISCONNECT;
 
     static {
         Frida.ensureInitialized();
@@ -68,6 +62,9 @@ public class Compiler implements AutoCloseable {
         FRIDA_COMPILER_WATCH_SYNC = FridaLibraryLoader.findFunction("frida_compiler_watch_sync",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS,
                         ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+        G_SIGNAL_HANDLER_DISCONNECT = FridaLibraryLoader.findFunction("g_signal_handler_disconnect",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
     }
 
 
@@ -100,12 +97,9 @@ public class Compiler implements AutoCloseable {
     public Compiler(DeviceManager deviceManager) {
         try {
             this.compilerPtr = (MemorySegment) FRIDA_COMPILER_NEW.invoke(deviceManager.getPointer());
-            this.ownedDeviceManager = null; // We don't own this one
+            this.ownedDeviceManager = null;
             log.debug("Compiler created with caller-owned DeviceManager");
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
         } catch (Throwable e) {
-            log.error("Failed to create Compiler: {}", e.getMessage());
             throw new FridaException("Failed to create Compiler", e);
         }
     }
@@ -140,23 +134,14 @@ public class Compiler implements AutoCloseable {
 
             log.trace("Native call: frida_compiler_build_sync(entrypoint={})", entrypoint);
             MemorySegment resultPtr = (MemorySegment) FRIDA_COMPILER_BUILD_SYNC.invoke(
-                    compilerPtr,
-                    entrypointPtr,
-                    optionsPtr,
-                    MemorySegment.NULL, // cancellable
-                    errorPtr
+                    compilerPtr, entrypointPtr, optionsPtr, MemorySegment.NULL, errorPtr
             );
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "build script from " + entrypoint);
 
-            String result = FridaNativeUtils.memorySegmentToString(resultPtr);
-            log.debug("Successfully built script from {}, output size: {} bytes", entrypoint, result.length());
-            return result;
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
+            return FridaNativeUtils.memorySegmentToString(resultPtr);
         } catch (Throwable e) {
-            log.error("Failed to build script from {}: {}", entrypoint, e.getMessage());
             throw new FridaException("Failed to build script from " + entrypoint, e);
         }
     }
@@ -189,120 +174,87 @@ public class Compiler implements AutoCloseable {
 
             log.trace("Native call: frida_compiler_watch_sync(entrypoint={})", entrypoint);
             FRIDA_COMPILER_WATCH_SYNC.invoke(
-                    compilerPtr,
-                    entrypointPtr,
-                    optionsPtr,
-                    MemorySegment.NULL, // cancellable
-                    errorPtr
+                    compilerPtr, entrypointPtr, optionsPtr, MemorySegment.NULL, errorPtr
             );
 
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
             GErrorUtils.handleError(error, "watch script at " + entrypoint);
-
-            log.debug("Successfully started watching: {}", entrypoint);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
         } catch (Throwable e) {
-            log.error("Failed to watch script at {}: {}", entrypoint, e.getMessage());
             throw new FridaException("Failed to watch script at " + entrypoint, e);
         }
     }
 
-    /**
-     * Connect to compiler signals.
-     *
-     * <p>Available signals:
-     * <ul>
-     *   <li>{@link CompilerSignal#STARTING} - Callback: {@code Runnable}</li>
-     *   <li>{@link CompilerSignal#FINISHED} - Callback: {@code Runnable}</li>
-     *   <li>{@link CompilerSignal#OUTPUT} - Callback: {@code SignalCallbacks.CompilerOutputCallback} receiving the compiled bundle</li>
-     *   <li>{@link CompilerSignal#DIAGNOSTICS} - Callback: {@code SignalCallbacks.CompilerDiagnosticsCallback} receiving diagnostic text</li>
-     *   <li>{@link CompilerSignal#FILE_CHANGED} - Callback: {@code Runnable}</li>
-     * </ul>
-     *
-     * @param signal Signal to connect to
-     * @param callback Callback to invoke when the signal is emitted
-     */
     public void on(CompilerSignal signal, Object callback) {
-        if (callback == null) {
-            throw new IllegalArgumentException("Callback cannot be null");
-        }
+        if (callback == null) throw new IllegalArgumentException("Callback cannot be null");
 
-        log.debug("Registering callback for compiler signal: {}", signal.getName());
+        // 1. Clean up existing handler for this signal if present
+        //    (Prevents double-firing if on() is called twice)
+        if (callbacks.containsKey(signal)) {
+            off(signal);
+        }
 
         // Validate callback types
         switch (signal) {
             case STARTING, FINISHED, FILE_CHANGED -> {
-                if (!(callback instanceof Runnable)) {
-                    throw new IllegalArgumentException("Signal '" + signal.getName() + "' requires a Runnable callback");
-                }
+                if (!(callback instanceof Runnable))
+                    throw new IllegalArgumentException("Signal " + signal + " requires Runnable");
             }
             case OUTPUT -> {
-                if (!(callback instanceof SignalCallbacks.CompilerOutputCallback)) {
-                    throw new IllegalArgumentException("Signal 'output' requires a SignalCallbacks.CompilerOutputCallback");
-                }
+                if (!(callback instanceof SignalCallbacks.CompilerOutputCallback))
+                    throw new IllegalArgumentException("Signal output requires OutputCallback");
             }
             case DIAGNOSTICS -> {
-                if (!(callback instanceof SignalCallbacks.CompilerDiagnosticsCallback)) {
-                    throw new IllegalArgumentException("Signal 'diagnostics' requires a SignalCallbacks.CompilerDiagnosticsCallback");
-                }
+                if (!(callback instanceof SignalCallbacks.CompilerDiagnosticsCallback))
+                    throw new IllegalArgumentException("Signal diagnostics requires DiagnosticsCallback");
             }
         }
 
         callbacks.put(signal, callback);
-        log.trace("Registered callback for signal '{}'", signal.getName());
 
+        // 2. Connect new handler
         long handlerId = Closure.connectClosure(compilerPtr, signal.getName(), callback);
         handlerIds.put(signal, handlerId);
+
+        log.debug("Registered callback for signal '{}', handlerId: {}", signal.getName(), handlerId);
     }
 
-    /**
-     * Remove callback for a signal.
-     *
-     * @param signal Signal to remove callback for
-     */
     public void off(CompilerSignal signal) {
-        Object removed = callbacks.remove(signal);
+        Object removedCallback = callbacks.remove(signal);
         Long handlerId = handlerIds.remove(signal);
+
         if (handlerId != null) {
-            Closure.disconnectClosure(handlerId);
-            log.debug("Disconnected native handler for signal: {}", signal.getName());
-        }
-        if (removed != null) {
-            log.debug("Removed callback for signal: {}", signal.getName());
+            try {
+                // 1. Notify GLib to disconnect the signal on the Native Object
+                //    This stops the C side from emitting the event.
+                G_SIGNAL_HANDLER_DISCONNECT.invoke(compilerPtr, handlerId);
+
+                // 2. Clean up Java Upcall Stub
+                Closure.disconnectClosure(handlerId);
+
+                log.debug("Disconnected native handler for signal: {}", signal.getName());
+            } catch (Throwable e) {
+                log.error("Failed to disconnect signal {}", signal.getName(), e);
+            }
         }
     }
 
-    /**
-     * Clean up resources held by the compiler.
-     */
     public void clean() {
-        if (closed) {
-            return; // Already cleaned up
-        }
+        if (closed) return;
 
-        log.debug("Cleaning up Compiler");
-        // Disconnect all signal handlers
-        for (Map.Entry<CompilerSignal, Long> entry : handlerIds.entrySet()) {
-            Closure.disconnectClosure(entry.getValue());
-            log.debug("Disconnected native handler for signal: {}", entry.getKey().getName());
+        // Disconnect all signal handlers properly
+        for (CompilerSignal signal : handlerIds.keySet()) {
+            off(signal);
         }
-        handlerIds.clear();
-        // Clear registered callbacks
-        callbacks.clear();
 
         FridaNativeUtils.fridaUnref(compilerPtr);
 
-        // Close owned DeviceManager if we created it
         if (ownedDeviceManager != null) {
             try {
                 ownedDeviceManager.close();
-                log.debug("Closed owned DeviceManager");
             } catch (Exception e) {
-                log.warn("Failed to close owned DeviceManager: {}", e.getMessage());
+                log.warn("Failed to close owned DeviceManager", e);
             }
         }
-
         closed = true;
     }
 
