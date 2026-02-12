@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Axel Koolhaas
+ * Copyright (C) 2026 Axel Koolhaas
  *
  * This file is part of frida-java.
  *
@@ -249,6 +249,10 @@ public class Compiler implements AutoCloseable {
 
         callbacks.put(signal, callback);
         log.trace("Registered callback for signal '{}'", signal.getName());
+
+        long handlerId = Closure.connectClosure(compilerPtr, signal.getName(), callback);
+
+        // TODO store handlerId in map to call g_signal_handler_disconnect when off()/clean() is called
     }
 
     /**
