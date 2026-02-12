@@ -49,11 +49,11 @@ public class ClosureTest {
     @Order(1)
     void testSetErrorHandler() {
         AtomicReference<String> capturedSignal = new AtomicReference<>();
-        AtomicReference<Exception> capturedException = new AtomicReference<>();
+        AtomicReference<Throwable> capturedThrowable = new AtomicReference<>();
 
         SignalCallbacks.ErrorHandler handler = (signal, error) -> {
             capturedSignal.set(signal);
-            capturedException.set(error);
+            capturedThrowable.set(error);
         };
 
         // Should not throw when setting handler
@@ -146,7 +146,7 @@ public class ClosureTest {
     @Order(6)
     void testErrorHandlerInterface() {
         AtomicReference<String> capturedSignal = new AtomicReference<>();
-        AtomicReference<Exception> capturedException = new AtomicReference<>();
+        AtomicReference<Throwable> capturedException = new AtomicReference<>();
 
         SignalCallbacks.ErrorHandler handler = (signal, error) -> {
             capturedSignal.set(signal);
