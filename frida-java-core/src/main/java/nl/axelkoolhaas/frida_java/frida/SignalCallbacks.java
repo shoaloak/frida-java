@@ -20,70 +20,136 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 /**
- * Utility class containing all signal callback interfaces for Frida device and process events.
+ * Interface definitions for all Frida signals.
+ * Signatures are strictly mapped to the Vala/C implementation in frida-core.
  */
 public final class SignalCallbacks {
     private SignalCallbacks() {}
 
-    // General Signal Callbacks
+    /* --- Common Signals --- */
+
+    /**
+     * Called for signals with no arguments other than the instance.
+     * Used for: starting, finished, file-changed, destroyed, lost, changed.
+     */
     @FunctionalInterface
-    public interface MessageCallback {
-        void onMessage(String message, byte[] data);
+    public interface VoidCallback {
+        void onAction();
     }
 
-    // Device/Process Signal Callbacks
+    /* --- Script & Bus Signals --- */
+
+    /**
+     * Vala: void message (string json, Bytes? data)
+     */
     @FunctionalInterface
-    public interface ProcessOutputCallback {
-        void onOutput(int pid, int fd, byte[] data);
+    public interface MessageCallback {
+        void onMessage(String json, byte[] data);
+    }
+
+    /* --- Session Signals --- */
+
+    /**
+     * Vala: void detached (SessionDetachReason reason, Crash? crash)
+     */
+    @FunctionalInterface
+    public interface SessionDetachedCallback {
+        void onDetach(int reason, Crash crash);
+    }
+
+    /* --- Device & Process Signals --- */
+
+    /**
+     * Vala: void added (Device device) / void removed (Device device)
+     */
+    @FunctionalInterface
+    public interface DeviceCallback {
+        void onAction(Device device);
     }
 
     /**
-     * Callback interface for device output events (stdout/stderr from spawned processes)
+     * Vala: void spawn_added (Spawn spawn) / void spawn_removed (Spawn spawn)
      */
-    @FunctionalInterface
-    public interface OutputCallback {
-        void onOutput(int pid, int fd, byte[] data);
-    }
-
     @FunctionalInterface
     public interface SpawnCallback {
         void onSpawn(Spawn spawn);
     }
 
+    /**
+     * Vala: void child_added (Child child) / void child_removed (Child child)
+     */
     @FunctionalInterface
     public interface ChildCallback {
         void onChild(Child child);
     }
 
+    /**
+     * Vala: void process_added (Process process) / void process_removed (Process process)
+     */
+    @FunctionalInterface
+    public interface ProcessCallback {
+        void onProcess(Process process);
+    }
+
+    /**
+     * Vala: void crashed (Crash crash)
+     */
     @FunctionalInterface
     public interface CrashCallback {
         void onCrash(Crash crash);
     }
 
+    /**
+     * Vala: void uninjected (uint id)
+     */
     @FunctionalInterface
     public interface UninjectedCallback {
-        void onUninjected(String id);
+        void onUninjected(int id);
     }
 
-    // Compiler Signal Callbacks
+    /* --- Output Signals --- */
+
+    /**
+     * Vala: void output (uint pid, int fd, uint8[] data)
+     */
+    @FunctionalInterface
+    public interface DeviceOutputCallback {
+        void onOutput(int pid, int fd, byte[] data);
+    }
+
+    /**
+     * Vala: void output (int fd, uint8[] data)
+     */
+    @FunctionalInterface
+    public interface ProcessOutputCallback {
+        void onOutput(int fd, byte[] data);
+    }
+
+    /* --- Compiler Signals --- */
+
+    /**
+     * Vala: void output (Bundle bundle, Options options)
+     */
     @FunctionalInterface
     public interface CompilerOutputCallback {
-        void onOutput(String bundle);
+        void onOutput(String bundle, CompilerOptions options);
     }
 
+    /**
+     * Vala: void diagnostics (Diagnostics diag)
+     */
     @FunctionalInterface
     public interface CompilerDiagnosticsCallback {
         void onDiagnostics(String diagnostics);
     }
 
+    /* --- Infrastructure --- */
+
     /**
-     * Handler for exceptions thrown by signal callbacks.
-     * Since callbacks are invoked from native code, exceptions cannot propagate
-     * through the native boundary. Register an error handler to be notified
-     * when a callback fails.
+     * Global error handler for exceptions occurring within callbacks.
      */
     @FunctionalInterface
     public interface ErrorHandler {
-        void onCallbackError(String signal, Exception error);
+        void onCallbackError(String signal, Throwable error);
     }
 }
