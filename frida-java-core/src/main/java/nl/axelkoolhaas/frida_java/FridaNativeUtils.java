@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
 
@@ -35,14 +34,25 @@ public class FridaNativeUtils {
     private static final Logger log = LoggerFactory.getLogger(FridaNativeUtils.class);
 
     private static final MethodHandle FRIDA_UNREF;
-    private static final MethodHandle G_BYTES_NEW;
 
     static {
         FRIDA_UNREF = FridaLibraryLoader.findFunction("frida_unref",
                 FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+    }
 
-        G_BYTES_NEW = FridaLibraryLoader.findFunction("g_bytes_new",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+    /**
+     * Call frida_unref on a pointer
+     * Note that this will call g_object_unref under the hood
+     * @param object the GObject memory segment
+     */
+    public static void fridaUnref(MemorySegment object) {
+        try {
+            FRIDA_UNREF.invoke(object);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new FridaException("Failed to unref pointer", e);
+        }
     }
 
     /**
@@ -96,21 +106,6 @@ public class FridaNativeUtils {
     }
 
     /**
-     * Call frida_unref on a pointer
-     * Note that this will call g_object_unref under the hood
-     * @param object the GObject memory segment
-     */
-    public static void fridaUnref(MemorySegment object) {
-        try {
-            FRIDA_UNREF.invoke(object);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new FridaException("Failed to unref pointer", e);
-        }
-    }
-
-    /**
      * Helper method to convert a MemorySegment to a string and then unref the segment
      * @param segment the memory segment to convert and unref
      * @return the string value, or empty string if segment is NULL
@@ -120,24 +115,5 @@ public class FridaNativeUtils {
         fridaUnref(segment);
         return result;
     }
-
-    /**
-     * Convert byte array to GBytes
-     * @param data byte array to convert
-     * @param arena Arena for memory allocation
-     * @return GBytes pointer
-     */
-    public static MemorySegment bytesToGBytes(byte[] data, Arena arena) {
-        try {
-            MemorySegment dataPtr = arena.allocate(data.length);
-            dataPtr.copyFrom(MemorySegment.ofArray(data));
-            return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, (long) data.length);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new FridaException("Failed to convert bytes to GBytes", e);
-        }
-    }
-
 }
 

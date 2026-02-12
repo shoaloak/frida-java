@@ -62,96 +62,6 @@ public class CompilerOptions implements AutoCloseable {
     }
 
     /**
-     * JavaScript compression type for compiled output.
-     */
-    public enum JsCompression {
-        NONE(0),
-        TERSER(1);
-
-        private final int value;
-
-        JsCompression(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
-    /**
-     * Source maps inclusion option.
-     */
-    public enum SourceMaps {
-        OMITTED(0),
-        INCLUDED(1);
-
-        private final int value;
-
-        SourceMaps(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
-    /**
-     * Output format for compiled scripts.
-     */
-    public enum OutputFormat {
-        INLINE_SOURCE_MAP(0),
-        LINKED_SOURCE_MAP(1);
-
-        private final int value;
-
-        OutputFormat(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
-    /**
-     * Bundle format for compiled output.
-     */
-    public enum BundleFormat {
-        STANDALONE(0),
-        EMBEDDED(1);
-
-        private final int value;
-
-        BundleFormat(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
-    /**
-     * Type checking mode during compilation.
-     */
-    public enum TypeCheckMode {
-        NONE(0),
-        FULL(1);
-
-        private final int value;
-
-        TypeCheckMode(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
-    /**
      * Create new compiler options with default settings.
      */
     public CompilerOptions() {
@@ -165,6 +75,55 @@ public class CompilerOptions implements AutoCloseable {
             throw new FridaException("Failed to create CompilerOptions", e);
         }
     }
+
+    /**
+     * Internal constructor to wrap an existing native pointer.
+     * Used by Signal marshaling.
+     *
+     * @param ptr The native pointer.
+     */
+    public CompilerOptions(MemorySegment ptr) {
+        this.optionsPtr = FridaNativeUtils.requireValidPointer(ptr, "CompilerOptions pointer");
+    }
+
+    /* Enums (Verified against compiler.vala) */
+
+    public enum JsCompression {
+        NONE(0), TERSER(1);
+        private final int value;
+        JsCompression(int value) { this.value = value; }
+        public int getValue() { return value; }
+    }
+
+    public enum SourceMaps {
+        OMITTED(0), INCLUDED(1);
+        private final int value;
+        SourceMaps(int value) { this.value = value; }
+        public int getValue() { return value; }
+    }
+
+    public enum OutputFormat {
+        INLINE_SOURCE_MAP(0), LINKED_SOURCE_MAP(1);
+        private final int value;
+        OutputFormat(int value) { this.value = value; }
+        public int getValue() { return value; }
+    }
+
+    public enum BundleFormat {
+        STANDALONE(0), EMBEDDED(1);
+        private final int value;
+        BundleFormat(int value) { this.value = value; }
+        public int getValue() { return value; }
+    }
+
+    public enum TypeCheckMode {
+        NONE(0), FULL(1);
+        private final int value;
+        TypeCheckMode(int value) { this.value = value; }
+        public int getValue() { return value; }
+    }
+
+    /* Setters */
 
     /**
      * Set the project root directory.
