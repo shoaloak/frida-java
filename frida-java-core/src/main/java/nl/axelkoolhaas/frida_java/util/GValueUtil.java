@@ -34,30 +34,6 @@ import java.lang.invoke.MethodHandle;
 public class GValueUtil {
     private static final Logger log = LoggerFactory.getLogger(GValueUtil.class);
 
-    // private static final MethodHandle G_VALUE_TYPE; // This is a macro, not a function!
-    private static final MethodHandle G_VALUE_GET_STRING;
-    private static final MethodHandle G_VALUE_GET_INT;
-    private static final MethodHandle G_VALUE_GET_UINT;
-    private static final MethodHandle G_VALUE_GET_BOOLEAN;
-    private static final MethodHandle G_VALUE_GET_POINTER;
-
-    static {
-        G_VALUE_GET_STRING = FridaLibraryLoader.findFunction("g_value_get_string",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-        G_VALUE_GET_INT = FridaLibraryLoader.findFunction("g_value_get_int",
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        G_VALUE_GET_UINT = FridaLibraryLoader.findFunction("g_value_get_uint",
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        G_VALUE_GET_BOOLEAN = FridaLibraryLoader.findFunction("g_value_get_boolean",
-                FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
-        G_VALUE_GET_POINTER = FridaLibraryLoader.findFunction("g_value_get_pointer",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-    }
-
-    private GValueUtil() {
-        // Utility class
-    }
-
     /**
      * The GValue struct is defined as:
      *   typedef gsize GType;
@@ -76,6 +52,39 @@ public class GValueUtil {
             // We model this as a sequence of two 8-byte values (on 64-bit).
             MemoryLayout.sequenceLayout(2, ValueLayout.JAVA_LONG).withName("data")
     ).withByteAlignment(ValueLayout.ADDRESS.byteSize());
+
+    // private static final MethodHandle G_VALUE_TYPE; // This is a macro, not a function!
+    private static final MethodHandle G_VALUE_GET_STRING;
+    private static final MethodHandle G_VALUE_GET_INT;
+    private static final MethodHandle G_VALUE_GET_UINT;
+    private static final MethodHandle G_VALUE_GET_BOOLEAN;
+    private static final MethodHandle G_VALUE_GET_POINTER;
+    private static final MethodHandle G_VALUE_GET_VARIANT;
+    private static final MethodHandle G_VARIANT_PRINT;
+    private static final MethodHandle G_FREE; // needed?
+
+    static {
+        G_VALUE_GET_STRING = FridaLibraryLoader.findFunction("g_value_get_string",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        G_VALUE_GET_INT = FridaLibraryLoader.findFunction("g_value_get_int",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+        G_VALUE_GET_UINT = FridaLibraryLoader.findFunction("g_value_get_uint",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+        G_VALUE_GET_BOOLEAN = FridaLibraryLoader.findFunction("g_value_get_boolean",
+                FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
+        G_VALUE_GET_POINTER = FridaLibraryLoader.findFunction("g_value_get_pointer",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        G_VALUE_GET_VARIANT = FridaLibraryLoader.findFunction("g_value_get_variant",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        G_VARIANT_PRINT = FridaLibraryLoader.findFunction("g_variant_print",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
+        G_FREE = FridaLibraryLoader.findFunction("g_free",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+    }
+
+    private GValueUtil() {
+        // Utility class
+    }
 
     /**
      * GLib passes signal parameters as an array of GValues.
@@ -117,11 +126,13 @@ public class GValueUtil {
             GType gtype = getType(gvalue);
 
             return switch (gtype) {
+                // TODO properly name methods...
                 case GType.STRING -> extractStringTyped(gvalue);
                 case GType.INT -> extractIntTyped(gvalue);
                 case GType.UINT -> extractUintTyped(gvalue);
                 case GType.BOOLEAN -> extractBoolean(gvalue);
                 case GType.POINTER -> extractPointer(gvalue);
+                case GType.VARIANT -> extractVariant(gvalue);
                 default -> {
                     log.debug("Unknown GValue type: {} (0x{})", gtype, Long.toHexString(gtype.getValue()));
                     yield null;
@@ -154,6 +165,22 @@ public class GValueUtil {
         try {
             return (MemorySegment) G_VALUE_GET_POINTER.invoke(gvalue);
         } catch (Throwable t) { return MemorySegment.NULL; }
+    }
+
+    public static String extractVariant(MemorySegment gvalue) {
+        try {
+            MemorySegment variantPtr = (MemorySegment) G_VALUE_GET_VARIANT.invoke(gvalue);
+            if (variantPtr == null || variantPtr.equals(MemorySegment.NULL)) {
+                return null;
+            }
+            MemorySegment strPtr = (MemorySegment) G_VARIANT_PRINT.invoke(variantPtr, false);
+            String result = FridaNativeUtils.memorySegmentToString(strPtr);
+            G_FREE.invoke(strPtr); // Free the string returned by g_variant_print
+            return result;
+        } catch (Throwable t) {
+            log.debug("Failed to extract GVariant from GValue", t);
+            return null;
+        }
     }
 
     /**

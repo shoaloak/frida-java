@@ -46,7 +46,8 @@ public enum GType {
     INT(24),            // G_TYPE_MAKE_FUNDAMENTAL(6)
     UINT(28),           // G_TYPE_MAKE_FUNDAMENTAL(7)
     STRING(64),         // G_TYPE_MAKE_FUNDAMENTAL(16)
-    POINTER(68);        // G_TYPE_MAKE_FUNDAMENTAL(17)
+    POINTER(68),        // G_TYPE_MAKE_FUNDAMENTAL(17)
+    VARIANT(84);        // G_TYPE_MAKE_FUNDAMENTAL(21)
 
     private final long value;
 
