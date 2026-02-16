@@ -39,6 +39,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * This is not a closure in the traditional sense, but the name is kept for consistency with GClosure.
  * This class looks scary, but essentially it just maps native signal C callbacks back to Java methods.
  * It does this through Linker upcall stub (MarshalStub) and a static dispatch method (handleMarshal).
+ * <br>
+ * >= is the industry standard for GLib/C bindings. C libraries often add new parameters to the end of
+ * signals in minor updates without breaking backward compatibility. Thus, the marshal handlers use this.
  */
 public class Closure {
     private static final Logger log = LoggerFactory.getLogger(Closure.class);
@@ -234,16 +237,23 @@ public class Closure {
 
     /**
      * Handle the "output" signal marshal for Compiler.
-     * nParams: 3 (Instance, Bundle, Options)
+     * nParams: 2 (Instance, Bundle), potentially 3 with Options
      */
     private static void handleCompilerOutputMarshal(Object callback, int nParams, MemorySegment params) {
-        if (callback instanceof SignalCallbacks.CompilerOutputCallback cb && nParams >= 3) {
-            // Bundle (FridaBundle*)
-            MemorySegment bundlePtr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
+        if (callback instanceof SignalCallbacks.CompilerOutputCallback cb && nParams >= 2) {
+            // Bundle
             String bundle = GValueUtil.extractString(GValueUtil.getAt(params, 1));
 
-            // Options (FridaCompilerOptions*)
-            MemorySegment optionsPtr = GValueUtil.extractPointer(GValueUtil.getAt(params, 2));
+            // Options
+            CompilerOptions options = null;
+
+            // Only try to extract options if nParams includes them (Index 2)
+            if (nParams >= 3) {
+                MemorySegment optionsPtr = GValueUtil.extractPointer(GValueUtil.getAt(params, 2));
+                if (optionsPtr != null && !optionsPtr.equals(MemorySegment.NULL)) {
+                    options = new CompilerOptions(optionsPtr);
+                }
+            }
 
             // TODO: should we increase the ref count of the options object here?
 //            CompilerOptions options = null;
@@ -253,7 +263,7 @@ public class Closure {
 //            }
 //            cb.onOutput(bundle, options);
 
-            cb.onOutput(bundle, new CompilerOptions(optionsPtr));
+            cb.onOutput(bundle, options);
         } else {
             throw new FridaException("Compiler output signal marshal called with incompatible callback or insufficient params");
         }
