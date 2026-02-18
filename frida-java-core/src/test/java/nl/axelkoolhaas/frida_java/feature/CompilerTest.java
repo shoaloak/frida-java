@@ -106,27 +106,47 @@ public class CompilerTest {
     @Test
     @Order(10)
     void testWatchAndOutputSignal() throws Exception {
-        Path script = createScript("watcher.js", "var value = 1;");
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<String> output = new AtomicReference<>();
+        // 1. Create script and resolve REAL path to avoid macOS symlink issues
+        Path script = createScript("watcher.js", "console.log('v1');");
+        String scriptPath = script.toRealPath().toString();
 
-        // 1. Setup Callback
+        CountDownLatch updateLatch = new CountDownLatch(1);
+        AtomicReference<String> lastBundle = new AtomicReference<>("");
+
+        // 2. Setup Callback
         compiler.on(CompilerSignal.OUTPUT, (SignalCallbacks.CompilerOutputCallback) (bundle, opts) -> {
-            output.set(bundle);
-            latch.countDown();
+            // Replace newlines to make logs readable
+            String preview = bundle.length() > 50 ? bundle.substring(0, 50) + "..." : bundle;
+            System.out.println("TEST: Received bundle (" + bundle.length() + " bytes): " + preview.replace("\n", "\\n"));
+
+            lastBundle.set(bundle);
+
+            // Check for our target string
+            if (bundle.contains("v2")) {
+                updateLatch.countDown();
+            }
         });
 
-        // 2. Start Watching (Internal GLib loop handles the file watcher now)
-        compiler.watch(script.toString());
+        // 3. Start Watching (using REAL path)
+        System.out.println("TEST: Watching " + scriptPath);
+        compiler.watch(scriptPath);
 
-        // 3. Trigger Change
-        // We sleep briefly to ensure the OS file watcher registered (inotify is async)
-        Thread.sleep(50);
-        Files.writeString(script, "var value = 2;");
+        // 4. Wait for OS watcher to settle (1s is safe for tests)
+        Thread.sleep(1000);
 
-        // 4. Wait
-        assertTrue(latch.await(5, TimeUnit.SECONDS), "Timed out waiting for recompile");
-        assertTrue(output.get().contains("value = 2"));
+        // 5. Trigger Change (Write to REAL path to be safe)
+        System.out.println("TEST: Writing v2 to file...");
+        Files.writeString(script.toRealPath(), "console.log('v2');");
+
+        // 6. Wait for signal
+        boolean received = updateLatch.await(5, TimeUnit.SECONDS);
+
+        if (!received) {
+            System.err.println("TEST FAILURE! Last Bundle Content:\n" + lastBundle.get());
+        }
+
+        assertTrue(received, "Timed out waiting for 'v2' in bundle.");
+        assertTrue(lastBundle.get().contains("v2"));
     }
 
     @Test

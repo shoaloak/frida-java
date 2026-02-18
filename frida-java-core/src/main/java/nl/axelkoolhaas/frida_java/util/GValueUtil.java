@@ -176,6 +176,7 @@ public class GValueUtil {
             MemorySegment strPtr = (MemorySegment) G_VARIANT_PRINT.invoke(variantPtr, false);
             String result = FridaNativeUtils.memorySegmentToString(strPtr);
             G_FREE.invoke(strPtr); // Free the string returned by g_variant_print
+            // TODO: is a Variant always JSON? would it be smart to cast it to a jackson type and return that?
             return result;
         } catch (Throwable t) {
             log.debug("Failed to extract GVariant from GValue", t);

@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.internal.FridaEventLoop;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,23 +166,33 @@ public class Compiler implements AutoCloseable {
      */
     public void watch(String entrypoint, CompilerOptions options) {
         log.debug("Starting watch on entrypoint: {}", entrypoint);
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment entrypointPtr = arena.allocateFrom(entrypoint);
-            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
-            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
-            MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
+        FridaEventLoop.executeBlocking(() -> {
+            // USE GLOBAL ARENA to prevent Use-After-Free if Frida holds the pointer
+            MemorySegment entrypointPtr = Arena.global().allocateFrom(entrypoint);
 
-            log.trace("Native call: frida_compiler_watch_sync(entrypoint={})", entrypoint);
-            FRIDA_COMPILER_WATCH_SYNC.invoke(
-                    compilerPtr, entrypointPtr, optionsPtr, MemorySegment.NULL, errorPtr
-            );
+            try (Arena localArena = Arena.ofConfined()) {
+                MemorySegment errorPtr = localArena.allocate(ValueLayout.ADDRESS);
+                errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
-            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "watch script at " + entrypoint);
-        } catch (Throwable e) {
-            throw new FridaException("Failed to watch script at " + entrypoint, e);
-        }
+                MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
+
+                log.trace("Native call: frida_compiler_watch_sync(entrypoint={})", entrypoint);
+                FRIDA_COMPILER_WATCH_SYNC.invoke(
+                        compilerPtr, entrypointPtr, optionsPtr, MemorySegment.NULL, errorPtr
+                );
+
+                MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+                GErrorUtils.handleError(error, "watch script at " + entrypoint);
+
+                log.debug("Successfully started watching: {}", entrypoint);
+            } catch (Throwable e) {
+                // If an exception occurs on the background thread, executeBlocking
+                // will re-throw it here on the caller thread.
+                if (e instanceof RuntimeException re) throw re;
+                throw new FridaException("Failed to watch script at " + entrypoint, e);
+            }
+        });
     }
 
     public void on(CompilerSignal signal, Object callback) {
