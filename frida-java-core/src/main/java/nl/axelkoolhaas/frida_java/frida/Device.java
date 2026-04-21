@@ -548,6 +548,8 @@ public class Device implements AutoCloseable {
     for (int i = 0; i < processCount; i++) {
       MemorySegment processPtr = (MemorySegment) FRIDA_PROCESS_LIST_GET.invoke(processList, i);
       if (!processPtr.equals(MemorySegment.NULL)) {
+        // Ref the process so it remains valid after the list is unreffed
+        FridaNativeUtils.fridaRef(processPtr);
         processes.add(new Process(processPtr));
       }
     }
@@ -915,6 +917,8 @@ public class Device implements AutoCloseable {
     for (int i = 0; i < appCount; i++) {
       MemorySegment appPtr = (MemorySegment) FRIDA_APPLICATION_LIST_GET.invoke(appList, i);
       if (!appPtr.equals(MemorySegment.NULL)) {
+        // Ref the application so it remains valid after the list is unreffed
+        FridaNativeUtils.fridaRef(appPtr);
         applications.add(new Application(appPtr));
       }
     }

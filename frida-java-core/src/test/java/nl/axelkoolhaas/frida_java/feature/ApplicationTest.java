@@ -53,6 +53,9 @@ public class ApplicationTest {
           System.out.println(
               "First app: " + firstApp.getName() + " (" + firstApp.getIdentifier() + ")");
         }
+
+        // Close all applications
+        appList.forEach(Application::close);
       }
     }
   }
@@ -68,10 +71,12 @@ public class ApplicationTest {
 
         if (minimalApps != null) {
           System.out.println("Minimal scope: " + minimalApps.size() + " applications");
+          minimalApps.forEach(Application::close);
         }
 
         if (fullApps != null) {
           System.out.println("Full scope: " + fullApps.size() + " applications");
+          fullApps.forEach(Application::close);
         }
       }
     }
@@ -106,6 +111,9 @@ public class ApplicationTest {
             System.out.printf("App %d: %s (%s) PID: %d%n", i, name, identifier, pid);
           }
         }
+
+        // Close all applications
+        appList.forEach(Application::close);
       }
     }
   }
@@ -125,6 +133,9 @@ public class ApplicationTest {
         String testIdentifier = allApps.getFirst().getIdentifier();
         System.out.println("Testing enumeration with identifier: " + testIdentifier);
 
+        // Close the first batch
+        allApps.forEach(Application::close);
+
         // Now test specific enumeration
         List<Application> specificApps =
             localDevice.enumerateApplications(testIdentifier, Scope.MINIMAL);
@@ -137,6 +148,9 @@ public class ApplicationTest {
                 specificApps.getFirst().getIdentifier(),
                 "Returned application should match requested identifier");
           }
+
+          // Close the second batch
+          specificApps.forEach(Application::close);
         }
       }
     }

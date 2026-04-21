@@ -249,25 +249,9 @@ public class SessionAndScriptTest {
     try (DeviceManager deviceManager = new DeviceManager()) {
       Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
-      // Register output handler to capture stdout/stderr from spawned process with Stdio.PIPE
-      localDevice.on(
-          DeviceSignal.OUTPUT,
-          (SignalCallbacks.DeviceOutputCallback)
-              (pid, fd, data) -> {
-                String output = new String(data);
-                System.out.printf("[PID=%d, FD=%d] %s", pid, fd, output);
-              });
-
-      // Platform-agnostic command selection
-      String[] command = getPlatformCommand();
-
-      // Use builder pattern with Stdio.PIPE to prevent stdout corruption in Surefire
-      int targetPid =
-          localDevice.spawnName(
-              command[0], SpawnOptions.builder().argv(List.of(command)).stdio(Stdio.PIPE).build());
-      assertTrue(
-          targetPid > 0,
-          "Failed to spawn test process - " + command[0] + " not found in PATH or spawn failed");
+      // Use long-running process instead of bash --help which exits immediately
+      int targetPid = spawnTestProcess(localDevice);
+      assertTrue(targetPid > 0, "Failed to spawn test process");
 
       System.out.println("Spawned PID: " + targetPid);
 
@@ -343,30 +327,30 @@ public class SessionAndScriptTest {
     }
   }
 
-  /** Returns platform-appropriate command for testing */
+  /** Returns platform-appropriate long-running command for testing */
   private String[] getPlatformCommand() {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.contains("win")) {
-      return new String[] {"cmd.exe", "/?"}; // Windows help command
+      // Windows: use timeout command to wait for 3600 seconds
+      return new String[] {"timeout", "/t", "3600", "/nobreak"};
     } else {
-      // Unix-like systems (Linux, macOS)
-      return new String[] {"bash", "--help"};
+      // Unix-like systems (Linux, macOS): use sleep
+      return new String[] {"/bin/sleep", "3600"};
     }
   }
 
   /** Helper method to spawn a test process */
   private int spawnTestProcess(Device device) {
-    // Spawn a sleep process for testing
+    // Spawn a long-running process for testing (cross-platform)
     try {
-      // TODO: Expand to Windows equivalents
-      int pid = device.spawn("/bin/sleep", List.of("3600"));
+      String[] command = getPlatformCommand();
+      int pid = device.spawn(command[0], List.of(command).subList(1, command.length));
       if (pid > 0) {
         device.resume(pid); // Resume the process so it's running
         System.out.println("Spawned test process with PID: " + pid);
         return pid;
       } else {
         System.out.println("Failed to spawn test process - got invalid PID: " + pid);
-        System.out.println("Failed to spawn test process - spawn returned empty");
       }
     } catch (Exception e) {
       System.out.println("Could not spawn test process: " + e.getMessage());

@@ -43,6 +43,9 @@ public class ProcessTest {
       assertNotNull(processList, "ProcessList should not be null");
       assertFalse(processList.isEmpty(), "Should have at least one running process");
       System.out.println("Enumerated " + processList.size() + " processes");
+
+      // Close all processes
+      processList.forEach(Process::close);
     }
   }
 
@@ -68,6 +71,9 @@ public class ProcessTest {
 
         System.out.printf("Process %d: %s (PID: %d)%n", i, name, pid);
       }
+
+      // Close all processes
+      processList.forEach(Process::close);
     }
   }
 
@@ -101,6 +107,9 @@ public class ProcessTest {
       if (!foundSystemProcess) {
         System.out.println("Warning: No common system processes found");
       }
+
+      // Close all processes
+      processList.forEach(Process::close);
     }
   }
 
@@ -122,6 +131,9 @@ public class ProcessTest {
 
         System.out.println("Process toString: " + processString);
       }
+
+      // Close all processes
+      processList.forEach(Process::close);
     }
   }
 }

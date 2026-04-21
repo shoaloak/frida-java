@@ -32,9 +32,10 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
-public class Application {
+public class Application implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Application.class);
   private final MemorySegment applicationPtr;
+  private volatile boolean closed = false;
 
   private static final MethodHandle FRIDA_APPLICATION_GET_IDENTIFIER;
   private static final MethodHandle FRIDA_APPLICATION_GET_NAME;
@@ -73,6 +74,7 @@ public class Application {
   }
 
   public String getIdentifier() {
+    ensureNotClosed();
     try {
       MemorySegment result =
           (MemorySegment) FRIDA_APPLICATION_GET_IDENTIFIER.invoke(applicationPtr);
@@ -88,6 +90,7 @@ public class Application {
   }
 
   public String getName() {
+    ensureNotClosed();
     try {
       MemorySegment result = (MemorySegment) FRIDA_APPLICATION_GET_NAME.invoke(applicationPtr);
       String name = FridaNativeUtils.memorySegmentToString(result);
@@ -102,6 +105,7 @@ public class Application {
   }
 
   public int getPid() {
+    ensureNotClosed();
     try {
       int pid = (int) FRIDA_APPLICATION_GET_PID.invoke(applicationPtr);
       log.trace("Got application PID: {}", pid);
@@ -120,6 +124,7 @@ public class Application {
    * @return Map of parameter names to values
    */
   public Map<String, Object> getParams() {
+    ensureNotClosed();
     try {
       MemorySegment hashTablePtr =
           (MemorySegment) FRIDA_APPLICATION_GET_PARAMETERS.invoke(applicationPtr);
@@ -138,5 +143,20 @@ public class Application {
   public String toString() {
     return String.format(
         "Application{identifier='%s', name='%s', pid=%d}", getIdentifier(), getName(), getPid());
+  }
+
+  @Override
+  public void close() {
+    if (!closed) {
+      closed = true;
+      FridaNativeUtils.fridaUnref(applicationPtr);
+      log.trace("Application closed");
+    }
+  }
+
+  private void ensureNotClosed() {
+    if (closed) {
+      throw new IllegalStateException("Application has been closed");
+    }
   }
 }

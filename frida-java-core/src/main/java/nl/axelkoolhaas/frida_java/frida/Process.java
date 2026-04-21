@@ -33,9 +33,10 @@ import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
 /** Represents a process on a Frida device */
-public class Process {
+public class Process implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Process.class);
   private final MemorySegment processPtr;
+  private volatile boolean closed = false;
 
   private static final MethodHandle FRIDA_PROCESS_GET_PID;
   private static final MethodHandle FRIDA_PROCESS_GET_NAME;
@@ -74,6 +75,7 @@ public class Process {
    * @return Process ID (PID)
    */
   public int getPid() {
+    ensureNotClosed();
     try {
       int pid = (int) FRIDA_PROCESS_GET_PID.invoke(processPtr);
       log.trace("Got process PID: {}", pid);
@@ -92,6 +94,7 @@ public class Process {
    * @return Process name
    */
   public String getName() {
+    ensureNotClosed();
     try {
       MemorySegment namePtr = (MemorySegment) FRIDA_PROCESS_GET_NAME.invoke(processPtr);
       String name = FridaNativeUtils.memorySegmentToString(namePtr);
@@ -111,6 +114,7 @@ public class Process {
    * @return Map of parameter names to values
    */
   public Map<String, Object> getParams() {
+    ensureNotClosed();
     try {
       MemorySegment hashTablePtr = (MemorySegment) FRIDA_PROCESS_GET_PARAMETERS.invoke(processPtr);
       Map<String, Object> params = GHashTableUtil.toMap(hashTablePtr);
@@ -127,5 +131,20 @@ public class Process {
   @Override
   public String toString() {
     return String.format("Process{pid=%d, name='%s'}", getPid(), getName());
+  }
+
+  @Override
+  public void close() {
+    if (!closed) {
+      closed = true;
+      FridaNativeUtils.fridaUnref(processPtr);
+      log.trace("Process closed");
+    }
+  }
+
+  private void ensureNotClosed() {
+    if (closed) {
+      throw new IllegalStateException("Process has been closed");
+    }
   }
 }

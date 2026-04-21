@@ -34,11 +34,31 @@ public class FridaNativeUtils {
   private static final Logger log = LoggerFactory.getLogger(FridaNativeUtils.class);
 
   private static final MethodHandle FRIDA_UNREF;
+  private static final MethodHandle G_OBJECT_REF;
 
   static {
     FRIDA_UNREF =
         FridaLibraryLoader.findFunction(
             "frida_unref", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+    G_OBJECT_REF =
+        FridaLibraryLoader.findFunction(
+            "g_object_ref", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+  }
+
+  /**
+   * Call g_object_ref on a pointer to increment its reference count
+   *
+   * @param object the GObject memory segment
+   * @return the same object (for convenience)
+   */
+  public static MemorySegment fridaRef(MemorySegment object) {
+    try {
+      return (MemorySegment) G_OBJECT_REF.invoke(object);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to ref pointer", e);
+    }
   }
 
   /**
