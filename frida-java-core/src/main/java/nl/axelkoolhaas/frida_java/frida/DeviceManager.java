@@ -71,7 +71,7 @@ public class DeviceManager implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to create DeviceManager: {}", e.getMessage(), e);
+            log.debug("Failed to create DeviceManager: {}", e.getMessage(), e);
             throw new FridaException("Failed to initialize device manager", e);
         }
     }
@@ -104,7 +104,7 @@ public class DeviceManager implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to enumerate devices: {}", e.getMessage(), e);
+            log.debug("Failed to enumerate devices: {}", e.getMessage(), e);
             throw new FridaException("Failed to enumerate devices", e);
         }
     }
@@ -151,6 +151,61 @@ public class DeviceManager implements AutoCloseable {
                 .findFirst();
     }
 
+    /**
+     * Register callbacks for device manager events
+     *
+     * Available signals:
+     * - "added": Emitted when a device is added
+     *   Callback should be SignalCallbacks.DeviceCallback accepting (Device device)
+     * - "removed": Emitted when a device is removed
+     *   Callback should be SignalCallbacks.DeviceCallback accepting (Device device)
+     * - "changed": Emitted when the device list changes
+     *   Callback should be SignalCallbacks.VoidCallback or Runnable
+     *
+     * @param signalName Signal name to connect to
+     * @param callback Callback function
+     * @throws IllegalArgumentException if signal name is unknown or callback type is invalid
+     */
+    public void on(String signalName, Object callback) {
+        if (callback == null) {
+            throw new IllegalArgumentException("Callback cannot be null");
+        }
+
+        log.debug("Registering callback for device manager signal: {}", signalName);
+
+        switch (signalName) {
+            case "added":
+            case "removed":
+                if (!(callback instanceof SignalCallbacks.DeviceCallback)) {
+                    throw new IllegalArgumentException(signalName + " signal callback must be DeviceCallback");
+                }
+                break;
+            case "changed":
+                if (!(callback instanceof SignalCallbacks.VoidCallback) && !(callback instanceof Runnable)) {
+                    throw new IllegalArgumentException("changed signal callback must be VoidCallback or Runnable");
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown signal: " + signalName);
+        }
+
+        // Actually connect the closure to the GLib signal
+        try {
+            long handlerId = Closure.connectClosure(managerPtr, signalName, callback);
+
+            if (handlerId > 0) {
+                log.trace("Connected device manager signal '{}' with handler ID {}", signalName, handlerId);
+            } else {
+                log.warn("Failed to connect device manager signal '{}' - no handler ID returned", signalName);
+            }
+        } catch (Exception e) {
+            log.debug("Failed to connect device manager signal '{}': {}", signalName, e.getMessage());
+            throw new FridaException("Failed to connect device manager signal '" + signalName + "'", e);
+        }
+
+        log.trace("Registered callback for device manager signal '{}'", signalName);
+    }
+
     public void clean() {
         log.debug("Closing DeviceManager");
         try (Arena arena = Arena.ofConfined()) {
@@ -166,7 +221,7 @@ public class DeviceManager implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to close DeviceManager: {}", e.getMessage(), e);
+            log.debug("Failed to close DeviceManager: {}", e.getMessage(), e);
             throw new FridaException("Failed to clean device manager", e);
         }
     }
