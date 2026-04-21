@@ -220,6 +220,48 @@ public class Session implements AutoCloseable {
     }
 
     /**
+     * Register callbacks for session events
+     *
+     * Available signals:
+     * - "detached": Emitted when the session is detached from the target process
+     *   Callback should be SignalCallbacks.SessionDetachedCallback accepting (int reason, Crash crash)
+     *
+     * @param signalName Signal name to connect to
+     * @param callback Callback function
+     * @throws IllegalArgumentException if signal name is unknown or callback type is invalid
+     */
+    public void on(String signalName, Object callback) {
+        if (callback == null) {
+            throw new IllegalArgumentException("Callback cannot be null");
+        }
+
+        log.debug("Registering callback for session signal: {}", signalName);
+
+        if ("detached".equals(signalName)) {
+            if (!(callback instanceof SignalCallbacks.SessionDetachedCallback)) {
+                throw new IllegalArgumentException("Detached signal callback must be SessionDetachedCallback");
+            }
+
+            try {
+                long handlerId = Closure.connectClosure(sessionPtr, signalName, callback);
+
+                if (handlerId > 0) {
+                    log.trace("Connected session signal '{}' with handler ID {}", signalName, handlerId);
+                } else {
+                    log.warn("Failed to connect session signal '{}' - no handler ID returned", signalName);
+                }
+            } catch (Exception e) {
+                log.debug("Failed to connect session signal '{}': {}", signalName, e.getMessage());
+                throw new FridaException("Failed to connect session signal '" + signalName + "'", e);
+            }
+        } else {
+            throw new IllegalArgumentException("Unknown signal: " + signalName);
+        }
+
+        log.trace("Registered callback for session signal '{}'", signalName);
+    }
+
+    /**
      * Automatically detach when used in try-with-resources
      */
     @Override
