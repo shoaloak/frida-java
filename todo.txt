@@ -43,7 +43,7 @@ To dos:
 
 20. ✅ DONE - MISSING CLASS SnapshotOptions — needed for snapshotScript()
 
-21. MISSING CLASS RemoteDeviceOptions — needed for addRemoteDevice()
+21. ✅ DONE - MISSING CLASS RemoteDeviceOptions — needed for addRemoteDevice()
 
 22. MISSING CLASS FileMonitor — file change monitoring (frida_file_monitor_*)
 
