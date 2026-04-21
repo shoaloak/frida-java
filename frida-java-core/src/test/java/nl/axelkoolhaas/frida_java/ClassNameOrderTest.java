@@ -19,30 +19,38 @@
 
 package nl.axelkoolhaas.frida_java;
 
-import nl.axelkoolhaas.frida_java.feature.*;
 import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestClassOrder;
 
+import nl.axelkoolhaas.frida_java.feature.*;
+
 @TestClassOrder(ClassOrderer.ClassName.class)
 public class ClassNameOrderTest {
-    @Nested
-    class A_VersionTest extends VersionTest {}
-    @Nested
-    class B_DeviceTest extends DeviceTest {}
-    @Nested
-    class D_ProcessTest extends ProcessTest {}
-    @Nested
-    class E_ApplicationTest extends ApplicationTest {}
-    @Nested
-    class F_SpawnTest extends SpawnTest {}
-    @Nested
-    class G_SessionAndScriptTest extends SessionAndScriptTest {}
-    @Nested
-    class I_ChildTest extends ChildTest {}
-    @Nested
-    class J_ClosureTest extends ClosureTest {}
-    @Nested
-    class K_CompilerTest extends CompilerTest {}
-}
+  @Nested
+  class A_VersionTest extends VersionTest {}
 
+  @Nested
+  class B_DeviceTest extends DeviceTest {}
+
+  @Nested
+  class D_ProcessTest extends ProcessTest {}
+
+  @Nested
+  class E_ApplicationTest extends ApplicationTest {}
+
+  @Nested
+  class F_SpawnTest extends SpawnTest {}
+
+  @Nested
+  class G_SessionAndScriptTest extends SessionAndScriptTest {}
+
+  @Nested
+  class I_ChildTest extends ChildTest {}
+
+  @Nested
+  class J_ClosureTest extends ClosureTest {}
+
+  @Nested
+  class K_CompilerTest extends CompilerTest {}
+}

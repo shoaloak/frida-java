@@ -19,13 +19,28 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-/** Base exception for all Frida-related errors. */
-public class FridaException extends RuntimeException {
-  public FridaException(String message) {
-    super(message);
+/** Type of relay server for WebRTC */
+public enum RelayKind {
+  TURN_UDP(0),
+  TURN_TCP(1),
+  TURN_TLS(2);
+
+  private final int value;
+
+  RelayKind(int value) {
+    this.value = value;
   }
 
-  public FridaException(String message, Throwable cause) {
-    super(message, cause);
+  public int getValue() {
+    return value;
+  }
+
+  public static RelayKind fromValue(int value) {
+    for (RelayKind kind : values()) {
+      if (kind.value == value) {
+        return kind;
+      }
+    }
+    throw new IllegalArgumentException("Unknown RelayKind value: " + value);
   }
 }

@@ -19,31 +19,28 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-/**
- * Script runtime engine selection
- */
+/** Script runtime engine selection */
 public enum ScriptRuntime {
-    DEFAULT(0),
-    QJS(1),
-    V8(2);
+  DEFAULT(0),
+  QJS(1),
+  V8(2);
 
-    private final int value;
+  private final int value;
 
-    ScriptRuntime(int value) {
-        this.value = value;
+  ScriptRuntime(int value) {
+    this.value = value;
+  }
+
+  public int getValue() {
+    return value;
+  }
+
+  public static ScriptRuntime fromValue(int value) {
+    for (ScriptRuntime runtime : values()) {
+      if (runtime.value == value) {
+        return runtime;
+      }
     }
-
-    public int getValue() {
-        return value;
-    }
-
-    public static ScriptRuntime fromValue(int value) {
-        for (ScriptRuntime runtime : values()) {
-            if (runtime.value == value) {
-                return runtime;
-            }
-        }
-        throw new IllegalArgumentException("Unknown ScriptRuntime value: " + value);
-    }
+    throw new IllegalArgumentException("Unknown ScriptRuntime value: " + value);
+  }
 }
-

@@ -19,26 +19,26 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-/**
- * Available signals for the Device.
- */
+/** Available signals for the Device. */
 public enum DeviceSignal {
-    SPAWN_ADDED("spawn-added"),
-    SPAWN_REMOVED("spawn-removed"),
-    CHILD_ADDED("child-added"),
-    CHILD_REMOVED("child-removed"),
-    PROCESS_ADDED("process-added"),
-    PROCESS_REMOVED("process-removed"),
-    PROCESS_CRASHED("crashed"),
-    OUTPUT("output"),
-    UNINJECTED("uninjected"),
-    LOST("lost");
+  SPAWN_ADDED("spawn-added"),
+  SPAWN_REMOVED("spawn-removed"),
+  CHILD_ADDED("child-added"),
+  CHILD_REMOVED("child-removed"),
+  PROCESS_ADDED("process-added"),
+  PROCESS_REMOVED("process-removed"),
+  PROCESS_CRASHED("crashed"),
+  OUTPUT("output"),
+  UNINJECTED("uninjected"),
+  LOST("lost");
 
-    private final String name;
-    DeviceSignal(String name) {
-        this.name = name;
-    }
-    public String getName() {
-        return name;
-    }
+  private final String name;
+
+  DeviceSignal(String name) {
+    this.name = name;
+  }
+
+  public String getName() {
+    return name;
+  }
 }

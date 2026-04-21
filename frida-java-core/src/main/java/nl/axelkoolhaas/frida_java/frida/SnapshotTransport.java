@@ -19,30 +19,27 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-/**
- * Snapshot transport mechanism
- */
+/** Snapshot transport mechanism */
 public enum SnapshotTransport {
-    INLINE(0),
-    SHARED_MEMORY(1);
+  INLINE(0),
+  SHARED_MEMORY(1);
 
-    private final int value;
+  private final int value;
 
-    SnapshotTransport(int value) {
-        this.value = value;
+  SnapshotTransport(int value) {
+    this.value = value;
+  }
+
+  public int getValue() {
+    return value;
+  }
+
+  public static SnapshotTransport fromValue(int value) {
+    for (SnapshotTransport transport : values()) {
+      if (transport.value == value) {
+        return transport;
+      }
     }
-
-    public int getValue() {
-        return value;
-    }
-
-    public static SnapshotTransport fromValue(int value) {
-        for (SnapshotTransport transport : values()) {
-            if (transport.value == value) {
-                return transport;
-            }
-        }
-        throw new IllegalArgumentException("Unknown SnapshotTransport value: " + value);
-    }
+    throw new IllegalArgumentException("Unknown SnapshotTransport value: " + value);
+  }
 }
-

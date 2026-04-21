@@ -22,33 +22,33 @@ package nl.axelkoolhaas.frida_java.model;
 import java.lang.foreign.MemorySegment;
 
 /**
- * Represents a device icon in Frida.
- * Wraps a GVariant pointer containing platform-specific icon data (e.g., PNG).
+ * Represents a device icon in Frida. Wraps a GVariant pointer containing platform-specific icon
+ * data (e.g., PNG).
  *
- * Note: This is an untested abstraction but added for completeness.
+ * <p>Note: This is an untested abstraction but added for completeness.
  */
 public class Icon {
-    private final MemorySegment variantPtr;
+  private final MemorySegment variantPtr;
 
-    public Icon(MemorySegment variantPtr) {
-        if (variantPtr == null || variantPtr.equals(MemorySegment.NULL)) {
-            throw new IllegalArgumentException("Icon variant pointer cannot be null");
-        }
-        this.variantPtr = variantPtr;
+  public Icon(MemorySegment variantPtr) {
+    if (variantPtr == null || variantPtr.equals(MemorySegment.NULL)) {
+      throw new IllegalArgumentException("Icon variant pointer cannot be null");
     }
+    this.variantPtr = variantPtr;
+  }
 
-    /**
-     * Get the raw GVariant pointer for parsing icon data.
-     * The variant typically contains image data in a platform-specific format.
-     *
-     * @return MemorySegment pointing to the GVariant structure
-     */
-    public MemorySegment getVariantPointer() {
-        return variantPtr;
-    }
+  /**
+   * Get the raw GVariant pointer for parsing icon data. The variant typically contains image data
+   * in a platform-specific format.
+   *
+   * @return MemorySegment pointing to the GVariant structure
+   */
+  public MemorySegment getVariantPointer() {
+    return variantPtr;
+  }
 
-    @Override
-    public String toString() {
-        return "Icon{variantPtr=" + variantPtr + "}";
-    }
+  @Override
+  public String toString() {
+    return "Icon{variantPtr=" + variantPtr + "}";
+  }
 }

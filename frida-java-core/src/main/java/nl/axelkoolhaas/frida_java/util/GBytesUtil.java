@@ -19,93 +19,100 @@
 
 package nl.axelkoolhaas.frida_java.util;
 
-import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
-import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
-/**
- * Utility methods for working with GLib GBytes structures.
- */
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+
+/** Utility methods for working with GLib GBytes structures. */
 public class GBytesUtil {
 
-    private static final MethodHandle G_BYTES_NEW;
-    private static final MethodHandle G_BYTES_GET_SIZE;
-    private static final MethodHandle G_BYTES_GET_DATA;
-    // THESE SHOULD NOT BE USED
-    //private static final MethodHandle G_BYTES_UNREF;
-    //private static final MethodHandle G_BYTES_REF;
+  private static final MethodHandle G_BYTES_NEW;
+  private static final MethodHandle G_BYTES_GET_SIZE;
+  private static final MethodHandle G_BYTES_GET_DATA;
 
-    static {
-        G_BYTES_NEW = FridaLibraryLoader.findFunction("g_bytes_new",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-        G_BYTES_GET_SIZE = FridaLibraryLoader.findFunction("g_bytes_get_size",
-                FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-        G_BYTES_GET_DATA = FridaLibraryLoader.findFunction("g_bytes_get_data",
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+  // THESE SHOULD NOT BE USED
+  // private static final MethodHandle G_BYTES_UNREF;
+  // private static final MethodHandle G_BYTES_REF;
+
+  static {
+    G_BYTES_NEW =
+        FridaLibraryLoader.findFunction(
+            "g_bytes_new",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+    G_BYTES_GET_SIZE =
+        FridaLibraryLoader.findFunction(
+            "g_bytes_get_size", FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+    G_BYTES_GET_DATA =
+        FridaLibraryLoader.findFunction(
+            "g_bytes_get_data",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+  }
+
+  private GBytesUtil() {
+    // Utility class - prevent instantiation
+  }
+
+  /**
+   * Convert byte array to GBytes
+   *
+   * @param data byte array to convert
+   * @param arena Arena for memory allocation
+   * @return GBytes pointer
+   */
+  public static MemorySegment fromByteArray(byte[] data, Arena arena) {
+    if (data == null) {
+      throw new IllegalArgumentException("Data array cannot be null");
+    }
+    if (arena == null) {
+      throw new IllegalArgumentException("Arena cannot be null");
     }
 
-    private GBytesUtil() {
-        // Utility class - prevent instantiation
+    try {
+      MemorySegment dataPtr = arena.allocate(data.length);
+      dataPtr.copyFrom(MemorySegment.ofArray(data));
+      // Cast to long for FFM binding (Java arrays are limited to int length anyway)
+      return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, (long) data.length);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new nl.axelkoolhaas.frida_java.frida.FridaException(
+          "Failed to convert bytes to GBytes", e);
     }
+  }
 
-    /**
-     * Convert byte array to GBytes
-     * @param data byte array to convert
-     * @param arena Arena for memory allocation
-     * @return GBytes pointer
-     */
-    public static MemorySegment fromByteArray(byte[] data, Arena arena) {
-        if (data == null) {
-            throw new IllegalArgumentException("Data array cannot be null");
-        }
-        if (arena == null) {
-            throw new IllegalArgumentException("Arena cannot be null");
-        }
+  /**
+   * Extract byte array from GBytes pointer.
+   *
+   * @param gBytesPtr Pointer to GBytes structure (may be null)
+   * @return Byte array containing the data, or empty array if null/empty
+   */
+  public static byte[] toByteArray(MemorySegment gBytesPtr) {
+    FridaNativeUtils.requireValidPointer(gBytesPtr, "GBytes pointer");
 
-        try {
-            MemorySegment dataPtr = arena.allocate(data.length);
-            dataPtr.copyFrom(MemorySegment.ofArray(data));
-            // Cast to long for FFM binding (Java arrays are limited to int length anyway)
-            return (MemorySegment) G_BYTES_NEW.invoke(dataPtr, (long) data.length);
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new nl.axelkoolhaas.frida_java.frida.FridaException("Failed to convert bytes to GBytes", e);
-        }
+    try {
+      // Get the size of the GBytes data
+      long size = (long) G_BYTES_GET_SIZE.invoke(gBytesPtr);
+      if (size == 0) {
+        return new byte[0];
+      }
+
+      // Get the data pointer (second parameter is optional size output, we pass NULL)
+      MemorySegment dataPtr =
+          (MemorySegment) G_BYTES_GET_DATA.invoke(gBytesPtr, MemorySegment.NULL);
+      if (dataPtr == null || dataPtr.equals(MemorySegment.NULL)) {
+        return new byte[0];
+      }
+
+      // Read the bytes from the native memory
+      return dataPtr.reinterpret(size).toArray(ValueLayout.JAVA_BYTE);
+    } catch (Throwable e) {
+      System.err.println("Failed to extract GBytes data: " + e.getMessage());
+      return new byte[0];
     }
-
-    /**
-     * Extract byte array from GBytes pointer.
-     *
-     * @param gBytesPtr Pointer to GBytes structure (may be null)
-     * @return Byte array containing the data, or empty array if null/empty
-     */
-    public static byte[] toByteArray(MemorySegment gBytesPtr) {
-        FridaNativeUtils.requireValidPointer(gBytesPtr, "GBytes pointer");
-
-        try {
-            // Get the size of the GBytes data
-            long size = (long) G_BYTES_GET_SIZE.invoke(gBytesPtr);
-            if (size == 0) {
-                return new byte[0];
-            }
-
-            // Get the data pointer (second parameter is optional size output, we pass NULL)
-            MemorySegment dataPtr = (MemorySegment) G_BYTES_GET_DATA.invoke(gBytesPtr, MemorySegment.NULL);
-            if (dataPtr == null || dataPtr.equals(MemorySegment.NULL)) {
-                return new byte[0];
-            }
-
-            // Read the bytes from the native memory
-            return dataPtr.reinterpret(size).toArray(ValueLayout.JAVA_BYTE);
-        } catch (Throwable e) {
-            System.err.println("Failed to extract GBytes data: " + e.getMessage());
-            return new byte[0];
-        }
-    }
+  }
 }

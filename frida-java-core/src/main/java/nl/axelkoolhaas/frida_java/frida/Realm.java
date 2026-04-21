@@ -19,30 +19,27 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-/**
- * Realm specifies where code should execute (native or emulated)
- */
+/** Realm specifies where code should execute (native or emulated) */
 public enum Realm {
-    NATIVE(0),
-    EMULATED(1);
+  NATIVE(0),
+  EMULATED(1);
 
-    private final int value;
+  private final int value;
 
-    Realm(int value) {
-        this.value = value;
+  Realm(int value) {
+    this.value = value;
+  }
+
+  public int getValue() {
+    return value;
+  }
+
+  public static Realm fromValue(int value) {
+    for (Realm realm : values()) {
+      if (realm.value == value) {
+        return realm;
+      }
     }
-
-    public int getValue() {
-        return value;
-    }
-
-    public static Realm fromValue(int value) {
-        for (Realm realm : values()) {
-            if (realm.value == value) {
-                return realm;
-            }
-        }
-        throw new IllegalArgumentException("Unknown Realm value: " + value);
-    }
+    throw new IllegalArgumentException("Unknown Realm value: " + value);
+  }
 }
-

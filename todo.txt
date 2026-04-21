@@ -47,9 +47,9 @@ To dos:
 
 22. ✅ DONE - MISSING CLASS FileMonitor — file change monitoring (frida_file_monitor_*)
 
-23. MISSING CLASS Relay — WebRTC relay for peer connections
+23. ✅ DONE - MISSING CLASS Relay — WebRTC relay for peer connections
 
-24. MISSING CLASS PeerOptions — peer connection configuration
+24. ✅ DONE - MISSING CLASS PeerOptions — peer connection configuration
 
 25. MISSING CLASS PortalService — portal/collector service (advanced)
 
