@@ -63,7 +63,7 @@ To dos:
 
 30. ✅ DONE - LOGGING VIOLATION Multiple files have log.error() before throw — violates CLAUDE.md policy (Application, Process, Child, Spawn, Device, DeviceManager, Script)
 
-31. BUG [Device] findBinary() splits PATH on ':' — not portable to Windows
+31. ✅ DONE - BUG [Device] findBinary() splits PATH on ':' — not portable to Windows
 Here is the full audit result, organized by severity:
 
 Critical Bugs (broken functionality)

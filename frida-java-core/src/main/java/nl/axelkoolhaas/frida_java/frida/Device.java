@@ -28,6 +28,7 @@ import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Represents a device that Frida connects to
@@ -586,7 +588,11 @@ public class Device implements AutoCloseable {
 
     public static String findBinary(String name) {
         String pathEnv = System.getenv("PATH");
-        for (String dir : pathEnv.split(":")) {
+        if (pathEnv == null) {
+            return null;
+        }
+        // Use File.pathSeparator which is ":" on Unix and ";" on Windows
+        for (String dir : pathEnv.split(Pattern.quote(File.pathSeparator))) {
             Path p = Paths.get(dir, name);
             if (Files.isExecutable(p)) {
                 return p.toAbsolutePath().toString();
