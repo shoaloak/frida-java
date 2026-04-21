@@ -112,6 +112,15 @@ public class Device implements AutoCloseable {
   private static final MethodHandle FRIDA_DEVICE_OPEN_CHANNEL_SYNC;
   private static final MethodHandle FRIDA_DEVICE_OPEN_SERVICE_SYNC;
 
+  // Process finding and matching
+  private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_NEW;
+  private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT;
+  private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE;
+  private static final MethodHandle FRIDA_DEVICE_GET_PROCESS_BY_PID_SYNC;
+  private static final MethodHandle FRIDA_DEVICE_GET_PROCESS_BY_NAME_SYNC;
+  private static final MethodHandle FRIDA_DEVICE_FIND_PROCESS_BY_PID_SYNC;
+  private static final MethodHandle FRIDA_DEVICE_FIND_PROCESS_BY_NAME_SYNC;
+
   static {
     Frida.ensureInitialized();
 
@@ -353,6 +362,59 @@ public class Device implements AutoCloseable {
                 ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS));
+
+    // Process finding and matching
+    FRIDA_PROCESS_MATCH_OPTIONS_NEW =
+        FridaLibraryLoader.findFunction(
+            "frida_process_match_options_new", FunctionDescriptor.of(ValueLayout.ADDRESS));
+    FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT =
+        FridaLibraryLoader.findFunction(
+            "frida_process_match_options_set_timeout",
+            FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+    FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE =
+        FridaLibraryLoader.findFunction(
+            "frida_process_match_options_set_scope",
+            FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+    FRIDA_DEVICE_GET_PROCESS_BY_PID_SYNC =
+        FridaLibraryLoader.findFunction(
+            "frida_device_get_process_by_pid_sync",
+            FunctionDescriptor.of(
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS));
+    FRIDA_DEVICE_GET_PROCESS_BY_NAME_SYNC =
+        FridaLibraryLoader.findFunction(
+            "frida_device_get_process_by_name_sync",
+            FunctionDescriptor.of(
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS));
+    FRIDA_DEVICE_FIND_PROCESS_BY_PID_SYNC =
+        FridaLibraryLoader.findFunction(
+            "frida_device_find_process_by_pid_sync",
+            FunctionDescriptor.of(
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS));
+    FRIDA_DEVICE_FIND_PROCESS_BY_NAME_SYNC =
+        FridaLibraryLoader.findFunction(
+            "frida_device_find_process_by_name_sync",
+            FunctionDescriptor.of(
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS));
   }
 
   public Device(MemorySegment devicePtr) {
@@ -500,8 +562,63 @@ public class Device implements AutoCloseable {
    * @return Optional containing the Process if found, empty otherwise
    */
   public Optional<Process> findProcessByPid(int pid) {
-    List<Process> processes = enumerateProcesses();
-    return processes.stream().filter(p -> p.getPid() == pid).findFirst();
+    return findProcessByPid(pid, Scope.MINIMAL);
+  }
+
+  /**
+   * Find a process by PID with scope
+   *
+   * @param pid Process ID to find
+   * @param scope Scope for process query
+   * @return Optional containing the Process if found, empty otherwise
+   */
+  public Optional<Process> findProcessByPid(int pid, Scope scope) {
+    return findProcessByPid(pid, scope, 0);
+  }
+
+  /**
+   * Find a process by PID with scope and timeout
+   *
+   * @param pid Process ID to find
+   * @param scope Scope for process query
+   * @param timeout Timeout in milliseconds (0 for default)
+   * @return Optional containing the Process if found, empty otherwise
+   */
+  public Optional<Process> findProcessByPid(int pid, Scope scope, int timeout) {
+    log.debug("Finding process by PID {} with scope {} and timeout {}", pid, scope, timeout);
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment matchOpts = (MemorySegment) FRIDA_PROCESS_MATCH_OPTIONS_NEW.invoke();
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT.invoke(matchOpts, timeout);
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE.invoke(matchOpts, scope.getValue());
+
+      MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+      errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+      log.trace("Native call: frida_device_find_process_by_pid_sync(pid={})", pid);
+      MemorySegment processPtr =
+          (MemorySegment)
+              FRIDA_DEVICE_FIND_PROCESS_BY_PID_SYNC.invoke(
+                  devicePtr, pid, matchOpts, MemorySegment.NULL, errorPtr);
+
+      MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+      FridaNativeUtils.fridaUnref(matchOpts);
+
+      if (!error.equals(MemorySegment.NULL)) {
+        GErrorUtils.handleError(error, "find process by PID");
+      }
+
+      if (processPtr.equals(MemorySegment.NULL)) {
+        log.debug("Process with PID {} not found", pid);
+        return Optional.empty();
+      }
+
+      log.debug("Found process with PID {}", pid);
+      return Optional.of(new Process(processPtr));
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to find process by PID: " + pid, e);
+    }
   }
 
   /**
@@ -511,8 +628,72 @@ public class Device implements AutoCloseable {
    * @return Optional containing the Process if found, empty otherwise
    */
   public Optional<Process> findProcessByName(String name) {
-    List<Process> processes = enumerateProcesses();
-    return processes.stream().filter(p -> p.getName().equals(name)).findFirst();
+    return findProcessByName(name, Scope.MINIMAL);
+  }
+
+  /**
+   * Find a process by name with scope
+   *
+   * @param name Process name to find (case-sensitive)
+   * @param scope Scope for process query
+   * @return Optional containing the Process if found, empty otherwise
+   */
+  public Optional<Process> findProcessByName(String name, Scope scope) {
+    return findProcessByName(name, scope, 0);
+  }
+
+  /**
+   * Find a process by name with scope and timeout
+   *
+   * @param name Process name to find (case-sensitive)
+   * @param scope Scope for process query
+   * @param timeout Timeout in milliseconds (0 for default)
+   * @return Optional containing the Process if found, empty otherwise
+   */
+  public Optional<Process> findProcessByName(String name, Scope scope, int timeout) {
+    if (name == null || name.isEmpty()) {
+      throw new IllegalArgumentException("Process name cannot be null or empty");
+    }
+
+    log.debug("Finding process by name '{}' with scope {} and timeout {}", name, scope, timeout);
+    try (Arena arena = Arena.ofConfined()) {
+      byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+      MemorySegment namePtr = arena.allocate(nameBytes.length + 1);
+      namePtr.copyFrom(MemorySegment.ofArray(nameBytes));
+      namePtr.set(ValueLayout.JAVA_BYTE, nameBytes.length, (byte) 0);
+
+      MemorySegment matchOpts = (MemorySegment) FRIDA_PROCESS_MATCH_OPTIONS_NEW.invoke();
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT.invoke(matchOpts, timeout);
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE.invoke(matchOpts, scope.getValue());
+
+      MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+      errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+      log.trace("Native call: frida_device_find_process_by_name_sync(name='{}')", name);
+      MemorySegment processPtr =
+          (MemorySegment)
+              FRIDA_DEVICE_FIND_PROCESS_BY_NAME_SYNC.invoke(
+                  devicePtr, namePtr, matchOpts, MemorySegment.NULL, errorPtr);
+
+      MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+      FridaNativeUtils.fridaUnref(matchOpts);
+
+      if (!error.equals(MemorySegment.NULL)) {
+        GErrorUtils.handleError(error, "find process by name");
+      }
+
+      if (processPtr.equals(MemorySegment.NULL)) {
+        log.debug("Process with name '{}' not found", name);
+        return Optional.empty();
+      }
+
+      log.debug("Found process with name '{}'", name);
+      return Optional.of(new Process(processPtr));
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to find process by name: " + name, e);
+    }
   }
 
   /**
@@ -520,11 +701,67 @@ public class Device implements AutoCloseable {
    *
    * @param pid Process ID to get
    * @return Process object
-   * @throws RuntimeException if process not found
+   * @throws FridaException if process not found
    */
   public Process getProcessByPid(int pid) {
-    return findProcessByPid(pid)
-        .orElseThrow(() -> new FridaException("Process with PID " + pid + " not found"));
+    return getProcessByPid(pid, Scope.MINIMAL);
+  }
+
+  /**
+   * Get a process by PID with scope (throws if not found)
+   *
+   * @param pid Process ID to get
+   * @param scope Scope for process query
+   * @return Process object
+   * @throws FridaException if process not found
+   */
+  public Process getProcessByPid(int pid, Scope scope) {
+    return getProcessByPid(pid, scope, 0);
+  }
+
+  /**
+   * Get a process by PID with scope and timeout (throws if not found)
+   *
+   * @param pid Process ID to get
+   * @param scope Scope for process query
+   * @param timeout Timeout in milliseconds (0 for default)
+   * @return Process object
+   * @throws FridaException if process not found
+   */
+  public Process getProcessByPid(int pid, Scope scope, int timeout) {
+    log.debug("Getting process by PID {} with scope {} and timeout {}", pid, scope, timeout);
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment matchOpts = (MemorySegment) FRIDA_PROCESS_MATCH_OPTIONS_NEW.invoke();
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT.invoke(matchOpts, timeout);
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE.invoke(matchOpts, scope.getValue());
+
+      MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+      errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+      log.trace("Native call: frida_device_get_process_by_pid_sync(pid={})", pid);
+      MemorySegment processPtr =
+          (MemorySegment)
+              FRIDA_DEVICE_GET_PROCESS_BY_PID_SYNC.invoke(
+                  devicePtr, pid, matchOpts, MemorySegment.NULL, errorPtr);
+
+      MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+      FridaNativeUtils.fridaUnref(matchOpts);
+
+      if (!error.equals(MemorySegment.NULL)) {
+        GErrorUtils.handleError(error, "get process by PID");
+      }
+
+      if (processPtr.equals(MemorySegment.NULL)) {
+        throw new FridaException("Process with PID " + pid + " not found");
+      }
+
+      log.debug("Got process with PID {}", pid);
+      return new Process(processPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to get process by PID: " + pid, e);
+    }
   }
 
   /**
@@ -532,11 +769,76 @@ public class Device implements AutoCloseable {
    *
    * @param name Process name to get
    * @return Process object
-   * @throws RuntimeException if process not found
+   * @throws FridaException if process not found
    */
   public Process getProcessByName(String name) {
-    return findProcessByName(name)
-        .orElseThrow(() -> new FridaException("Process with name '" + name + "' not found"));
+    return getProcessByName(name, Scope.MINIMAL);
+  }
+
+  /**
+   * Get a process by name with scope (throws if not found)
+   *
+   * @param name Process name to get
+   * @param scope Scope for process query
+   * @return Process object
+   * @throws FridaException if process not found
+   */
+  public Process getProcessByName(String name, Scope scope) {
+    return getProcessByName(name, scope, 0);
+  }
+
+  /**
+   * Get a process by name with scope and timeout (throws if not found)
+   *
+   * @param name Process name to get
+   * @param scope Scope for process query
+   * @param timeout Timeout in milliseconds (0 for default)
+   * @return Process object
+   * @throws FridaException if process not found
+   */
+  public Process getProcessByName(String name, Scope scope, int timeout) {
+    if (name == null || name.isEmpty()) {
+      throw new IllegalArgumentException("Process name cannot be null or empty");
+    }
+
+    log.debug("Getting process by name '{}' with scope {} and timeout {}", name, scope, timeout);
+    try (Arena arena = Arena.ofConfined()) {
+      byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+      MemorySegment namePtr = arena.allocate(nameBytes.length + 1);
+      namePtr.copyFrom(MemorySegment.ofArray(nameBytes));
+      namePtr.set(ValueLayout.JAVA_BYTE, nameBytes.length, (byte) 0);
+
+      MemorySegment matchOpts = (MemorySegment) FRIDA_PROCESS_MATCH_OPTIONS_NEW.invoke();
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT.invoke(matchOpts, timeout);
+      FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE.invoke(matchOpts, scope.getValue());
+
+      MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+      errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+      log.trace("Native call: frida_device_get_process_by_name_sync(name='{}')", name);
+      MemorySegment processPtr =
+          (MemorySegment)
+              FRIDA_DEVICE_GET_PROCESS_BY_NAME_SYNC.invoke(
+                  devicePtr, namePtr, matchOpts, MemorySegment.NULL, errorPtr);
+
+      MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+      FridaNativeUtils.fridaUnref(matchOpts);
+
+      if (!error.equals(MemorySegment.NULL)) {
+        GErrorUtils.handleError(error, "get process by name");
+      }
+
+      if (processPtr.equals(MemorySegment.NULL)) {
+        throw new FridaException("Process with name '" + name + "' not found");
+      }
+
+      log.debug("Got process with name '{}'", name);
+      return new Process(processPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to get process by name: " + name, e);
+    }
   }
 
   /**
@@ -1113,16 +1415,18 @@ public class Device implements AutoCloseable {
    * Open an I/O channel to communicate with the device.
    *
    * @param address Channel address (e.g., "tcp:host=127.0.0.1,port=27042")
-   * @return IOStream pointer (requires further wrapping for I/O operations)
+   * @return IOStream for reading and writing data
    */
-  public MemorySegment openChannel(String address) {
+  public IOStream openChannel(String address) {
+    log.debug("Opening channel to address: {}", address);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       MemorySegment addressPtr = arena.allocateFrom(address);
 
-      MemorySegment ioStream =
+      log.trace("Native call: frida_device_open_channel_sync(address='{}')", address);
+      MemorySegment ioStreamPtr =
           (MemorySegment)
               FRIDA_DEVICE_OPEN_CHANNEL_SYNC.invoke(
                   devicePtr, addressPtr, MemorySegment.NULL, errorPtr);
@@ -1130,7 +1434,12 @@ public class Device implements AutoCloseable {
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "open channel");
 
-      return ioStream;
+      if (ioStreamPtr.equals(MemorySegment.NULL)) {
+        throw new FridaException("Failed to open channel to address: " + address);
+      }
+
+      log.debug("Successfully opened channel to address: {}", address);
+      return new IOStream(ioStreamPtr);
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {
@@ -1142,16 +1451,18 @@ public class Device implements AutoCloseable {
    * Open a service connection to the device.
    *
    * @param address Service address
-   * @return Service pointer (requires further wrapping for service operations)
+   * @return Service object for service operations
    */
-  public MemorySegment openService(String address) {
+  public Service openService(String address) {
+    log.debug("Opening service to address: {}", address);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       MemorySegment addressPtr = arena.allocateFrom(address);
 
-      MemorySegment service =
+      log.trace("Native call: frida_device_open_service_sync(address='{}')", address);
+      MemorySegment servicePtr =
           (MemorySegment)
               FRIDA_DEVICE_OPEN_SERVICE_SYNC.invoke(
                   devicePtr, addressPtr, MemorySegment.NULL, errorPtr);
@@ -1159,7 +1470,12 @@ public class Device implements AutoCloseable {
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "open service");
 
-      return service;
+      if (servicePtr.equals(MemorySegment.NULL)) {
+        throw new FridaException("Failed to open service to address: " + address);
+      }
+
+      log.debug("Successfully opened service to address: {}", address);
+      return new Service(servicePtr);
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {

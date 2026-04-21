@@ -25,17 +25,17 @@ To dos:
 
 11. ✅ DONE - MISSING [Device] enumerateProcesses() lacks Scope parameter — always uses default scope
 
-12. MISSING [Device] findProcessByPid/findProcessByName use enumerate+filter instead of native frida_device_find/get_process_by_* (no timeout support)
+12. ✅ DONE - MISSING [Device] findProcessByPid/findProcessByName use enumerate+filter instead of native frida_device_find/get_process_by_* (no timeout support)
 
 13. SKIPPED - MISSING [Device] getManager() method absent (not in Frida C API - devices don't maintain parent refs)
 
 14. ✅ DONE - MISSING [DeviceManager] addRemoteDevice() and removeRemoteDevice() absent
 
-15. API VIOLATION [Device] openChannel() returns raw MemorySegment — FFM leaks into public API
+15. ✅ DONE - API VIOLATION [Device] openChannel() returns raw MemorySegment — FFM leaks into public API
 
-16. API VIOLATION [Device] openService() returns raw MemorySegment — FFM leaks into public API
+16. ✅ DONE - API VIOLATION [Device] openService() returns raw MemorySegment — FFM leaks into public API
 
-17. MISSING CLASS IOStream — needed for openChannel(), wraps GIOStream read/write
+17. ✅ DONE - MISSING CLASS IOStream — needed for openChannel(), wraps GIOStream read/write
 
 18. ✅ DONE - MISSING CLASS SessionOptions — needed for attach(pid, opts) with realm and persist timeout
 
@@ -115,3 +115,28 @@ log.error() immediately before throw new FridaException() in: Application.java, 
 
 Minor Bug
 Device.findBinary() at Device.java:589 splits PATH on ":" — not portable to Windows which uses ";".
+
+---
+
+
+## Not Implemented (Advanced Features)
+
+The following items from the todo list are marked as advanced and were not implemented in this session:
+
+### Item 25: PortalService
+- Requires complex GVariant handling
+- Portal/collector service functionality
+- Low priority for most use cases
+
+### Item 26: PortalMembership
+- Portal membership management
+- Depends on PortalService
+- Advanced feature
+
+### Item 27: EndpointParameters
+- Needed by PortalService
+- Requires TLS certificate handling
+- Authentication callback support
+- Advanced feature
+
+These items can be implemented in the future as needed, following the patterns established in frida-go reference implementation.
