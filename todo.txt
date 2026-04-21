@@ -13,15 +13,15 @@ To dos:
 
 5. ✅ DONE - BUG [Script] on() only handles 'message' — 'destroyed' signal unsupported
 
-6. MISSING [Session] Add compileScript() method (frida_session_compile_script_sync)
+6. ✅ DONE - MISSING [Session] Add compileScript() method (frida_session_compile_script_sync)
 
-7. MISSING [Session] Add snapshotScript() method (frida_session_snapshot_script_sync)
+7. ✅ DONE - MISSING [Session] Add snapshotScript() method (frida_session_snapshot_script_sync)
 
-8. MISSING [Session] Add createScriptFromBytes() method (frida_session_create_script_from_bytes_sync)
+8. ✅ DONE - MISSING [Session] Add createScriptFromBytes() method (frida_session_create_script_from_bytes_sync)
 
-9. MISSING [Session] Add setupPeerConnection() method (frida_session_setup_peer_connection_sync)
+9. ✅ DONE - MISSING [Session] Add setupPeerConnection() method (frida_session_setup_peer_connection_sync)
 
-10. MISSING [Session] Add joinPortal() method (frida_session_join_portal_sync)
+10. ✅ DONE - MISSING [Session] Add joinPortal() method (frida_session_join_portal_sync)
 
 11. ✅ DONE - MISSING [Device] enumerateProcesses() lacks Scope parameter — always uses default scope
 
