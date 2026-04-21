@@ -39,7 +39,7 @@ To dos:
 
 18. MISSING CLASS SessionOptions — needed for attach(pid, opts) with realm and persist timeout
 
-19. MISSING CLASS ScriptOptions — needed for createScript with name, snapshot, runtime
+19. ✅ DONE - MISSING CLASS ScriptOptions — needed for createScript with name, snapshot, runtime
 
 20. MISSING CLASS SnapshotOptions — needed for snapshotScript()
 
