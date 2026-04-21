@@ -23,7 +23,7 @@ To dos:
 
 10. MISSING [Session] Add joinPortal() method (frida_session_join_portal_sync)
 
-11. MISSING [Device] enumerateProcesses() lacks Scope parameter — always uses default scope
+11. ✅ DONE - MISSING [Device] enumerateProcesses() lacks Scope parameter — always uses default scope
 
 12. MISSING [Device] findProcessByPid/findProcessByName use enumerate+filter instead of native frida_device_find/get_process_by_* (no timeout support)
 

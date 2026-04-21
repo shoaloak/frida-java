@@ -66,6 +66,8 @@ public class Device implements AutoCloseable {
     private static final MethodHandle FRIDA_DEVICE_GET_NAME;
     private static final MethodHandle FRIDA_DEVICE_IS_LOST;
     private static final MethodHandle FRIDA_DEVICE_ENUMERATE_PROCESSES;
+    private static final MethodHandle FRIDA_PROCESS_QUERY_OPTIONS_NEW;
+    private static final MethodHandle FRIDA_PROCESS_QUERY_OPTIONS_SET_SCOPE;
     private static final MethodHandle FRIDA_PROCESS_LIST_SIZE;
     private static final MethodHandle FRIDA_PROCESS_LIST_GET;
 
@@ -121,6 +123,10 @@ public class Device implements AutoCloseable {
                 FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.ADDRESS));
         FRIDA_DEVICE_ENUMERATE_PROCESSES = FridaLibraryLoader.findFunction("frida_device_enumerate_processes_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_PROCESS_QUERY_OPTIONS_NEW = FridaLibraryLoader.findFunction("frida_process_query_options_new",
+                FunctionDescriptor.of(ValueLayout.ADDRESS));
+        FRIDA_PROCESS_QUERY_OPTIONS_SET_SCOPE = FridaLibraryLoader.findFunction("frida_process_query_options_set_scope",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
         FRIDA_PROCESS_LIST_SIZE = FridaLibraryLoader.findFunction("frida_process_list_size",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_PROCESS_LIST_GET = FridaLibraryLoader.findFunction("frida_process_list_get",
@@ -263,22 +269,46 @@ public class Device implements AutoCloseable {
      * @return List of Process objects
      */
     public List<Process> enumerateProcesses() {
+        return enumerateProcesses(Scope.MINIMAL);
+    }
+
+    /**
+     * Enumerate processes running on this device with specified scope
+     * @param scope Scope for process enumeration
+     * @return List of Process objects
+     */
+    public List<Process> enumerateProcesses(Scope scope) {
         try (Arena arena = Arena.ofConfined()) {
+            // Create query options
+            MemorySegment queryOpts = (MemorySegment) FRIDA_PROCESS_QUERY_OPTIONS_NEW.invoke();
+            
+            // Set scope
+            FRIDA_PROCESS_QUERY_OPTIONS_SET_SCOPE.invoke(queryOpts, scope.getValue());
+            
             MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
             errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
             MemorySegment processList = (MemorySegment) FRIDA_DEVICE_ENUMERATE_PROCESSES
-                    .invoke(devicePtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+                    .invoke(devicePtr, queryOpts, MemorySegment.NULL, errorPtr);
 
             // Check for errors
             MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
-            GErrorUtils.handleError(error, "enumerate processes");
+            if (!error.equals(MemorySegment.NULL)) {
+                FridaNativeUtils.fridaUnref(queryOpts);
+                GErrorUtils.handleError(error, "enumerate processes");
+            }
 
             if (processList.equals(MemorySegment.NULL)) {
+                FridaNativeUtils.fridaUnref(queryOpts);
                 return new ArrayList<>();
             }
 
-            return extractProcessesFromList(processList);
+            try {
+                return extractProcessesFromList(processList);
+            } finally {
+                FridaNativeUtils.fridaUnref(queryOpts);
+                FridaNativeUtils.fridaUnref(processList);
+            }
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
