@@ -65,7 +65,7 @@ public class Application {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get application identifier: {}", e.getMessage());
+            log.debug("Failed to get application identifier: {}", e.getMessage());
             throw new FridaException("Failed to get application identifier", e);
         }
     }
@@ -79,7 +79,7 @@ public class Application {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get application name: {}", e.getMessage());
+            log.debug("Failed to get application name: {}", e.getMessage());
             throw new FridaException("Failed to get application name", e);
         }
     }
@@ -92,7 +92,7 @@ public class Application {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get application PID: {}", e.getMessage());
+            log.debug("Failed to get application PID: {}", e.getMessage());
             throw new FridaException("Failed to get application PID", e);
         }
     }

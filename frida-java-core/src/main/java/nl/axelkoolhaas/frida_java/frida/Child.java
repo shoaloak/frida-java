@@ -84,7 +84,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get child PID: {}", e.getMessage());
+            log.debug("Failed to get child PID: {}", e.getMessage());
             throw new FridaException("Failed to get child PID", e);
         }
     }
@@ -101,7 +101,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get parent PID: {}", e.getMessage());
+            log.debug("Failed to get parent PID: {}", e.getMessage());
             throw new FridaException("Failed to get child parent PID", e);
         }
     }
@@ -118,7 +118,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get child origin: {}", e.getMessage());
+            log.debug("Failed to get child origin: {}", e.getMessage());
             throw new FridaException("Failed to get child origin", e);
         }
     }
@@ -136,7 +136,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get child identifier: {}", e.getMessage());
+            log.debug("Failed to get child identifier: {}", e.getMessage());
             throw new FridaException("Failed to get child identifier", e);
         }
     }
@@ -154,7 +154,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get child path: {}", e.getMessage());
+            log.debug("Failed to get child path: {}", e.getMessage());
             throw new FridaException("Failed to get child path", e);
         }
     }
@@ -189,7 +189,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get child argv: {}", e.getMessage());
+            log.debug("Failed to get child argv: {}", e.getMessage());
             throw new FridaException("Failed to get child argv", e);
         }
     }
@@ -224,7 +224,7 @@ public class Child {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get child envp: {}", e.getMessage());
+            log.debug("Failed to get child envp: {}", e.getMessage());
             throw new FridaException("Failed to get child envp", e);
         }
     }

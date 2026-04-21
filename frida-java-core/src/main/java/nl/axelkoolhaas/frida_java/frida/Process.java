@@ -77,7 +77,7 @@ public class Process {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get process PID: {}", e.getMessage());
+            log.debug("Failed to get process PID: {}", e.getMessage());
             throw new FridaException("Failed to get process PID", e);
         }
     }
@@ -95,7 +95,7 @@ public class Process {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get process name: {}", e.getMessage());
+            log.debug("Failed to get process name: {}", e.getMessage());
             throw new FridaException("Failed to get process name", e);
         }
     }

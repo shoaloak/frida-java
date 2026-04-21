@@ -63,7 +63,7 @@ public class Spawn {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get spawn PID: {}", e.getMessage());
+            log.debug("Failed to get spawn PID: {}", e.getMessage());
             throw new FridaException("Failed to get spawn PID", e);
         }
     }
@@ -81,7 +81,7 @@ public class Spawn {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to get spawn identifier: {}", e.getMessage());
+            log.debug("Failed to get spawn identifier: {}", e.getMessage());
             throw new FridaException("Failed to get spawn identifier", e);
         }
     }

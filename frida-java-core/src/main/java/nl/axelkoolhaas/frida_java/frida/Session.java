@@ -214,7 +214,7 @@ public class Session implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to create script: {}", e.getMessage());
+            log.debug("Failed to create script: {}", e.getMessage());
             throw new FridaException("Failed to create script", e);
         }
     }

@@ -461,7 +461,7 @@ public class Device implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to spawn process '{}': {}", programPath, e.getMessage());
+            log.debug("Failed to spawn process '{}': {}", programPath, e.getMessage());
             throw new FridaException("Failed to spawn process: " + programPath, e);
         }
     }
@@ -535,7 +535,7 @@ public class Device implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to spawn process '{}': {}", programPath, e.getMessage());
+            log.debug("Failed to spawn process '{}': {}", programPath, e.getMessage());
             throw new FridaException("Failed to spawn process: " + programPath, e);
         }
     }
@@ -667,7 +667,7 @@ public class Device implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to attach to pid={}: {}", pid, e.getMessage());
+            log.debug("Failed to attach to pid={}: {}", pid, e.getMessage());
             throw new FridaException("Failed to attach to process with PID: " + pid, e);
         }
     }
@@ -1099,7 +1099,7 @@ public class Device implements AutoCloseable {
                 log.warn("Failed to connect signal '{}' - native lookup failed", signal.getName());
             }
         } catch (Exception e) {
-            log.error("Failed to register event handler for signal '{}': {}", signal.getName(), e.getMessage());
+            log.debug("Failed to register event handler for signal '{}': {}", signal.getName(), e.getMessage());
             throw new FridaException("Failed to register event handler for signal: " + signal.getName(), e);
         }
     }

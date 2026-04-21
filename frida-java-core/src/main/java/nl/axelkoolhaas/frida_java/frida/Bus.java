@@ -77,7 +77,7 @@ public class Bus {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to check if bus is detached: {}", e.getMessage());
+            log.debug("Failed to check if bus is detached: {}", e.getMessage());
             throw new FridaException("Failed to check if bus is detached", e);
         }
     }
@@ -99,7 +99,7 @@ public class Bus {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to attach to bus: {}", e.getMessage());
+            log.debug("Failed to attach to bus: {}", e.getMessage());
             throw new FridaException("Failed to attach to bus", e);
         }
     }
@@ -122,7 +122,7 @@ public class Bus {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to post message to bus: {}", e.getMessage());
+            log.debug("Failed to post message to bus: {}", e.getMessage());
             throw new FridaException("Failed to post message to bus", e);
         }
     }

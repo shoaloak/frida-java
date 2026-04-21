@@ -84,7 +84,7 @@ public class Compiler implements AutoCloseable {
             throw e;
         } catch (Throwable e) {
             deviceManager.close();
-            log.error("Failed to create Compiler: {}", e.getMessage());
+            log.debug("Failed to create Compiler: {}", e.getMessage());
             throw new FridaException("Failed to create Compiler", e);
         }
     }
@@ -244,7 +244,7 @@ public class Compiler implements AutoCloseable {
 
                 log.debug("Disconnected native handler for signal: {}", signal.getName());
             } catch (Throwable e) {
-                log.error("Failed to disconnect signal {}", signal.getName(), e);
+                log.warn("Failed to disconnect signal {} (continuing cleanup): {}", signal.getName(), e.getMessage());
             }
         }
     }

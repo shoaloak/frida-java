@@ -100,7 +100,7 @@ public class Script implements AutoCloseable {
             GErrorUtils.handleError(error, "load script");
             log.debug("Script loaded successfully");
         } catch (Throwable e) {
-            log.error("Failed to load script: {}", e.getMessage());
+            log.debug("Failed to load script: {}", e.getMessage());
             throw new FridaException("Failed to load script", e);
         }
     }

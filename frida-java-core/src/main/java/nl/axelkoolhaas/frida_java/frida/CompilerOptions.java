@@ -71,7 +71,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to create CompilerOptions: {}", e.getMessage());
+            log.debug("Failed to create CompilerOptions: {}", e.getMessage());
             throw new FridaException("Failed to create CompilerOptions", e);
         }
     }
@@ -139,7 +139,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to set project root: {}", e.getMessage());
+            log.debug("Failed to set project root: {}", e.getMessage());
             throw new FridaException("Failed to set project root", e);
         }
     }
@@ -156,7 +156,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to set JS compression: {}", e.getMessage());
+            log.debug("Failed to set JS compression: {}", e.getMessage());
             throw new FridaException("Failed to set JS compression", e);
         }
     }
@@ -173,7 +173,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to set source maps: {}", e.getMessage());
+            log.debug("Failed to set source maps: {}", e.getMessage());
             throw new FridaException("Failed to set source maps", e);
         }
     }
@@ -190,7 +190,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to set output format: {}", e.getMessage());
+            log.debug("Failed to set output format: {}", e.getMessage());
             throw new FridaException("Failed to set output format", e);
         }
     }
@@ -207,7 +207,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to set bundle format: {}", e.getMessage());
+            log.debug("Failed to set bundle format: {}", e.getMessage());
             throw new FridaException("Failed to set bundle format", e);
         }
     }
@@ -224,7 +224,7 @@ public class CompilerOptions implements AutoCloseable {
         } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
         } catch (Throwable e) {
-            log.error("Failed to set type check mode: {}", e.getMessage());
+            log.debug("Failed to set type check mode: {}", e.getMessage());
             throw new FridaException("Failed to set type check mode", e);
         }
     }
