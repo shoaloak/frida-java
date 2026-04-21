@@ -54,7 +54,7 @@ To dos:
 
 25. ✅ DONE - MISSING CLASS PortalService — portal/collector service (advanced)
 
-26. MISSING CLASS PortalMembership — portal membership (advanced)
+26. ✅ DONE - MISSING CLASS PortalMembership — portal membership (advanced)
 
 27. ✅ DONE - MISSING CLASS EndpointParameters — needed by PortalService
 
@@ -120,18 +120,13 @@ Device.findBinary() at Device.java:589 splits PATH on ":" — not portable to Wi
 ---
 
 
-## Not Implemented (Advanced Features)
+## Implementation Complete
 
-The following items from the todo list are marked as advanced and were not implemented:
+All items from the todo list have been implemented.
 
-### Item 26: PortalMembership
-- Portal membership management
-- Depends on PortalService
-- Advanced feature
-- Can be implemented in the future as needed, following the patterns established in frida-go reference implementation
-
-Note: Items 25 (PortalService) and 27 (EndpointParameters) have been implemented with full support for:
+Items 25 (PortalService), 26 (PortalMembership), and 27 (EndpointParameters) provide full support for:
 - Creating portal services with cluster and control endpoints
+- Portal membership management with terminate() method
 - TLS certificate support via file paths
 - Network address and port configuration
 - Asset root directory serving

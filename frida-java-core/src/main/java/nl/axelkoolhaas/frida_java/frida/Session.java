@@ -445,14 +445,17 @@ public class Session implements AutoCloseable {
   }
 
   /**
-   * Join a portal for collaborative debugging Note: PortalOptions parameter support will be added
-   * in a future update Note: This is an advanced feature for portal-based collaboration
+   * Join a portal for collaborative debugging
+   *
+   * <p>Note: PortalOptions parameter support will be added in a future update
+   *
+   * <p>Note: This is an advanced feature for portal-based collaboration
    *
    * @param address Portal address
-   * @return PortalMembership object (currently returns raw pointer, will be wrapped later)
+   * @return PortalMembership object representing the active membership
    * @throws FridaException if joining portal fails
    */
-  public MemorySegment joinPortal(String address) {
+  public PortalMembership joinPortal(String address) {
     log.debug("Joining portal at address: {}", address);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment addressPtr = arena.allocateFrom(address);
@@ -461,7 +464,6 @@ public class Session implements AutoCloseable {
 
       log.trace("Native call: frida_session_join_portal_sync()");
       // Join portal (session, address, options=NULL, cancellable=NULL, error)
-      // TODO: Wrap return value in PortalMembership class when implemented
       MemorySegment membershipPtr =
           (MemorySegment)
               FRIDA_SESSION_JOIN_PORTAL_SYNC.invokeExact(
@@ -471,7 +473,7 @@ public class Session implements AutoCloseable {
       GErrorUtils.handleError(error, "join portal");
 
       log.debug("Successfully joined portal");
-      return membershipPtr;
+      return new PortalMembership(membershipPtr);
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {
