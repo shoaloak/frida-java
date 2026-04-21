@@ -140,7 +140,7 @@ public class Bus {
      *
      * Available signals:
      * - "detached": Emitted when the bus is detached from the device
-     *   Callback should be Runnable
+     *   Callback should be Runnable or VoidCallback
      * - "message": Emitted when a message is received from the device
      *   Callback should be SignalCallbacks.MessageCallback accepting (String message, byte[] data)
      *
@@ -157,16 +157,33 @@ public class Bus {
 
         switch (signalName) {
             case "detached":
-                if (!(callback instanceof Runnable)) {
-                    throw new IllegalArgumentException("Detached signal callback must be Runnable");
+                if (!(callback instanceof Runnable) && !(callback instanceof SignalCallbacks.VoidCallback)) {
+                    throw new IllegalArgumentException("Detached signal callback must be Runnable or VoidCallback");
                 }
                 signalHandlers.put(signalName, callback);
                 break;
             case "message":
+                if (!(callback instanceof SignalCallbacks.MessageCallback)) {
+                    throw new IllegalArgumentException("Message signal callback must be MessageCallback");
+                }
                 signalHandlers.put(signalName, callback);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown signal: " + signalName);
+        }
+
+        // Actually connect the closure to the GLib signal
+        try {
+            long handlerId = Closure.connectClosure(busPtr, signalName, callback);
+
+            if (handlerId > 0) {
+                log.trace("Connected bus signal '{}' with handler ID {}", signalName, handlerId);
+            } else {
+                log.warn("Failed to connect bus signal '{}' - no handler ID returned", signalName);
+            }
+        } catch (Exception e) {
+            log.debug("Failed to connect bus signal '{}': {}", signalName, e.getMessage());
+            throw new FridaException("Failed to connect bus signal '" + signalName + "'", e);
         }
 
         log.trace("Registered callback for bus signal '{}'", signalName);
