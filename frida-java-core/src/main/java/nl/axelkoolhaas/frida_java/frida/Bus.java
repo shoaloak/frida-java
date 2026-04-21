@@ -32,16 +32,21 @@ import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 
-/** Bus represents a communication channel with Frida devices */
-public class Bus {
+/**
+ * Bus represents a communication channel with Frida devices. Claude warning: "Appears to be
+ * unused/legacy code in both Go and Java reference implementations"
+ */
+public class Bus implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Bus.class);
   private final MemorySegment busPtr;
-  private final Map<String, Object> signalHandlers = new ConcurrentHashMap<>();
+  private final Map<String, Long> signalHandlerIds = new ConcurrentHashMap<>();
+  private volatile boolean cleaned = false;
 
   // Native method handles
   private static final MethodHandle FRIDA_BUS_IS_DETACHED;
   private static final MethodHandle FRIDA_BUS_ATTACH_SYNC;
   private static final MethodHandle FRIDA_BUS_POST;
+  private static final MethodHandle G_SIGNAL_HANDLER_DISCONNECT;
 
   static {
     Frida.ensureInitialized();
@@ -59,6 +64,10 @@ public class Bus {
             "frida_bus_post",
             FunctionDescriptor.ofVoid(
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+    G_SIGNAL_HANDLER_DISCONNECT =
+        FridaLibraryLoader.findFunction(
+            "g_signal_handler_disconnect",
+            FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
   }
 
   /**
@@ -77,6 +86,7 @@ public class Bus {
    * @return true if detached, false otherwise
    */
   public boolean isDetached() {
+    checkNotCleaned();
     try {
       // frida_bus_is_detached returns gboolean (typedef gint, i.e., int)
       // gboolean: FALSE = 0, TRUE = non-zero (typically 1)
@@ -97,6 +107,7 @@ public class Bus {
    * @throws FridaException if attachment fails
    */
   public void attach() {
+    checkNotCleaned();
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
@@ -121,6 +132,7 @@ public class Bus {
    * @param data Binary data to send (can be null)
    */
   public void post(String message, byte[] data) {
+    checkNotCleaned();
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment messagePtr = arena.allocateFrom(message);
 
@@ -150,22 +162,28 @@ public class Bus {
   /**
    * Register callbacks for bus events
    *
-   * <p>Available signals: - "detached": Emitted when the bus is detached from the device Callback
-   * should be Runnable or VoidCallback - "message": Emitted when a message is received from the
-   * device Callback should be SignalCallbacks.MessageCallback accepting (String message, byte[]
-   * data)
+   * <p>Available signals:
+   *
+   * <ul>
+   *   <li>"detached": Emitted when the bus is detached from the device. Callback should be Runnable
+   *       or VoidCallback
+   *   <li>"message": Emitted when a message is received from the device. Callback should be
+   *       SignalCallbacks.MessageCallback accepting (String message, byte[] data)
+   * </ul>
    *
    * @param signalName Signal name to connect to
    * @param callback Callback function
    * @throws IllegalArgumentException if signal name is unknown or callback type is invalid
    */
   public void on(String signalName, Object callback) {
+    checkNotCleaned();
     if (callback == null) {
       throw new IllegalArgumentException("Callback cannot be null");
     }
 
     log.debug("Registering callback for bus signal: {}", signalName);
 
+    // Validate callback type based on signal name
     switch (signalName) {
       case "detached":
         if (!(callback instanceof Runnable)
@@ -173,27 +191,37 @@ public class Bus {
           throw new IllegalArgumentException(
               "Detached signal callback must be Runnable or VoidCallback");
         }
-        signalHandlers.put(signalName, callback);
         break;
       case "message":
         if (!(callback instanceof SignalCallbacks.MessageCallback)) {
           throw new IllegalArgumentException("Message signal callback must be MessageCallback");
         }
-        signalHandlers.put(signalName, callback);
         break;
       default:
         throw new IllegalArgumentException("Unknown signal: " + signalName);
     }
 
-    // Actually connect the closure to the GLib signal
+    // Disconnect existing handler for this signal if any
+    Long existingHandlerId = signalHandlerIds.get(signalName);
+    if (existingHandlerId != null) {
+      disconnectSignal(existingHandlerId);
+      signalHandlerIds.remove(signalName);
+      log.debug("Replaced existing handler for bus signal: {}", signalName);
+    }
+
+    // Connect the closure to the GLib signal
     try {
       long handlerId = Closure.connectClosure(busPtr, signalName, callback);
 
       if (handlerId > 0) {
+        signalHandlerIds.put(signalName, handlerId);
         log.trace("Connected bus signal '{}' with handler ID {}", signalName, handlerId);
       } else {
         log.warn("Failed to connect bus signal '{}' - no handler ID returned", signalName);
+        throw new FridaException("Failed to connect bus signal '" + signalName + "'");
       }
+    } catch (FridaException e) {
+      throw e;
     } catch (Exception e) {
       log.debug("Failed to connect bus signal '{}': {}", signalName, e.getMessage());
       throw new FridaException("Failed to connect bus signal '" + signalName + "'", e);
@@ -208,23 +236,70 @@ public class Bus {
    * @param signalName Signal name to remove callback for
    */
   public void off(String signalName) {
-    Object removed = signalHandlers.remove(signalName);
-    if (removed != null) {
+    if (cleaned) {
+      return; // Already cleaned, nothing to do
+    }
+
+    Long handlerId = signalHandlerIds.remove(signalName);
+    if (handlerId != null) {
+      disconnectSignal(handlerId);
       log.debug("Removed callback for bus signal: {}", signalName);
     }
   }
 
   /** Clean up resources held by the bus */
   public void clean() {
+    if (cleaned) {
+      return;
+    }
+
     // Disconnect all signals
-    signalHandlers.keySet().forEach(this::off);
-    signalHandlers.clear();
+    signalHandlerIds.forEach(
+        (signalName, handlerId) -> {
+          disconnectSignal(handlerId);
+          log.trace("Disconnected signal '{}' with handler ID {}", signalName, handlerId);
+        });
+    signalHandlerIds.clear();
 
     FridaNativeUtils.fridaUnref(busPtr);
+    cleaned = true;
+    log.debug("Bus cleaned");
+  }
+
+  @Override
+  public void close() {
+    clean();
   }
 
   @Override
   public String toString() {
+    if (cleaned) {
+      return "Bus{cleaned}";
+    }
     return "Bus{detached=" + isDetached() + "}";
+  }
+
+  /**
+   * Get the native pointer to the FridaBus object (for internal use only)
+   *
+   * @return Native pointer
+   */
+  MemorySegment getPointer() {
+    checkNotCleaned();
+    return busPtr;
+  }
+
+  private void checkNotCleaned() {
+    if (cleaned) {
+      throw new IllegalStateException("Bus has been cleaned");
+    }
+  }
+
+  private void disconnectSignal(long handlerId) {
+    try {
+      G_SIGNAL_HANDLER_DISCONNECT.invokeExact(busPtr, handlerId);
+    } catch (Throwable e) {
+      log.warn("Failed to disconnect signal handler {}: {}", handlerId, e.getMessage());
+    }
   }
 }

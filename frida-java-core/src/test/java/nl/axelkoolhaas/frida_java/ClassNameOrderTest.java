@@ -80,4 +80,16 @@ public class ClassNameOrderTest {
 
   @Nested
   class T_DeviceManagerSignalTest extends DeviceManagerSignalTest {}
+
+  @Nested
+  class U_ScriptRpcTest extends ScriptRpcTest {}
+
+  @Nested
+  class V_ScriptSignalTest extends ScriptSignalTest {}
+
+  @Nested
+  class W_BusTest extends BusTest {}
+
+  @Nested
+  class X_PortalTest extends PortalTest {}
 }
