@@ -9,9 +9,9 @@ To dos:
 
 3. ✅ DONE - BUG [Session] Missing on() method for 'detached' signal
 
-4. BUG [DeviceManager] Missing on() method for 'added', 'removed', 'changed' signals
+4. ✅ DONE - BUG [DeviceManager] Missing on() method for 'added', 'removed', 'changed' signals
 
-5. DONE - BUG [Script] on() only handles 'message' — 'destroyed' signal unsupported
+5. ✅ DONE - BUG [Script] on() only handles 'message' — 'destroyed' signal unsupported
 
 6. MISSING [Session] Add compileScript() method (frida_session_compile_script_sync)
 
@@ -61,7 +61,7 @@ To dos:
 
 29. MISSING [Process] getParams() absent (frida_process_get_parameters)
 
-30. LOGGING VIOLATION Multiple files have log.error() before throw — violates CLAUDE.md policy (Application, Process, Child, Spawn, Device, DeviceManager, Script)
+30. ✅ DONE - LOGGING VIOLATION Multiple files have log.error() before throw — violates CLAUDE.md policy (Application, Process, Child, Spawn, Device, DeviceManager, Script)
 
 31. BUG [Device] findBinary() splits PATH on ':' — not portable to Windows
 Here is the full audit result, organized by severity:
