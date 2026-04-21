@@ -53,4 +53,31 @@ public class ClassNameOrderTest {
 
   @Nested
   class K_CompilerTest extends CompilerTest {}
+
+  @Nested
+  class L_SessionOptionsTest extends SessionOptionsTest {}
+
+  @Nested
+  class M_ScriptOptionsTest extends ScriptOptionsTest {}
+
+  @Nested
+  class N_SnapshotOptionsTest extends SnapshotOptionsTest {}
+
+  @Nested
+  class O_RemoteDeviceOptionsTest extends RemoteDeviceOptionsTest {}
+
+  @Nested
+  class P_FileMonitorTest extends FileMonitorTest {}
+
+  @Nested
+  class Q_RelayTest extends RelayTest {}
+
+  @Nested
+  class R_PeerOptionsTest extends PeerOptionsTest {}
+
+  @Nested
+  class S_SessionNewMethodsTest extends SessionNewMethodsTest {}
+
+  @Nested
+  class T_DeviceManagerSignalTest extends DeviceManagerSignalTest {}
 }
