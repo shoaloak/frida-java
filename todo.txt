@@ -37,11 +37,11 @@ To dos:
 
 17. MISSING CLASS IOStream — needed for openChannel(), wraps GIOStream read/write
 
-18. MISSING CLASS SessionOptions — needed for attach(pid, opts) with realm and persist timeout
+18. ✅ DONE - MISSING CLASS SessionOptions — needed for attach(pid, opts) with realm and persist timeout
 
 19. ✅ DONE - MISSING CLASS ScriptOptions — needed for createScript with name, snapshot, runtime
 
-20. MISSING CLASS SnapshotOptions — needed for snapshotScript()
+20. ✅ DONE - MISSING CLASS SnapshotOptions — needed for snapshotScript()
 
 21. MISSING CLASS RemoteDeviceOptions — needed for addRemoteDevice()
 
