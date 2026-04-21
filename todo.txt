@@ -45,7 +45,7 @@ To dos:
 
 21. ✅ DONE - MISSING CLASS RemoteDeviceOptions — needed for addRemoteDevice()
 
-22. MISSING CLASS FileMonitor — file change monitoring (frida_file_monitor_*)
+22. ✅ DONE - MISSING CLASS FileMonitor — file change monitoring (frida_file_monitor_*)
 
 23. MISSING CLASS Relay — WebRTC relay for peer connections
 
