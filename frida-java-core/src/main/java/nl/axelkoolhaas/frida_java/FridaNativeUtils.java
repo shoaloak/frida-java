@@ -122,4 +122,29 @@ public class FridaNativeUtils {
     fridaUnref(segment);
     return result;
   }
+
+  /**
+   * Convert a C string array to a Java List
+   *
+   * @param arrayPtr Pointer to array of C strings (gchar**)
+   * @param length Number of strings in the array
+   * @return List of strings
+   */
+  public static java.util.List<String> cStringArrayToJavaList(MemorySegment arrayPtr, int length) {
+    if (arrayPtr.equals(MemorySegment.NULL) || length == 0) {
+      return java.util.List.of();
+    }
+
+    java.util.List<String> result = new java.util.ArrayList<>(length);
+    MemorySegment array = arrayPtr.reinterpret(ValueLayout.ADDRESS.byteSize() * length);
+
+    for (int i = 0; i < length; i++) {
+      MemorySegment strPtr = array.getAtIndex(ValueLayout.ADDRESS, i);
+      if (!strPtr.equals(MemorySegment.NULL)) {
+        result.add(memorySegmentToString(strPtr));
+      }
+    }
+
+    return result;
+  }
 }

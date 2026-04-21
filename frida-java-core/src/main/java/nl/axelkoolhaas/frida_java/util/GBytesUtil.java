@@ -86,6 +86,17 @@ public class GBytesUtil {
   }
 
   /**
+   * Alias for fromByteArray - creates a GBytes from byte array.
+   *
+   * @param data byte array to convert
+   * @param arena Arena for memory allocation
+   * @return GBytes pointer
+   */
+  public static MemorySegment createGBytes(byte[] data, Arena arena) {
+    return fromByteArray(data, arena);
+  }
+
+  /**
    * Extract byte array from GBytes pointer.
    *
    * @param gBytesPtr Pointer to GBytes structure (may be null)
