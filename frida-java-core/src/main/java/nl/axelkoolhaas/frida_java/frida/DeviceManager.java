@@ -40,6 +40,8 @@ public class DeviceManager implements AutoCloseable {
 
     private static final MethodHandle FRIDA_DEVICE_MANAGER_NEW;
     private static final MethodHandle FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_MANAGER_ADD_REMOTE_DEVICE_SYNC;
+    private static final MethodHandle FRIDA_DEVICE_MANAGER_REMOVE_REMOTE_DEVICE_SYNC;
     private static final MethodHandle FRIDA_DEVICE_LIST_SIZE;
     private static final MethodHandle FRIDA_DEVICE_LIST_GET;
     private static final MethodHandle FRIDA_DEVICE_MANAGER_CLOSE_SYNC;
@@ -54,6 +56,10 @@ public class DeviceManager implements AutoCloseable {
                 FunctionDescriptor.of(ValueLayout.ADDRESS));
         FRIDA_DEVICE_MANAGER_ENUMERATE_DEVICES_SYNC = FridaLibraryLoader.findFunction("frida_device_manager_enumerate_devices_sync",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_MANAGER_ADD_REMOTE_DEVICE_SYNC = FridaLibraryLoader.findFunction("frida_device_manager_add_remote_device_sync",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_DEVICE_MANAGER_REMOVE_REMOTE_DEVICE_SYNC = FridaLibraryLoader.findFunction("frida_device_manager_remove_remote_device_sync",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
         FRIDA_DEVICE_LIST_SIZE = FridaLibraryLoader.findFunction("frida_device_list_size",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_DEVICE_LIST_GET = FridaLibraryLoader.findFunction("frida_device_list_get",
@@ -204,6 +210,63 @@ public class DeviceManager implements AutoCloseable {
         }
 
         log.trace("Registered callback for device manager signal '{}'", signalName);
+    }
+
+    /**
+     * Add a remote device at the specified address
+     * @param address Address of the remote device (e.g., "192.168.1.100:27042")
+     * @return Device object representing the remote device
+     * @throws FridaException if adding the remote device fails
+     */
+    public Device addRemoteDevice(String address) {
+        log.debug("Adding remote device at address: {}", address);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment addressPtr = arena.allocateFrom(address);
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            // Call with NULL options for now (TODO: implement RemoteDeviceOptions)
+            MemorySegment devicePtr = (MemorySegment) FRIDA_DEVICE_MANAGER_ADD_REMOTE_DEVICE_SYNC
+                    .invoke(managerPtr, addressPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "add remote device");
+
+            log.debug("Successfully added remote device at {}", address);
+            return new Device(devicePtr);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            log.debug("Failed to add remote device at '{}': {}", address, e.getMessage());
+            throw new FridaException("Failed to add remote device at: " + address, e);
+        }
+    }
+
+    /**
+     * Remove a remote device at the specified address
+     * @param address Address of the remote device to remove
+     * @throws FridaException if removing the remote device fails
+     */
+    public void removeRemoteDevice(String address) {
+        log.debug("Removing remote device at address: {}", address);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment addressPtr = arena.allocateFrom(address);
+            MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
+            errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
+
+            FRIDA_DEVICE_MANAGER_REMOVE_REMOTE_DEVICE_SYNC
+                    .invoke(managerPtr, addressPtr, MemorySegment.NULL, errorPtr);
+
+            MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
+            GErrorUtils.handleError(error, "remove remote device");
+
+            log.debug("Successfully removed remote device at {}", address);
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            log.debug("Failed to remove remote device at '{}': {}", address, e.getMessage());
+            throw new FridaException("Failed to remove remote device at: " + address, e);
+        }
     }
 
     public void clean() {
