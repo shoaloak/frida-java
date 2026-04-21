@@ -1,5 +1,6 @@
 See frida-go folder for github repo as reference.
-
+NEVER use g_object_unref, but instead use frida_unref!
+frida-devkit folder has headers to search for C functions if you don't understand go implementation.
 
 To dos:
 
@@ -27,7 +28,7 @@ To dos:
 
 12. ✅ DONE - MISSING [Device] findProcessByPid/findProcessByName use enumerate+filter instead of native frida_device_find/get_process_by_* (no timeout support)
 
-13. SKIPPED - MISSING [Device] getManager() method absent (not in Frida C API - devices don't maintain parent refs)
+13. ✅ NOT IMPLEMENTABLE [Device] getManager() method absent (not in Frida C API - devices don't maintain parent refs; confirmed via Go reference implementation)
 
 14. ✅ DONE - MISSING [DeviceManager] addRemoteDevice() and removeRemoteDevice() absent
 
