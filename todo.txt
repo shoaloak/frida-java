@@ -1,0 +1,114 @@
+To dos:
+
+BUG [Script] hijackMessage() never wired up — RPC exportsCall() is broken
+
+BUG [Bus] on() stores callbacks in Map but never calls Closure.connectClosure() — bus signals never fire
+
+BUG [Session] Missing on() method for 'detached' signal
+
+BUG [DeviceManager] Missing on() method for 'added', 'removed', 'changed' signals
+
+BUG [Script] on() only handles 'message' — 'destroyed' signal unsupported
+
+MISSING [Session] Add compileScript() method (frida_session_compile_script_sync)
+
+MISSING [Session] Add snapshotScript() method (frida_session_snapshot_script_sync)
+
+MISSING [Session] Add createScriptFromBytes() method (frida_session_create_script_from_bytes_sync)
+
+MISSING [Session] Add setupPeerConnection() method (frida_session_setup_peer_connection_sync)
+
+MISSING [Session] Add joinPortal() method (frida_session_join_portal_sync)
+
+MISSING [Device] enumerateProcesses() lacks Scope parameter — always uses default scope
+
+MISSING [Device] findProcessByPid/findProcessByName use enumerate+filter instead of native frida_device_find/get_process_by_* (no timeout support)
+
+MISSING [Device] getManager() method absent
+
+MISSING [DeviceManager] addRemoteDevice() and removeRemoteDevice() absent
+
+API VIOLATION [Device] openChannel() returns raw MemorySegment — FFM leaks into public API
+
+API VIOLATION [Device] openService() returns raw MemorySegment — FFM leaks into public API
+
+MISSING CLASS IOStream — needed for openChannel(), wraps GIOStream read/write
+
+MISSING CLASS SessionOptions — needed for attach(pid, opts) with realm and persist timeout
+
+MISSING CLASS ScriptOptions — needed for createScript with name, snapshot, runtime
+
+MISSING CLASS SnapshotOptions — needed for snapshotScript()
+
+MISSING CLASS RemoteDeviceOptions — needed for addRemoteDevice()
+
+MISSING CLASS FileMonitor — file change monitoring (frida_file_monitor_*)
+
+MISSING CLASS Relay — WebRTC relay for peer connections
+
+MISSING CLASS PeerOptions — peer connection configuration
+
+MISSING CLASS PortalService — portal/collector service (advanced)
+
+MISSING CLASS PortalMembership — portal membership (advanced)
+
+MISSING CLASS EndpointParameters — needed by PortalService
+
+MISSING [Application] getParams() absent (frida_application_get_parameters)
+
+MISSING [Process] getParams() absent (frida_process_get_parameters)
+
+LOGGING VIOLATION Multiple files have log.error() before throw — violates CLAUDE.md policy (Application, Process, Child, Spawn, Device, DeviceManager, Script)
+
+BUG [Device] findBinary() splits PATH on ':' — not portable to Windows
+Here is the full audit result, organized by severity:
+
+Critical Bugs (broken functionality)
+1. Script: RPC exportsCall() is broken
+hijackMessage() at Script.java:374 is defined but never connected as the GLib signal handler. on("message", callback) wires the user callback directly to the GLib signal — there is no interception layer for "frida:rpc" responses. The CompletableFuture registered in RpcManager will never complete. Compare with Go script.go:141-146 where hijackFn replaces the message handler entirely.
+
+2. Bus: all signals are dead
+Bus.java:151-172 stores callbacks in a ConcurrentHashMap but never calls Closure.connectClosure(). Neither "detached" nor "message" are ever delivered to callers.
+
+Missing Signal Support
+3. Session has no on() method — the "detached" signal (Go: session.go:206) is not exposed.
+
+4. DeviceManager has no on() method — Go exposes "added", "removed", "changed" signals (manager.go:196).
+
+5. Script on() ignores "destroyed" signal — Script.java:242-267 silently drops any signal name other than "message".
+
+Missing Session Methods
+Go's Session exposes six methods Java is missing:
+
+compileScript() — frida_session_compile_script_sync
+snapshotScript() — frida_session_snapshot_script_sync
+createScriptFromBytes() — frida_session_create_script_from_bytes_sync
+setupPeerConnection() — frida_session_setup_peer_connection_sync
+joinPortal() — frida_session_join_portal_sync
+API Design Rule Violations (FFM Leakage)
+Device.openChannel() and Device.openService() both return raw MemorySegment (Device.java:881, 907), violating the "No FFM leakage" rule from CLAUDE.md. Both need proper wrapper classes.
+
+Missing Classes (entire features absent)
+Class	Go counterpart	Purpose
+IOStream	iostream.go	I/O channel read/write
+SessionOptions	session_options.go	Realm + persist timeout for attach
+ScriptOptions	script_options.go	Script name, snapshot, runtime
+SnapshotOptions	snapshot_options.go	For snapshotScript()
+RemoteDeviceOptions	remote_device_options.go	For addRemoteDevice()
+FileMonitor	file_monitor.go	File change monitoring
+Relay	relay.go	WebRTC relay for peer connections
+PeerOptions	peer_options.go	Peer connection config
+PortalService	portal_service.go	Portal/collector (advanced)
+PortalMembership	portal_membership.go	Portal membership (advanced)
+EndpointParameters	endpoint_parameters.go	PortalService dependency
+Missing Attributes
+Application.getParams() — frida_application_get_parameters (application.go:37)
+Process.getParams() — frida_process_get_parameters (process.go:29)
+Device.enumerateProcesses() — no Scope parameter (Device.java:263)
+Device.findProcess()* — uses enumerate+filter instead of native frida_device_find/get_process_by_* (no timeout)
+DeviceManager.addRemoteDevice() / removeRemoteDevice() — absent
+Logging Policy Violations (CLAUDE.md)
+log.error() immediately before throw new FridaException() in: Application.java, Process.java, Child.java, Spawn.java, Device.java, DeviceManager.java.
+
+Minor Bug
+Device.findBinary() at Device.java:589 splits PATH on ":" — not portable to Windows which uses ";".
