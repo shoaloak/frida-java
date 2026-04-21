@@ -144,4 +144,32 @@ To enable SLF4J logging, see `org.slf4j.simpleLogger.defaultLogLevel` inside the
 the `frida-java-core` module.
 
 
+### TODO
+
+Bugs:
+- [ ] "[INFO] pom.xml not found in frida-java-2.0.jar"
+
+These bindings are heavily inspired by the go bindings, we are currently lacking these.
+
+- [ ] Cleanups.java ?
+- [ ] EndpointParameters.java ?
+- [ ] Errors.java ?
+- [ ] FileMonitor.java ?
+- [ ] iostream ?             <---- 
+- [ ] Misc.java ?
+- [ ] Package.java
+- [ ] PeerOptions.java ?
+- [ ] PortalMembership.java ?
+- [ ] PortalOptions.java ?
+- [ ] PortalService ?
+- [ ] Relay.java ?
+- [ ] RemoteDeviceOptions.java ?
+- [ ] ScriptOptions.java ?
+- [ ] Service.java ?
+- [ ] SessionOptions.java ?
+- [ ] Unmarshaller.java ?
+
+- create tests for difference callbacks (crash)
+  - Device deattachment?
+- check if Device is complete
 

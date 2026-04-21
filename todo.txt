@@ -1,3 +1,6 @@
+See frida-go folder for github repo as reference.
+
+
 To dos:
 
 BUG [Script] hijackMessage() never wired up — RPC exportsCall() is broken

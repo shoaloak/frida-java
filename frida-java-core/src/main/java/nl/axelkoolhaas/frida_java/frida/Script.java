@@ -235,6 +235,7 @@ public class Script implements AutoCloseable {
     /**
      * Register callbacks for script events. Available signals:
      * - "message" with callback as MessageCallback
+     * - "destroyed" with callback as VoidCallback or Runnable
      *
      * @param signalName Name of the signal to register for
      * @param callback Callback object to handle the signal
@@ -249,8 +250,10 @@ public class Script implements AutoCloseable {
             this.messageCallback = (SignalCallbacks.MessageCallback) callback;
             hasMessageHandler = true;
 
+            // Wire up hijackMessage instead of user callback to intercept RPC responses
             try {
-                long handlerId = Closure.connectClosure(scriptPtr, signalName, callback);
+                SignalCallbacks.MessageCallback hijackCallback = this::hijackMessage;
+                long handlerId = Closure.connectClosure(scriptPtr, signalName, hijackCallback);
 
                 if (handlerId > 0) {
                     log.trace("Connected script message signal with handler ID {}", handlerId);
@@ -258,9 +261,28 @@ public class Script implements AutoCloseable {
                     log.warn("Failed to connect script message signal - no handler ID returned");
                 }
             } catch (Exception e) {
-                log.error("Failed to connect script message signal: {}", e.getMessage());
+                log.debug("Failed to connect script message signal: {}", e.getMessage());
                 throw new FridaException("Failed to connect script message signal", e);
             }
+        } else if ("destroyed".equals(signalName)) {
+            if (!(callback instanceof SignalCallbacks.VoidCallback) && !(callback instanceof Runnable)) {
+                throw new IllegalArgumentException("Callback must be a VoidCallback or Runnable for 'destroyed' signal");
+            }
+
+            try {
+                long handlerId = Closure.connectClosure(scriptPtr, signalName, callback);
+
+                if (handlerId > 0) {
+                    log.trace("Connected script destroyed signal with handler ID {}", handlerId);
+                } else {
+                    log.warn("Failed to connect script destroyed signal - no handler ID returned");
+                }
+            } catch (Exception e) {
+                log.debug("Failed to connect script destroyed signal: {}", e.getMessage());
+                throw new FridaException("Failed to connect script destroyed signal", e);
+            }
+        } else {
+            throw new IllegalArgumentException("Unknown signal: " + signalName);
         }
 
         log.trace("Registered callback for script signal '{}'", signalName);
