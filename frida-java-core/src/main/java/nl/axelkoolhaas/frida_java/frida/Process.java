@@ -21,11 +21,13 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,14 +40,7 @@ public class Process {
 
     private static final MethodHandle FRIDA_PROCESS_GET_PID;
     private static final MethodHandle FRIDA_PROCESS_GET_NAME;
-    // Unsure???
-//    private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_NEW;
-//    private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_SET_TIMEOUT;
-//    private static final MethodHandle FRIDA_PROCESS_MATCH_OPTIONS_SET_SCOPE;
-//    private static final MethodHandle FRIDA_DEVICE_GET_PROCESS_BY_PID_SYNC;
-//    private static final MethodHandle FRIDA_DEVICE_GET_PROCESS_BY_NAME_SYNC;
-//    private static final MethodHandle FRIDA_DEVICE_FIND_PROCESS_BY_PID_SYNC;
-//    private static final MethodHandle FRIDA_DEVICE_FIND_PROCESS_BY_NAME_SYNC;
+    private static final MethodHandle FRIDA_PROCESS_GET_PARAMETERS;
 
     static {
         Frida.ensureInitialized();
@@ -53,6 +48,8 @@ public class Process {
         FRIDA_PROCESS_GET_PID = FridaLibraryLoader.findFunction("frida_process_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
         FRIDA_PROCESS_GET_NAME = FridaLibraryLoader.findFunction("frida_process_get_name",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        FRIDA_PROCESS_GET_PARAMETERS = FridaLibraryLoader.findFunction("frida_process_get_parameters",
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
@@ -97,6 +94,24 @@ public class Process {
         } catch (Throwable e) {
             log.debug("Failed to get process name: {}", e.getMessage());
             throw new FridaException("Failed to get process name", e);
+        }
+    }
+
+    /**
+     * Get process parameters
+     * @return Map of parameter names to values
+     */
+    public Map<String, Object> getParams() {
+        try {
+            MemorySegment hashTablePtr = (MemorySegment) FRIDA_PROCESS_GET_PARAMETERS.invoke(processPtr);
+            Map<String, Object> params = GHashTableUtil.toMap(hashTablePtr);
+            log.trace("Got process parameters: {}", params);
+            return params;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            log.debug("Failed to get process parameters: {}", e.getMessage());
+            throw new FridaException("Failed to get process parameters", e);
         }
     }
 

@@ -57,9 +57,9 @@ To dos:
 
 27. MISSING CLASS EndpointParameters — needed by PortalService
 
-28. MISSING [Application] getParams() absent (frida_application_get_parameters)
+28. ✅ DONE - MISSING [Application] getParams() absent (frida_application_get_parameters)
 
-29. MISSING [Process] getParams() absent (frida_process_get_parameters)
+29. ✅ DONE - MISSING [Process] getParams() absent (frida_process_get_parameters)
 
 30. ✅ DONE - LOGGING VIOLATION Multiple files have log.error() before throw — violates CLAUDE.md policy (Application, Process, Child, Spawn, Device, DeviceManager, Script)
 

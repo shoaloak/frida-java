@@ -21,11 +21,13 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,7 @@ public class Application {
     private static final MethodHandle FRIDA_APPLICATION_GET_IDENTIFIER;
     private static final MethodHandle FRIDA_APPLICATION_GET_NAME;
     private static final MethodHandle FRIDA_APPLICATION_GET_PID;
+    private static final MethodHandle FRIDA_APPLICATION_GET_PARAMETERS;
 
     static {
         Frida.ensureInitialized();
@@ -45,6 +48,8 @@ public class Application {
                 FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
         FRIDA_APPLICATION_GET_PID = FridaLibraryLoader.findFunction("frida_application_get_pid",
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+        FRIDA_APPLICATION_GET_PARAMETERS = FridaLibraryLoader.findFunction("frida_application_get_parameters",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     /**
@@ -94,6 +99,24 @@ public class Application {
         } catch (Throwable e) {
             log.debug("Failed to get application PID: {}", e.getMessage());
             throw new FridaException("Failed to get application PID", e);
+        }
+    }
+
+    /**
+     * Get application parameters such as version, path, etc.
+     * @return Map of parameter names to values
+     */
+    public Map<String, Object> getParams() {
+        try {
+            MemorySegment hashTablePtr = (MemorySegment) FRIDA_APPLICATION_GET_PARAMETERS.invoke(applicationPtr);
+            Map<String, Object> params = GHashTableUtil.toMap(hashTablePtr);
+            log.trace("Got application parameters: {}", params);
+            return params;
+        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+            throw e;
+        } catch (Throwable e) {
+            log.debug("Failed to get application parameters: {}", e.getMessage());
+            throw new FridaException("Failed to get application parameters", e);
         }
     }
 
