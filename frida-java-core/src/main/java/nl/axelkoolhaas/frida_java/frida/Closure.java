@@ -65,7 +65,8 @@ public class Closure {
   }
 
   /** Internal data structure to hold callback info */
-  private record ClosureData(Object callback, String signalName) {}
+  private record ClosureData(
+      Object callback, String signalName, MemorySegment gClosurePtr, long handlerId) {}
 
   /**
    * Create the shared marshal function upcall stub.
@@ -446,15 +447,13 @@ public class Closure {
     log.debug("Connecting signal '{}' using GClosure with custom marshal", signalName);
 
     try {
-      // Generate closure ID and store the callback
+      // Generate closure ID (but don't store callback yet)
       long closureId = CLOSURE_ID_GENERATOR.getAndIncrement();
-      ACTIVE_CLOSURES.put(closureId, new ClosureData(callback, signalName));
 
       // Lookup signal ID
       int signalId = GSignalUtil.lookupSignal(object, signalName);
       if (signalId == 0) {
         log.debug("Signal '{}' not found on object", signalName);
-        ACTIVE_CLOSURES.remove(closureId);
         return 0;
       }
 
@@ -466,6 +465,9 @@ public class Closure {
 
       // Connect the closure to the signal (equivalent to Go's g_signal_connect_closure_by_id)
       long handlerId = GSignalUtil.connectClosureById(object, signalId, gClosure, true);
+
+      // Now store the complete ClosureData with handler ID and GClosure pointer
+      ACTIVE_CLOSURES.put(closureId, new ClosureData(callback, signalName, gClosure, handlerId));
 
       log.debug(
           "Connected signal '{}' with handler ID {}, closure ID {}",
@@ -480,14 +482,46 @@ public class Closure {
   }
 
   /**
-   * Disconnect a closure by handler ID.
+   * Disconnect a closure by closure ID. This removes the closure from tracking maps but does not
+   * disconnect the signal handler (as GLib handles that when the object is destroyed).
    *
    * @param closureId The closure ID to disconnect
    */
   public static void disconnectClosure(long closureId) {
     ClosureData removed = ACTIVE_CLOSURES.remove(closureId);
     if (removed != null) {
-      log.debug("Disconnected closure {}", closureId);
+      // Remove the GClosure pointer mapping
+      if (removed.gClosurePtr != null) {
+        CLOSURE_PTR_TO_ID.remove(removed.gClosurePtr.address());
+      }
+      log.debug("Disconnected closure {} for signal '{}'", closureId, removed.signalName);
     }
+  }
+
+  /**
+   * Clean up all closures associated with a GClosure pointer. This should be called when the object
+   * owning the closure is being destroyed.
+   *
+   * @param gClosurePtr The GClosure pointer
+   */
+  public static void cleanupClosureByPointer(MemorySegment gClosurePtr) {
+    if (gClosurePtr == null || gClosurePtr.equals(MemorySegment.NULL)) {
+      return;
+    }
+
+    Long closureId = CLOSURE_PTR_TO_ID.remove(gClosurePtr.address());
+    if (closureId != null) {
+      ACTIVE_CLOSURES.remove(closureId);
+      log.debug("Cleaned up closure ID {} for GClosure pointer", closureId);
+    }
+  }
+
+  /**
+   * Get all active closure IDs. This is primarily for testing and debugging.
+   *
+   * @return Set of all active closure IDs
+   */
+  public static java.util.Set<Long> getActiveClosureIds() {
+    return new java.util.HashSet<>(ACTIVE_CLOSURES.keySet());
   }
 }

@@ -37,6 +37,8 @@ public class GSignalUtil {
   private static final MethodHandle G_SIGNAL_CONNECT_DATA;
   private static final MethodHandle G_CLOSURE_NEW_SIMPLE;
   private static final MethodHandle G_CLOSURE_SET_MARSHAL;
+  private static final MethodHandle G_CLOSURE_REF;
+  private static final MethodHandle G_CLOSURE_SINK;
 
   // sizeof(GClosure) - the struct size needed for g_closure_new_simple
   // GClosure contains bit fields and pointers, on 64-bit systems it's typically 32 bytes
@@ -83,6 +85,14 @@ public class GSignalUtil {
         FridaLibraryLoader.findFunction(
             "g_closure_set_marshal",
             FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+    G_CLOSURE_REF =
+        FridaLibraryLoader.findFunction(
+            "g_closure_ref", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+    G_CLOSURE_SINK =
+        FridaLibraryLoader.findFunction(
+            "g_closure_sink", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
   }
 
   /**
@@ -134,6 +144,10 @@ public class GSignalUtil {
    * which calls: g_closure_new_simple(sizeof(GClosure), NULL) g_closure_set_marshal(closure,
    * marshal)
    *
+   * <p>The closure is created with a floating reference. When connected to a signal via
+   * g_signal_connect_closure_by_id, GLib will automatically sink the floating reference and take
+   * ownership of the closure. We must NOT manually ref or sink the closure here.
+   *
    * @param marshalFunc The marshal function pointer (upcall stub)
    * @return The GClosure pointer
    */
@@ -142,6 +156,7 @@ public class GSignalUtil {
 
     try {
       // Create simple closure: g_closure_new_simple(sizeof_closure, data)
+      // This creates a closure with ref_count = 1 and floating = TRUE
       MemorySegment closure =
           (MemorySegment)
               G_CLOSURE_NEW_SIMPLE.invoke(
@@ -158,6 +173,12 @@ public class GSignalUtil {
       G_CLOSURE_SET_MARSHAL.invoke(closure, marshalFunc);
 
       log.trace("Set marshal function {} on GClosure {}", marshalFunc, closure);
+
+      // DO NOT manually ref or sink the closure here!
+      // g_signal_connect_closure_by_id will handle the reference counting:
+      // - It will call g_closure_ref (ref_count becomes 2)
+      // - It will call g_closure_sink (removes floating flag, ref_count becomes 1)
+      // This gives GLib ownership of the closure
 
       return closure;
     } catch (FridaException e) {

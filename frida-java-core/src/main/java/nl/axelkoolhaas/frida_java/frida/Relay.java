@@ -44,7 +44,6 @@ public class Relay implements AutoCloseable {
   private static final MethodHandle FRIDA_RELAY_GET_USERNAME;
   private static final MethodHandle FRIDA_RELAY_GET_PASSWORD;
   private static final MethodHandle FRIDA_RELAY_GET_KIND;
-  private static final MethodHandle G_OBJECT_UNREF;
 
   static {
     Frida.ensureInitialized();
@@ -74,9 +73,6 @@ public class Relay implements AutoCloseable {
         FridaLibraryLoader.findFunction(
             "frida_relay_get_kind",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-    G_OBJECT_UNREF =
-        FridaLibraryLoader.findFunction(
-            "g_object_unref", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
   }
 
   /**
@@ -236,7 +232,7 @@ public class Relay implements AutoCloseable {
 
     log.debug("Closing Relay");
     try {
-      G_OBJECT_UNREF.invoke(relayPtr);
+      FridaNativeUtils.fridaUnref(relayPtr);
       log.debug("Relay closed");
     } catch (Throwable e) {
       log.debug("Failed to close Relay: {}", e.getMessage());

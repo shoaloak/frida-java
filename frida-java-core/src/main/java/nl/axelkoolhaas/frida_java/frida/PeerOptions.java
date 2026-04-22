@@ -44,7 +44,6 @@ public class PeerOptions implements AutoCloseable {
   private static final MethodHandle FRIDA_PEER_OPTIONS_SET_STUN_SERVER;
   private static final MethodHandle FRIDA_PEER_OPTIONS_CLEAR_RELAYS;
   private static final MethodHandle FRIDA_PEER_OPTIONS_ADD_RELAY;
-  private static final MethodHandle G_OBJECT_UNREF;
 
   static {
     Frida.ensureInitialized();
@@ -67,9 +66,6 @@ public class PeerOptions implements AutoCloseable {
         FridaLibraryLoader.findFunction(
             "frida_peer_options_add_relay",
             FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-    G_OBJECT_UNREF =
-        FridaLibraryLoader.findFunction(
-            "g_object_unref", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
   }
 
   /** Create new peer connection options with default settings */
@@ -208,7 +204,7 @@ public class PeerOptions implements AutoCloseable {
 
     log.debug("Closing PeerOptions");
     try {
-      G_OBJECT_UNREF.invoke(optionsPtr);
+      FridaNativeUtils.fridaUnref(optionsPtr);
       log.debug("PeerOptions closed");
     } catch (Throwable e) {
       log.debug("Failed to close PeerOptions: {}", e.getMessage());

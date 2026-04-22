@@ -21,6 +21,7 @@ package nl.axelkoolhaas.frida_java.frida;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.util.List;
 import java.util.concurrent.*;
 
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ public class Script implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Script.class);
 
   private final MemorySegment scriptPtr;
+  private final List<Long> handlerIds = new CopyOnWriteArrayList<>();
   private boolean hasMessageHandler = false;
   private SignalCallbacks.MessageCallback messageCallback;
   private volatile boolean closed = false;
@@ -275,6 +277,7 @@ public class Script implements AutoCloseable {
         long handlerId = Closure.connectClosure(scriptPtr, signalName, hijackCallback);
 
         if (handlerId > 0) {
+          handlerIds.add(handlerId);
           log.trace("Connected script message signal with handler ID {}", handlerId);
         } else {
           log.warn("Failed to connect script message signal - no handler ID returned");
@@ -293,6 +296,7 @@ public class Script implements AutoCloseable {
         long handlerId = Closure.connectClosure(scriptPtr, signalName, callback);
 
         if (handlerId > 0) {
+          handlerIds.add(handlerId);
           log.trace("Connected script destroyed signal with handler ID {}", handlerId);
         } else {
           log.warn("Failed to connect script destroyed signal - no handler ID returned");
@@ -433,6 +437,16 @@ public class Script implements AutoCloseable {
     }
 
     try {
+      // Note: We don't need to explicitly disconnect signal handlers here.
+      // When we unref the script object, GLib will automatically disconnect
+      // and clean up all associated signal handlers and closures.
+      // We just need to clean up our tracking data structures.
+
+      log.debug("Cleaning up {} signal handlers for script", handlerIds.size());
+
+      // Clear handler tracking
+      handlerIds.clear();
+
       if (!scriptPtr.equals(MemorySegment.NULL)) {
         FridaNativeUtils.fridaUnref(this.scriptPtr);
       }

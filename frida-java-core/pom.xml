@@ -204,6 +204,9 @@ For local development:
                     <includes>
                         <include>**/ClassNameOrderTest.java</include>
                     </includes>
+                    <!-- Don't reuse forks to avoid GLib cleanup issues -->
+                    <reuseForks>false</reuseForks>
+                    <forkCount>1</forkCount>
                     <!-- SLF4J log level during tests -->
                     <systemPropertyVariables>
 <!--                        <org.slf4j.simpleLogger.defaultLogLevel>off</org.slf4j.simpleLogger.defaultLogLevel>-->

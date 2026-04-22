@@ -21,7 +21,7 @@ public class FridaEventLoop {
   // We bind these manually here because they are specific to the event loop infrastructure
   private static final MethodHandle G_MAIN_LOOP_NEW;
   private static final MethodHandle G_MAIN_LOOP_RUN;
-  // We might need unref if we ever implement a shutdown() method
+  private static final MethodHandle G_MAIN_LOOP_QUIT;
   private static final MethodHandle G_MAIN_LOOP_UNREF;
   private static final MethodHandle G_IDLE_ADD;
 
@@ -39,6 +39,9 @@ public class FridaEventLoop {
     G_MAIN_LOOP_RUN =
         FridaLibraryLoader.findFunction(
             "g_main_loop_run", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+    G_MAIN_LOOP_QUIT =
+        FridaLibraryLoader.findFunction(
+            "g_main_loop_quit", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
     G_MAIN_LOOP_UNREF =
         FridaLibraryLoader.findFunction(
             "g_main_loop_unref", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
@@ -60,6 +63,9 @@ public class FridaEventLoop {
   public static synchronized void start() {
     if (running) return;
     running = true;
+
+    // Register shutdown hook to clean up the event loop
+    Runtime.getRuntime().addShutdownHook(new Thread(FridaEventLoop::shutdown, "Frida-Shutdown"));
 
     loopThread =
         new Thread(
@@ -86,6 +92,35 @@ public class FridaEventLoop {
     // If this wasn't daemon, the app would never close because this loop never ends.
     loopThread.setDaemon(true);
     loopThread.start();
+  }
+
+  /**
+   * Stops the GLib Main Loop and cleans up resources. This is called automatically during JVM
+   * shutdown.
+   */
+  private static synchronized void shutdown() {
+    if (!running) return;
+
+    try {
+      // Quit the main loop if it's running
+      if (!mainLoop.equals(MemorySegment.NULL)) {
+        G_MAIN_LOOP_QUIT.invoke(mainLoop);
+
+        // Wait for the event loop thread to finish (with timeout)
+        if (loopThread != null) {
+          loopThread.join(1000); // Wait up to 1 second
+        }
+
+        // Unreference the main loop to free resources
+        G_MAIN_LOOP_UNREF.invoke(mainLoop);
+        mainLoop = MemorySegment.NULL;
+      }
+    } catch (Throwable e) {
+      // Suppress exceptions during shutdown
+      System.err.println("Warning: Error during Frida event loop shutdown: " + e.getMessage());
+    } finally {
+      running = false;
+    }
   }
 
   /**
