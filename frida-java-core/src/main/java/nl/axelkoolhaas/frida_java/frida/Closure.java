@@ -19,7 +19,11 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -206,14 +210,16 @@ public class Closure {
 
         default -> log.trace("Unknown signal '{}' in marshal", data.signalName);
       }
-    } catch (Exception e) {
-      log.error("Marshal failed for signal '{}': {}", data.signalName, e.getMessage(), e);
+    } catch (Throwable t) {
+      // CRITICAL: Nothing may cross the native-to-Java upcall boundary into C.
+      // An exception propagating out of this method crashes the JVM.
+      log.error("Marshal failed for signal '{}': {}", data.signalName, t.getMessage(), t);
 
       SignalCallbacks.ErrorHandler handler = errorHandler;
       if (handler != null) {
         try {
-          handler.onCallbackError(data.signalName, e);
-        } catch (Exception handlerError) {
+          handler.onCallbackError(data.signalName, t);
+        } catch (Throwable handlerError) {
           log.error(
               "Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
         }
