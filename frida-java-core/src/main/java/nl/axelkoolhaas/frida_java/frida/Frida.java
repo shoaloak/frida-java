@@ -19,7 +19,9 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -28,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-import nl.axelkoolhaas.frida_java.internal.FridaEventLoop;
 
 /** Main Frida class with safe initialization/deinitialization */
 public class Frida {
@@ -63,14 +64,12 @@ public class Frida {
           log.debug("Initializing Frida library");
           try {
             FRIDA_INIT.invoke();
-            FridaEventLoop.start();
             isInitialized.set(true);
             log.debug("Frida library initialized successfully");
 
           } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
           } catch (Throwable e) {
-            log.error("Failed to initialize Frida: {}", e.getMessage(), e);
             throw new FridaException("Failed to initialize Frida", e);
           }
         }

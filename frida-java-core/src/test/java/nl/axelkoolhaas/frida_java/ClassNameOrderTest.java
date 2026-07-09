@@ -23,7 +23,28 @@ import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestClassOrder;
 
-import nl.axelkoolhaas.frida_java.feature.*;
+import nl.axelkoolhaas.frida_java.feature.ApplicationTest;
+import nl.axelkoolhaas.frida_java.feature.BusTest;
+import nl.axelkoolhaas.frida_java.feature.ChildTest;
+import nl.axelkoolhaas.frida_java.feature.ClosureTest;
+import nl.axelkoolhaas.frida_java.feature.CompilerTest;
+import nl.axelkoolhaas.frida_java.feature.DeviceManagerSignalTest;
+import nl.axelkoolhaas.frida_java.feature.DeviceTest;
+import nl.axelkoolhaas.frida_java.feature.FileMonitorTest;
+import nl.axelkoolhaas.frida_java.feature.PeerOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.PortalTest;
+import nl.axelkoolhaas.frida_java.feature.ProcessTest;
+import nl.axelkoolhaas.frida_java.feature.RelayTest;
+import nl.axelkoolhaas.frida_java.feature.RemoteDeviceOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.ScriptOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.ScriptRpcTest;
+import nl.axelkoolhaas.frida_java.feature.ScriptSignalTest;
+import nl.axelkoolhaas.frida_java.feature.SessionAndScriptTest;
+import nl.axelkoolhaas.frida_java.feature.SessionNewMethodsTest;
+import nl.axelkoolhaas.frida_java.feature.SessionOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.SnapshotOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.SpawnTest;
+import nl.axelkoolhaas.frida_java.feature.VersionTest;
 
 @TestClassOrder(ClassOrderer.ClassName.class)
 public class ClassNameOrderTest {
