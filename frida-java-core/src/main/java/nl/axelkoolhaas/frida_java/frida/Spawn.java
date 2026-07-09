@@ -19,7 +19,9 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
 import org.slf4j.Logger;
@@ -29,9 +31,11 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 /** Represents a spawned process that can be attached to */
-public class Spawn {
+public class Spawn implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Spawn.class);
   private final MemorySegment spawnPtr;
+  private final boolean owned;
+  private volatile boolean closed = false;
 
   private static final MethodHandle FRIDA_SPAWN_GET_PID;
   private static final MethodHandle FRIDA_SPAWN_GET_IDENTIFIER;
@@ -50,8 +54,32 @@ public class Spawn {
   }
 
   public Spawn(MemorySegment spawnPtr) {
+    this(spawnPtr, true);
+  }
+
+  /**
+   * Create a Spawn wrapper with explicit ownership.
+   *
+   * @param spawnPtr Native spawn pointer
+   * @param owned Whether this wrapper owns the reference
+   */
+  public Spawn(MemorySegment spawnPtr, boolean owned) {
     this.spawnPtr = FridaNativeUtils.requireValidPointer(spawnPtr, "Spawn pointer");
-    log.debug("Spawn created");
+    this.owned = owned;
+    log.debug("Spawn created (owned={})", owned);
+  }
+
+  @Override
+  public void close() {
+    if (!closed) {
+      closed = true;
+      if (owned) {
+        FridaNativeUtils.fridaUnref(spawnPtr);
+        log.trace("Spawn closed (owned)");
+      } else {
+        log.trace("Spawn closed (borrowed, no unref)");
+      }
+    }
   }
 
   /**

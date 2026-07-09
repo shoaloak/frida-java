@@ -20,7 +20,10 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 import java.io.File;
-import java.lang.foreign.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -62,6 +65,7 @@ import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 public class Device implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Device.class);
   private final MemorySegment devicePtr;
+  private final boolean owned;
 
   private static final MethodHandle FRIDA_DEVICE_GET_DTYPE;
   private static final MethodHandle FRIDA_DEVICE_GET_ID;
@@ -418,7 +422,18 @@ public class Device implements AutoCloseable {
   }
 
   public Device(MemorySegment devicePtr) {
+    this(devicePtr, true);
+  }
+
+  /**
+   * Create a Device wrapper with explicit ownership.
+   *
+   * @param devicePtr Native device pointer
+   * @param owned Whether this wrapper owns the reference
+   */
+  public Device(MemorySegment devicePtr, boolean owned) {
     this.devicePtr = FridaNativeUtils.requireValidPointer(devicePtr, "Device pointer");
+    this.owned = owned;
   }
 
   /**
@@ -1592,7 +1607,12 @@ public class Device implements AutoCloseable {
 
   public void clean() {
     try {
-      FridaNativeUtils.fridaUnref(devicePtr);
+      if (owned) {
+        FridaNativeUtils.fridaUnref(devicePtr);
+        log.trace("Device cleaned (owned)");
+      } else {
+        log.trace("Device cleaned (borrowed, no unref)");
+      }
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {

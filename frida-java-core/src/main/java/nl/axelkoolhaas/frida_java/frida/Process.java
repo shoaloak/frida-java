@@ -36,6 +36,7 @@ import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 public class Process implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Process.class);
   private final MemorySegment processPtr;
+  private final boolean owned;
   private volatile boolean closed = false;
 
   private static final MethodHandle FRIDA_PROCESS_GET_PID;
@@ -65,8 +66,19 @@ public class Process implements AutoCloseable {
    * @param processPtr Native process pointer
    */
   public Process(MemorySegment processPtr) {
+    this(processPtr, true);
+  }
+
+  /**
+   * Create a Process wrapper with explicit ownership.
+   *
+   * @param processPtr Native process pointer
+   * @param owned Whether this wrapper owns the reference
+   */
+  public Process(MemorySegment processPtr, boolean owned) {
     this.processPtr = FridaNativeUtils.requireValidPointer(processPtr, "Process pointer");
-    log.debug("Process created");
+    this.owned = owned;
+    log.debug("Process created (owned={})", owned);
   }
 
   /**
@@ -137,8 +149,12 @@ public class Process implements AutoCloseable {
   public void close() {
     if (!closed) {
       closed = true;
-      FridaNativeUtils.fridaUnref(processPtr);
-      log.trace("Process closed");
+      if (owned) {
+        FridaNativeUtils.fridaUnref(processPtr);
+        log.trace("Process closed (owned)");
+      } else {
+        log.trace("Process closed (borrowed, no unref)");
+      }
     }
   }
 

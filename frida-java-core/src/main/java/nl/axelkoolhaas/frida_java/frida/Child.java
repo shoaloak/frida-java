@@ -19,7 +19,10 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +34,11 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 /** Represents a child process when child gating is enabled */
-public class Child {
+public class Child implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Child.class);
   private final MemorySegment childPtr;
+  private final boolean owned;
+  private volatile boolean closed = false;
 
   private static final MethodHandle FRIDA_CHILD_GET_PID;
   private static final MethodHandle FRIDA_CHILD_GET_PARENT_PID;
@@ -82,8 +87,32 @@ public class Child {
    * @param childPtr Native child pointer
    */
   public Child(MemorySegment childPtr) {
+    this(childPtr, true);
+  }
+
+  /**
+   * Create a Child wrapper with explicit ownership.
+   *
+   * @param childPtr Native child pointer
+   * @param owned Whether this wrapper owns the reference (and should unref on close)
+   */
+  public Child(MemorySegment childPtr, boolean owned) {
     this.childPtr = FridaNativeUtils.requireValidPointer(childPtr, "Child pointer");
-    log.debug("Child created");
+    this.owned = owned;
+    log.debug("Child created (owned={})", owned);
+  }
+
+  @Override
+  public void close() {
+    if (!closed) {
+      closed = true;
+      if (owned) {
+        FridaNativeUtils.fridaUnref(childPtr);
+        log.trace("Child closed (owned)");
+      } else {
+        log.trace("Child closed (borrowed, no unref)");
+      }
+    }
   }
 
   /**

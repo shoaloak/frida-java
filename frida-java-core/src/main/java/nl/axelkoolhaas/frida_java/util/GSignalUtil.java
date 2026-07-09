@@ -19,7 +19,10 @@
 
 package nl.axelkoolhaas.frida_java.util;
 
-import java.lang.foreign.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
 import org.slf4j.Logger;
@@ -40,12 +43,43 @@ public class GSignalUtil {
   private static final MethodHandle G_CLOSURE_REF;
   private static final MethodHandle G_CLOSURE_SINK;
 
-  // sizeof(GClosure) - the struct size needed for g_closure_new_simple
-  // GClosure contains bit fields and pointers, on 64-bit systems it's typically 32 bytes
-  private static final int SIZEOF_GCLOSURE =
-      32; // TODO: Verify this size for the target platform, adjust if necessary
+  /**
+   * sizeof(GClosure) - derived from the GLib struct layout.
+   *
+   * <p>GClosure contains:
+   *
+   * <ul>
+   *   <li>Bitfield-packed guint (4 bytes on all platforms)
+   *   <li>Padding to align the first pointer (pointer_size - 4 bytes on 64-bit, 0 on 32-bit)
+   *   <li>marshal function pointer (pointer_size bytes)
+   *   <li>data pointer (pointer_size bytes)
+   *   <li>notifiers pointer (pointer_size bytes)
+   * </ul>
+   *
+   * <p>This value is computed at class load time based on the target ABI's pointer width.
+   */
+  private static final int SIZEOF_GCLOSURE;
 
   static {
+    // Derive SIZEOF_GCLOSURE from pointer width to match target ABI
+    long pointerSize = ValueLayout.ADDRESS.byteSize();
+    int bitfieldSize = 4; // guint bitfields are always 4 bytes
+
+    if (pointerSize == 8) {
+      // 64-bit: 4 (bitfields) + 4 (padding) + 8*3 (pointers) = 32
+      SIZEOF_GCLOSURE = bitfieldSize + 4 + (3 * 8);
+    } else if (pointerSize == 4) {
+      // 32-bit: 4 (bitfields) + 0 (no padding) + 4*3 (pointers) = 16
+      SIZEOF_GCLOSURE = bitfieldSize + (3 * 4);
+    } else {
+      throw new FridaException(
+          "Cannot determine sizeof(GClosure): unsupported pointer size " + pointerSize + " bytes");
+    }
+
+    log.debug(
+        "Derived SIZEOF_GCLOSURE = {} bytes (pointer size = {} bytes)",
+        SIZEOF_GCLOSURE,
+        pointerSize);
     G_SIGNAL_LOOKUP =
         FridaLibraryLoader.findFunction(
             "g_signal_lookup",

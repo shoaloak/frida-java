@@ -23,73 +23,110 @@ import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestClassOrder;
 
-import nl.axelkoolhaas.frida_java.feature.*;
+import nl.axelkoolhaas.frida_java.feature.ApplicationTest;
+import nl.axelkoolhaas.frida_java.feature.BusTest;
+import nl.axelkoolhaas.frida_java.feature.ChildTest;
+import nl.axelkoolhaas.frida_java.feature.ClosureTest;
+import nl.axelkoolhaas.frida_java.feature.CompilerTest;
+import nl.axelkoolhaas.frida_java.feature.DeviceManagerSignalTest;
+import nl.axelkoolhaas.frida_java.feature.DeviceTest;
+import nl.axelkoolhaas.frida_java.feature.FileMonitorTest;
+import nl.axelkoolhaas.frida_java.feature.PeerOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.PortalTest;
+import nl.axelkoolhaas.frida_java.feature.ProcessTest;
+import nl.axelkoolhaas.frida_java.feature.RelayTest;
+import nl.axelkoolhaas.frida_java.feature.RemoteDeviceOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.ScriptOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.ScriptRpcTest;
+import nl.axelkoolhaas.frida_java.feature.ScriptSignalTest;
+import nl.axelkoolhaas.frida_java.feature.SessionAndScriptTest;
+import nl.axelkoolhaas.frida_java.feature.SessionNewMethodsTest;
+import nl.axelkoolhaas.frida_java.feature.SessionOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.SnapshotOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.SpawnTest;
+import nl.axelkoolhaas.frida_java.feature.VersionTest;
+import nl.axelkoolhaas.frida_java.unit.OwnershipTest;
 
+/**
+ * Test orchestrator using ClassOrderer.ClassName.class for deterministic execution order.
+ *
+ * <p>Nested classes are prefixed A_, B_, C_... to enforce alphabetical ordering. Unit tests that do
+ * not require a live Frida instance run first (A_-B_), followed by feature tests that exercise
+ * native Frida functionality.
+ */
 @TestClassOrder(ClassOrderer.ClassName.class)
 public class ClassNameOrderTest {
-  @Nested
-  class A_VersionTest extends VersionTest {}
+
+  // ========== Unit tests (no live Frida required) ==========
 
   @Nested
-  class B_DeviceTest extends DeviceTest {}
+  class A_OwnershipTest extends OwnershipTest {}
 
   @Nested
-  class D_ProcessTest extends ProcessTest {}
+  class B_VersionTest extends VersionTest {}
 
   @Nested
-  class E_ApplicationTest extends ApplicationTest {}
+  class C_ClosureTest extends ClosureTest {}
+
+  // ========== Feature tests (require live Frida) ==========
 
   @Nested
-  class F_SpawnTest extends SpawnTest {}
+  class D_DeviceTest extends DeviceTest {}
 
   @Nested
-  class G_SessionAndScriptTest extends SessionAndScriptTest {}
+  class E_ProcessTest extends ProcessTest {}
+
+  @Nested
+  class F_ApplicationTest extends ApplicationTest {}
+
+  @Nested
+  class G_SpawnTest extends SpawnTest {}
+
+  @Nested
+  class H_SessionAndScriptTest extends SessionAndScriptTest {}
 
   @Nested
   class I_ChildTest extends ChildTest {}
 
   @Nested
-  class J_ClosureTest extends ClosureTest {}
+  class J_CompilerTest extends CompilerTest {}
 
   @Nested
-  class K_CompilerTest extends CompilerTest {}
+  class K_SessionOptionsTest extends SessionOptionsTest {}
 
   @Nested
-  class L_SessionOptionsTest extends SessionOptionsTest {}
+  class L_ScriptOptionsTest extends ScriptOptionsTest {}
 
   @Nested
-  class M_ScriptOptionsTest extends ScriptOptionsTest {}
+  class M_SnapshotOptionsTest extends SnapshotOptionsTest {}
 
   @Nested
-  class N_SnapshotOptionsTest extends SnapshotOptionsTest {}
+  class N_RemoteDeviceOptionsTest extends RemoteDeviceOptionsTest {}
 
   @Nested
-  class O_RemoteDeviceOptionsTest extends RemoteDeviceOptionsTest {}
+  class O_FileMonitorTest extends FileMonitorTest {}
 
   @Nested
-  class P_FileMonitorTest extends FileMonitorTest {}
+  class P_RelayTest extends RelayTest {}
 
   @Nested
-  class Q_RelayTest extends RelayTest {}
+  class Q_PeerOptionsTest extends PeerOptionsTest {}
 
   @Nested
-  class R_PeerOptionsTest extends PeerOptionsTest {}
+  class R_SessionNewMethodsTest extends SessionNewMethodsTest {}
 
   @Nested
-  class S_SessionNewMethodsTest extends SessionNewMethodsTest {}
+  class S_DeviceManagerSignalTest extends DeviceManagerSignalTest {}
 
   @Nested
-  class T_DeviceManagerSignalTest extends DeviceManagerSignalTest {}
+  class T_ScriptRpcTest extends ScriptRpcTest {}
 
   @Nested
-  class U_ScriptRpcTest extends ScriptRpcTest {}
+  class U_ScriptSignalTest extends ScriptSignalTest {}
 
   @Nested
-  class V_ScriptSignalTest extends ScriptSignalTest {}
+  class V_BusTest extends BusTest {}
 
   @Nested
-  class W_BusTest extends BusTest {}
-
-  @Nested
-  class X_PortalTest extends PortalTest {}
+  class W_PortalTest extends PortalTest {}
 }

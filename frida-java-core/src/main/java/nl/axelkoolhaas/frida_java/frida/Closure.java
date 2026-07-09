@@ -19,7 +19,11 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -29,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GSignalUtil;
 import nl.axelkoolhaas.frida_java.util.GValueUtil;
 
@@ -206,14 +211,16 @@ public class Closure {
 
         default -> log.trace("Unknown signal '{}' in marshal", data.signalName);
       }
-    } catch (Exception e) {
-      log.error("Marshal failed for signal '{}': {}", data.signalName, e.getMessage(), e);
+    } catch (Throwable t) {
+      // CRITICAL: Nothing may cross the native-to-Java upcall boundary into C.
+      // An exception propagating out of this method crashes the JVM.
+      log.error("Marshal failed for signal '{}': {}", data.signalName, t.getMessage(), t);
 
       SignalCallbacks.ErrorHandler handler = errorHandler;
       if (handler != null) {
         try {
-          handler.onCallbackError(data.signalName, e);
-        } catch (Exception handlerError) {
+          handler.onCallbackError(data.signalName, t);
+        } catch (Throwable handlerError) {
           log.error(
               "Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
         }
@@ -241,15 +248,13 @@ public class Closure {
       int reason = GValueUtil.extractInt(GValueUtil.getAt(params, 1));
       MemorySegment crashPtr = GValueUtil.extractPointer(GValueUtil.getAt(params, 2));
 
-      // TODO: should we increase the ref count of the crash object here?
-      //            Crash crash = null;
-      //            if (crashPtr != null && !crashPtr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(crashPtr);
-      //                crash = new Crash(crashPtr);
-      //            }
-      //            cb.onDetach(reason, crash);
-
-      cb.onDetach(reason, new Crash(crashPtr));
+      // Crash is borrowed from the signal emitter; ref it so the wrapper can outlive the callback
+      Crash crash = null;
+      if (crashPtr != null && !crashPtr.equals(MemorySegment.NULL)) {
+        FridaNativeUtils.fridaRef(crashPtr);
+        crash = new Crash(crashPtr, true);
+      }
+      cb.onDetach(reason, crash);
     } else {
       throw new FridaException(
           "Detached signal marshal called with incompatible callback or insufficient params");
@@ -266,25 +271,15 @@ public class Closure {
       // Bundle
       String bundle = GValueUtil.extractString(GValueUtil.getAt(params, 1));
 
-      // Options
+      // Options - borrowed from signal emitter; ref it so the wrapper can outlive the callback
       CompilerOptions options = null;
-
-      // Only try to extract options if nParams includes them (Index 2)
       if (nParams >= 3) {
         MemorySegment optionsPtr = GValueUtil.extractPointer(GValueUtil.getAt(params, 2));
         if (optionsPtr != null && !optionsPtr.equals(MemorySegment.NULL)) {
-          options = new CompilerOptions(optionsPtr);
+          FridaNativeUtils.fridaRef(optionsPtr);
+          options = new CompilerOptions(optionsPtr, true);
         }
       }
-
-      // TODO: should we increase the ref count of the options object here?
-      //            CompilerOptions options = null;
-      //            if (optionsPtr != null && !optionsPtr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(optionsPtr);
-      //                options = new CompilerOptions(optionsPtr, false); // false because we
-      // already manually ref'd
-      //            }
-      //            cb.onOutput(bundle, options);
 
       cb.onOutput(bundle, options);
     } else {
@@ -350,12 +345,11 @@ public class Closure {
       Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.DeviceCallback cb && nParams >= 2) {
       MemorySegment ptr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
-      // TODO: should we increase the ref count of the device object here?
-      //            if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(ptr);
-      //                cb.onAction(new Device(ptr));
-      //            }
-      cb.onAction(new Device(ptr));
+      // Device is borrowed from signal emitter; ref it so the wrapper can outlive the callback
+      if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
+        FridaNativeUtils.fridaRef(ptr);
+        cb.onAction(new Device(ptr, true));
+      }
     }
   }
 
@@ -364,12 +358,11 @@ public class Closure {
       Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.ProcessCallback cb && nParams >= 2) {
       MemorySegment ptr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
-      // TODO: should we increase the ref count of the process object here?
-      //            if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(ptr);
-      //                cb.onProcess(new Process(ptr));
-      //            }
-      cb.onProcess(new Process(ptr));
+      // Process is borrowed from signal emitter; ref it so the wrapper can outlive the callback
+      if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
+        FridaNativeUtils.fridaRef(ptr);
+        cb.onProcess(new Process(ptr, true));
+      }
     }
   }
 
@@ -378,12 +371,11 @@ public class Closure {
       Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.SpawnCallback cb && nParams >= 2) {
       MemorySegment ptr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
-      // TODO: should we increase the ref count of the spawn object here?
-      //            if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(ptr);
-      //                cb.onSpawn(new Spawn(ptr));
-      //            }
-      cb.onSpawn(new Spawn(ptr));
+      // Spawn is borrowed from signal emitter; ref it so the wrapper can outlive the callback
+      if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
+        FridaNativeUtils.fridaRef(ptr);
+        cb.onSpawn(new Spawn(ptr, true));
+      }
     }
   }
 
@@ -392,12 +384,11 @@ public class Closure {
       Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.ChildCallback cb && nParams >= 2) {
       MemorySegment ptr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
-      // TODO: should we increase the ref count of the child object here?
-      //            if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(ptr);
-      //                cb.onChild(new Child(ptr));
-      //            }
-      cb.onChild(new Child(ptr));
+      // Child is borrowed from signal emitter; ref it so the wrapper can outlive the callback
+      if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
+        FridaNativeUtils.fridaRef(ptr);
+        cb.onChild(new Child(ptr, true));
+      }
     }
   }
 
@@ -406,12 +397,11 @@ public class Closure {
   private static void handleCrashSignalMarshal(Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.CrashCallback cb && nParams >= 2) {
       MemorySegment ptr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
-      // TODO: should we increase the ref count of the crash object here?
-      //            if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
-      //                FridaNativeUtils.gObjectRef(ptr);
-      //                cb.onCrash(new Crash(ptr));
-      //            }
-      cb.onCrash(new Crash(ptr));
+      // Crash is borrowed from signal emitter; ref it so the wrapper can outlive the callback
+      if (ptr != null && !ptr.equals(MemorySegment.NULL)) {
+        FridaNativeUtils.fridaRef(ptr);
+        cb.onCrash(new Crash(ptr, true));
+      }
     }
   }
 
