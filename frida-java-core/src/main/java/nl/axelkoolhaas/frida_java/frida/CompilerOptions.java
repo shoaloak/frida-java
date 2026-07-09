@@ -19,7 +19,10 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
 import org.slf4j.Logger;
@@ -32,6 +35,8 @@ import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 public class CompilerOptions implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(CompilerOptions.class);
   private final MemorySegment optionsPtr;
+  private final boolean owned;
+  private volatile boolean closed = false;
 
   private static final MethodHandle FRIDA_COMPILER_OPTIONS_NEW;
   private static final MethodHandle FRIDA_COMPILER_OPTIONS_SET_PROJECT_ROOT;
@@ -77,6 +82,7 @@ public class CompilerOptions implements AutoCloseable {
   public CompilerOptions() {
     try {
       this.optionsPtr = (MemorySegment) FRIDA_COMPILER_OPTIONS_NEW.invoke();
+      this.owned = true;
       log.debug("CompilerOptions created");
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
@@ -92,7 +98,18 @@ public class CompilerOptions implements AutoCloseable {
    * @param ptr The native pointer.
    */
   public CompilerOptions(MemorySegment ptr) {
+    this(ptr, true);
+  }
+
+  /**
+   * Internal constructor with explicit ownership.
+   *
+   * @param ptr Native pointer
+   * @param owned Whether this wrapper owns the reference
+   */
+  public CompilerOptions(MemorySegment ptr, boolean owned) {
     this.optionsPtr = FridaNativeUtils.requireValidPointer(ptr, "CompilerOptions pointer");
+    this.owned = owned;
   }
 
   /* Enums (Verified against compiler.vala) */
@@ -283,12 +300,19 @@ public class CompilerOptions implements AutoCloseable {
 
   /** Clean up native resources. */
   public void clean() {
-    log.debug("Cleaning up CompilerOptions");
-    FridaNativeUtils.fridaUnref(optionsPtr);
+    if (owned) {
+      log.debug("Cleaning up CompilerOptions (owned)");
+      FridaNativeUtils.fridaUnref(optionsPtr);
+    } else {
+      log.debug("Cleaning up CompilerOptions (borrowed, no unref)");
+    }
   }
 
   @Override
   public void close() {
-    clean();
+    if (!closed) {
+      closed = true;
+      clean();
+    }
   }
 }

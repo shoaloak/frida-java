@@ -19,7 +19,9 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import java.lang.foreign.*;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Collections;
 import java.util.Map;
@@ -33,9 +35,11 @@ import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
 /** Represents a crash of Frida. */
-public final class Crash {
+public final class Crash implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Crash.class);
   private final MemorySegment crashPtr;
+  private final boolean owned;
+  private volatile boolean closed = false;
 
   // Native method handles
   private static final MethodHandle FRIDA_CRASH_GET_PID;
@@ -69,8 +73,19 @@ public final class Crash {
   }
 
   public Crash(final MemorySegment ptr) {
+    this(ptr, true);
+  }
+
+  /**
+   * Create a Crash wrapper with explicit ownership.
+   *
+   * @param ptr Native crash pointer
+   * @param owned Whether this wrapper owns the reference
+   */
+  public Crash(final MemorySegment ptr, boolean owned) {
     this.crashPtr = FridaNativeUtils.requireValidPointer(ptr, "Crash pointer");
-    log.debug("Crash created");
+    this.owned = owned;
+    log.debug("Crash created (owned={})", owned);
   }
 
   /** Returns the process identifier of the crashed application. */
@@ -133,7 +148,18 @@ public final class Crash {
 
   /** Cleans resources held by the crash. */
   public void clean() {
-    FridaNativeUtils.fridaUnref(crashPtr);
+    if (owned) {
+      FridaNativeUtils.fridaUnref(crashPtr);
+    }
+  }
+
+  @Override
+  public void close() {
+    if (!closed) {
+      closed = true;
+      clean();
+      log.trace("Crash closed (owned={})", owned);
+    }
   }
 
   @Override
