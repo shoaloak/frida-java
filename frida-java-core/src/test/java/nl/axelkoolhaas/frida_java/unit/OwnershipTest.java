@@ -19,11 +19,12 @@
 
 package nl.axelkoolhaas.frida_java.unit;
 
-import java.lang.foreign.MemorySegment;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.foreign.MemorySegment;
+
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
