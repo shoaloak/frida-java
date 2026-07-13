@@ -3,7 +3,7 @@ name: Build Frida
 on:
   push:
     branches:
-      - FFM-API
+      - chore/expand
   pull_request:
 
 jobs:
