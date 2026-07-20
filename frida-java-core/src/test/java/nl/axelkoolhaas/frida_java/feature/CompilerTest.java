@@ -28,14 +28,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
 import nl.axelkoolhaas.frida_java.frida.*;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class CompilerTest {
 
   private Compiler compiler;
