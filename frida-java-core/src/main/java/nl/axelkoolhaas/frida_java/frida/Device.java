@@ -1096,6 +1096,7 @@ public class Device implements AutoCloseable {
    * @return PID of the spawned process
    * @throws FridaException if executable not found or spawning fails
    */
+  @SuppressWarnings("unused")
   public int spawnName(String programName, SpawnOptions options) {
     String programPath = findBinary(programName);
     if (programPath == null) {
@@ -1353,6 +1354,7 @@ public class Device implements AutoCloseable {
    * @param data Optional data to pass to entrypoint (or null)
    * @return Injection ID
    */
+  @SuppressWarnings("unused")
   public int injectLibraryFile(int pid, String path, String entrypoint, String data) {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
@@ -1388,6 +1390,7 @@ public class Device implements AutoCloseable {
    * @param data Optional data to pass to entrypoint (or null)
    * @return Injection ID
    */
+  @SuppressWarnings("unused")
   public int injectLibraryBlob(int pid, byte[] blob, String entrypoint, String data) {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
@@ -1456,6 +1459,7 @@ public class Device implements AutoCloseable {
    * @param address Service address
    * @return Service object for service operations
    */
+  @SuppressWarnings("unused")
   public Service openService(String address) {
     log.debug("Opening service to address: {}", address);
     try (Arena arena = Arena.ofConfined()) {
@@ -1559,6 +1563,7 @@ public class Device implements AutoCloseable {
    * @param scope Scope for the query
    * @return Frontmost Application, or null if none
    */
+  @SuppressWarnings("unused")
   public Application getFrontmostApplication(Scope scope) {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment queryOpts = (MemorySegment) FRIDA_FRONTMOST_QUERY_OPTIONS_NEW.invoke();
@@ -1677,7 +1682,7 @@ public class Device implements AutoCloseable {
       } else {
         log.warn("Failed to connect signal '{}' - native lookup failed", signal.getName());
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       log.debug(
           "Failed to register event handler for signal '{}': {}", signal.getName(), e.getMessage());
       throw new FridaException(

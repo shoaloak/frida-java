@@ -446,6 +446,7 @@ public class Session implements AutoCloseable {
    * @param stun STUN server address (e.g., "stun:stun.l.google.com:19302")
    * @throws FridaException if setup fails
    */
+  @SuppressWarnings("unused")
   public void setupPeerConnection(String stun) {
     try (PeerOptions options = new PeerOptions()) {
       options.setStunServer(stun);
@@ -490,6 +491,7 @@ public class Session implements AutoCloseable {
    * @return PortalMembership object representing the active membership
    * @throws FridaException if joining portal fails
    */
+  @SuppressWarnings("unused")
   public PortalMembership joinPortal(String address) {
     return joinPortal(address, null);
   }
@@ -562,7 +564,7 @@ public class Session implements AutoCloseable {
         } else {
           log.warn("Failed to connect session signal '{}' - no handler ID returned", signalName);
         }
-      } catch (Exception e) {
+      } catch (Throwable e) {
         log.debug("Failed to connect session signal '{}': {}", signalName, e.getMessage());
         throw new FridaException("Failed to connect session signal '" + signalName + "'", e);
       }

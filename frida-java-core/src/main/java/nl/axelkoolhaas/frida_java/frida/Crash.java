@@ -92,6 +92,8 @@ public final class Crash implements AutoCloseable {
   public int getPid() {
     try {
       return (int) FRIDA_CRASH_GET_PID.invokeExact(crashPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get PID from FridaCrash", t);
       throw new FridaException("Failed to get PID from crash", t);
@@ -99,10 +101,13 @@ public final class Crash implements AutoCloseable {
   }
 
   /** Returns the name of the process that crashed. */
+  @SuppressWarnings("unused")
   public String getProcessName() {
     try {
       MemorySegment namePtr = (MemorySegment) FRIDA_CRASH_GET_PROCESS_NAME.invokeExact(crashPtr);
       return FridaNativeUtils.memorySegmentToString(namePtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get process name from FridaCrash", t);
       throw new FridaException("Failed to get process name from crash", t);
@@ -114,6 +119,8 @@ public final class Crash implements AutoCloseable {
     try {
       MemorySegment summaryPtr = (MemorySegment) FRIDA_CRASH_GET_SUMMARY.invokeExact(crashPtr);
       return FridaNativeUtils.memorySegmentToString(summaryPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get summary from FridaCrash", t);
       throw new FridaException("Failed to get summary from crash", t);
@@ -126,6 +133,8 @@ public final class Crash implements AutoCloseable {
       MemorySegment reportPtr = (MemorySegment) FRIDA_CRASH_GET_REPORT.invokeExact(crashPtr);
       return FridaNativeUtils.memorySegmentToString(reportPtr);
 
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get report from FridaCrash", t);
       throw new FridaException("Failed to get report from crash", t);
@@ -140,6 +149,8 @@ public final class Crash implements AutoCloseable {
         return Collections.emptyMap();
       }
       return GHashTableUtil.toMap(hashTablePtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get parameters from FridaCrash", t);
       throw new FridaException("Failed to get parameters from crash", t);

@@ -95,7 +95,7 @@ public class Frida {
     }
   }
 
-  /**
+  /*
    * Explicitly deinitialize Frida. This is mainly for testing purposes. This method is thread-safe
    * and idempotent.
    */
@@ -106,6 +106,8 @@ public class Frida {
   //                    FRIDA_DEINIT.invoke();
   //                    // Note that frida_deinit calls frida_shutdown internally
   //                    System.err.println("");
+  //                } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+  //                    throw e;
   //                } catch (Throwable e) {
   //                    // Reset the flag if deinit failed
   //                    isInitialized.set(true);

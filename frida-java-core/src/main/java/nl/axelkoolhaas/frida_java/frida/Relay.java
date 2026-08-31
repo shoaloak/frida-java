@@ -117,6 +117,7 @@ public class Relay implements AutoCloseable {
    *
    * @param relayPtr Native FridaRelay pointer
    */
+  @SuppressWarnings("unused")
   Relay(MemorySegment relayPtr) {
     this.relayPtr = FridaNativeUtils.requireValidPointer(relayPtr, "Relay pointer");
     log.debug("Relay created from native pointer");
@@ -234,6 +235,8 @@ public class Relay implements AutoCloseable {
     try {
       FridaNativeUtils.fridaUnref(relayPtr);
       log.debug("Relay closed");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to close Relay: {}", e.getMessage());
       throw new FridaException("Failed to close Relay", e);
@@ -247,7 +250,7 @@ public class Relay implements AutoCloseable {
     }
     try {
       return String.format("Relay{address='%s', kind=%s}", getAddress(), getKind());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       return "Relay{error=" + e.getMessage() + "}";
     }
   }

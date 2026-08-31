@@ -40,8 +40,6 @@ public class GSignalUtil {
   private static final MethodHandle G_SIGNAL_CONNECT_DATA;
   private static final MethodHandle G_CLOSURE_NEW_SIMPLE;
   private static final MethodHandle G_CLOSURE_SET_MARSHAL;
-  private static final MethodHandle G_CLOSURE_REF;
-  private static final MethodHandle G_CLOSURE_SINK;
 
   /**
    * sizeof(GClosure) - derived from the GLib struct layout.
@@ -119,14 +117,6 @@ public class GSignalUtil {
         FridaLibraryLoader.findFunction(
             "g_closure_set_marshal",
             FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-
-    G_CLOSURE_REF =
-        FridaLibraryLoader.findFunction(
-            "g_closure_ref", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-
-    G_CLOSURE_SINK =
-        FridaLibraryLoader.findFunction(
-            "g_closure_sink", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
   }
 
   /**
@@ -167,8 +157,10 @@ public class GSignalUtil {
       int signalId = (int) G_SIGNAL_LOOKUP.invoke(signalNamePtr, objectType);
       log.debug("Signal lookup '{}' on type {} returned ID {}", signalName, objectType, signalId);
       return signalId;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
-      log.error("Failed to lookup signal '{}': {}", signalName, e.getMessage());
+      log.debug("Failed to lookup signal '{}': {}", signalName, e.getMessage(), e);
       throw new FridaException("Failed to lookup signal: " + signalName, e);
     }
   }
@@ -215,9 +207,12 @@ public class GSignalUtil {
       // This gives GLib ownership of the closure
 
       return closure;
-    } catch (FridaException e) {
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {
+      if (e instanceof FridaException) {
+        throw (FridaException) e;
+      }
       throw new FridaException("Failed to create GClosure with marshal", e);
     }
   }
@@ -254,13 +249,16 @@ public class GSignalUtil {
 
       log.debug("g_signal_connect_closure_by_id returned handler ID: {}", handlerId);
       return handlerId;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
-      log.error("Failed to connect closure by ID: {}", e.getMessage());
+      log.debug("Failed to connect closure by ID: {}", e.getMessage(), e);
       throw new FridaException("Failed to connect closure by ID", e);
     }
   }
 
   /** Connect a callback to a GObject signal using g_signal_connect_data */
+  @SuppressWarnings("unused")
   public static long connectSignal(
       MemorySegment instance, String signalName, MemorySegment callback) {
     try (Arena arena = Arena.ofConfined()) {
@@ -279,8 +277,10 @@ public class GSignalUtil {
 
       log.debug("g_signal_connect_data returned handler ID: {}", handlerId);
       return handlerId;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
-      log.error("Failed to connect signal '{}': {}", signalName, e.getMessage());
+      log.debug("Failed to connect signal '{}': {}", signalName, e.getMessage(), e);
       throw new FridaException("Failed to connect signal: " + signalName, e);
     }
   }

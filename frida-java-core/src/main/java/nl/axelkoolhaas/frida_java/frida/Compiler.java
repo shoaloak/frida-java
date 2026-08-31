@@ -113,6 +113,8 @@ public class Compiler implements AutoCloseable {
       this.compilerPtr = (MemorySegment) FRIDA_COMPILER_NEW.invoke(deviceManager.getPointer());
       this.ownedDeviceManager = null;
       log.debug("Compiler created with caller-owned DeviceManager");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to create Compiler", e);
     }
@@ -156,6 +158,8 @@ public class Compiler implements AutoCloseable {
       GErrorUtils.handleError(error, "build script from " + entrypoint);
 
       return FridaNativeUtils.memorySegmentToString(resultPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to build script from " + entrypoint, e);
     }
@@ -240,7 +244,7 @@ public class Compiler implements AutoCloseable {
   }
 
   public void off(CompilerSignal signal) {
-    Object removedCallback = callbacks.remove(signal);
+    callbacks.remove(signal);
     Long handlerId = handlerIds.remove(signal);
 
     if (handlerId != null) {
@@ -253,6 +257,8 @@ public class Compiler implements AutoCloseable {
         Closure.disconnectClosure(handlerId);
 
         log.debug("Disconnected native handler for signal: {}", signal.getName());
+      } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+        throw e;
       } catch (Throwable e) {
         log.warn(
             "Failed to disconnect signal {} (continuing cleanup): {}",
@@ -275,7 +281,7 @@ public class Compiler implements AutoCloseable {
     if (ownedDeviceManager != null) {
       try {
         ownedDeviceManager.close();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         log.warn("Failed to close owned DeviceManager", e);
       }
     }

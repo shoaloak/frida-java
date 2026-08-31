@@ -133,7 +133,7 @@ public class SpawnOptions implements AutoCloseable {
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {
-      log.error("Failed to create SpawnOptions: {}", e.getMessage());
+      log.debug("Failed to create SpawnOptions: {}", e.getMessage(), e);
       throw new FridaException("Failed to create SpawnOptions", e);
     }
   }

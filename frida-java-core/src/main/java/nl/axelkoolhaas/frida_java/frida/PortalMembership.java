@@ -96,6 +96,7 @@ public class PortalMembership implements AutoCloseable {
    *
    * @return Native FridaPortalMembership pointer
    */
+  @SuppressWarnings("unused")
   MemorySegment getPointer() {
     checkNotClosed();
     return membershipPtr;
@@ -123,6 +124,8 @@ public class PortalMembership implements AutoCloseable {
     try {
       FridaNativeUtils.fridaUnref(membershipPtr);
       log.debug("PortalMembership closed");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to close PortalMembership: {}", e.getMessage());
       throw new FridaException("Failed to close PortalMembership", e);

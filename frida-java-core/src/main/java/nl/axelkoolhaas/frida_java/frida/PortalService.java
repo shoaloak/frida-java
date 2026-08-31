@@ -178,6 +178,8 @@ public final class PortalService {
         throw new FridaException("Failed to create PortalService");
       }
       log.debug("PortalService created");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to create PortalService", t);
       throw new FridaException("Failed to create PortalService", t);
@@ -197,6 +199,8 @@ public final class PortalService {
         throw new FridaException("Failed to get device from PortalService");
       }
       return new Device(devicePtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get device from PortalService", t);
       throw new FridaException("Failed to get device from PortalService", t);
@@ -216,6 +220,8 @@ public final class PortalService {
         throw new FridaException("Failed to get cluster params from PortalService");
       }
       return new EndpointParameters(paramsPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get cluster params from PortalService", t);
       throw new FridaException("Failed to get cluster params from PortalService", t);
@@ -235,6 +241,8 @@ public final class PortalService {
         throw new FridaException("Failed to get control params from PortalService");
       }
       return new EndpointParameters(paramsPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get control params from PortalService", t);
       throw new FridaException("Failed to get control params from PortalService", t);
@@ -256,9 +264,12 @@ public final class PortalService {
         GErrorUtils.handleError(error, "start PortalService");
       }
       log.debug("PortalService started");
-    } catch (FridaException e) {
-      throw e;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
+      if (t instanceof FridaException) {
+        throw (FridaException) t;
+      }
       log.debug("Failed to start PortalService", t);
       throw new FridaException("Failed to start PortalService", t);
     }
@@ -279,9 +290,12 @@ public final class PortalService {
         GErrorUtils.handleError(error, "stop PortalService");
       }
       log.debug("PortalService stopped");
-    } catch (FridaException e) {
-      throw e;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
+      if (t instanceof FridaException) {
+        throw (FridaException) t;
+      }
       log.debug("Failed to stop PortalService", t);
       throw new FridaException("Failed to stop PortalService", t);
     }
@@ -296,6 +310,8 @@ public final class PortalService {
     try {
       FRIDA_PORTAL_SERVICE_KICK.invokeExact(portalPtr, connectionId);
       log.trace("Kicked connection {}", connectionId);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to kick connection {}", connectionId, t);
       throw new FridaException("Failed to kick connection " + connectionId, t);
@@ -318,6 +334,8 @@ public final class PortalService {
           data != null ? GBytesUtil.createGBytes(data, arena) : MemorySegment.NULL;
       FRIDA_PORTAL_SERVICE_POST.invokeExact(portalPtr, connectionId, jsonPtr, dataPtr);
       log.trace("Posted message to connection {}", connectionId);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to post message to connection {}", connectionId, t);
       throw new FridaException("Failed to post message to connection " + connectionId, t);
@@ -342,6 +360,8 @@ public final class PortalService {
           data != null ? GBytesUtil.createGBytes(data, arena) : MemorySegment.NULL;
       FRIDA_PORTAL_SERVICE_NARROWCAST.invokeExact(portalPtr, tagPtr, jsonPtr, dataPtr);
       log.trace("Narrowcast message to tag '{}'", tag);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to narrowcast message to tag '{}'", tag, t);
       throw new FridaException("Failed to narrowcast message to tag '" + tag + "'", t);
@@ -363,6 +383,8 @@ public final class PortalService {
           data != null ? GBytesUtil.createGBytes(data, arena) : MemorySegment.NULL;
       FRIDA_PORTAL_SERVICE_BROADCAST.invokeExact(portalPtr, jsonPtr, dataPtr);
       log.trace("Broadcast message to all controllers");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to broadcast message", t);
       throw new FridaException("Failed to broadcast message", t);
@@ -375,6 +397,7 @@ public final class PortalService {
    * @param connectionId The connection ID to query
    * @return List of tag strings
    */
+  @SuppressWarnings("unused")
   public List<String> enumerateTags(final int connectionId) {
     try (Arena arena = Arena.ofConfined()) {
       final MemorySegment lengthPtr = arena.allocate(ValueLayout.JAVA_INT);
@@ -388,6 +411,8 @@ public final class PortalService {
       }
 
       return FridaNativeUtils.cStringArrayToJavaList(tagsPtr, length);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to enumerate tags for connection {}", connectionId, t);
       throw new FridaException("Failed to enumerate tags for connection " + connectionId, t);
@@ -407,6 +432,8 @@ public final class PortalService {
       final MemorySegment tagPtr = arena.allocateFrom(tag);
       FRIDA_PORTAL_SERVICE_TAG.invokeExact(portalPtr, connectionId, tagPtr);
       log.trace("Tagged connection {} with '{}'", connectionId, tag);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to tag connection {} with '{}'", connectionId, tag, t);
       throw new FridaException(
@@ -427,6 +454,8 @@ public final class PortalService {
       final MemorySegment tagPtr = arena.allocateFrom(tag);
       FRIDA_PORTAL_SERVICE_UNTAG.invokeExact(portalPtr, connectionId, tagPtr);
       log.trace("Untagged connection {} from '{}'", connectionId, tag);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to untag connection {} from '{}'", connectionId, tag, t);
       throw new FridaException(

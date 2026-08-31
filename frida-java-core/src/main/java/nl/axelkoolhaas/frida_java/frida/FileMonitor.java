@@ -179,7 +179,7 @@ public class FileMonitor implements AutoCloseable {
       } else {
         log.warn("Failed to connect file monitor signal '{}' - no handler ID returned", signalName);
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       log.debug("Failed to connect file monitor signal '{}': {}", signalName, e.getMessage());
       throw new FridaException("Failed to connect file monitor signal '" + signalName + "'", e);
     }

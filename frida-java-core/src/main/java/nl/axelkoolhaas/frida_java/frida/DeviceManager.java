@@ -155,6 +155,7 @@ public class DeviceManager implements AutoCloseable {
     return devices.stream().filter(device -> device.getType() == DeviceType.LOCAL).findFirst();
   }
 
+  @SuppressWarnings("unused")
   public Optional<Device> getUsbDevice() {
     List<Device> devices = enumerateDevices();
     return devices.stream().filter(device -> device.getType() == DeviceType.USB).findFirst();
@@ -231,7 +232,7 @@ public class DeviceManager implements AutoCloseable {
         log.warn(
             "Failed to connect device manager signal '{}' - no handler ID returned", signalName);
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       log.debug("Failed to connect device manager signal '{}': {}", signalName, e.getMessage());
       throw new FridaException("Failed to connect device manager signal '" + signalName + "'", e);
     }

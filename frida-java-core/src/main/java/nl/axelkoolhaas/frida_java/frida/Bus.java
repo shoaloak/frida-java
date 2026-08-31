@@ -222,7 +222,7 @@ public class Bus implements AutoCloseable {
       }
     } catch (FridaException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (Throwable e) {
       log.debug("Failed to connect bus signal '{}': {}", signalName, e.getMessage());
       throw new FridaException("Failed to connect bus signal '" + signalName + "'", e);
     }
@@ -284,6 +284,7 @@ public class Bus implements AutoCloseable {
    *
    * @return Native pointer
    */
+  @SuppressWarnings("unused")
   MemorySegment getPointer() {
     checkNotCleaned();
     return busPtr;
@@ -298,6 +299,8 @@ public class Bus implements AutoCloseable {
   private void disconnectSignal(long handlerId) {
     try {
       G_SIGNAL_HANDLER_DISCONNECT.invokeExact(busPtr, handlerId);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.warn("Failed to disconnect signal handler {}: {}", handlerId, e.getMessage());
     }

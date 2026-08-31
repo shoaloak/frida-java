@@ -123,6 +123,8 @@ public class Script implements AutoCloseable {
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "load script");
       log.debug("Script loaded successfully");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to load script: {}", e.getMessage());
       throw new FridaException("Failed to load script", e);
@@ -176,6 +178,8 @@ public class Script implements AutoCloseable {
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "eternalize script");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to eternalize script", e);
     }
@@ -199,6 +203,8 @@ public class Script implements AutoCloseable {
 
       // Post to script (script, json, data)
       FRIDA_SCRIPT_POST.invoke(scriptPtr, jsonPtr, dataPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to post message to script", e);
     }
@@ -218,6 +224,7 @@ public class Script implements AutoCloseable {
    *
    * @param port Port number for debugging
    */
+  @SuppressWarnings("unused")
   public void enableDebugger(short port) {
     try (Arena arena = Arena.ofConfined()) {
       // Error handling
@@ -230,12 +237,15 @@ public class Script implements AutoCloseable {
       // Check for errors
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "enable debugger on port: " + port);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to enable debugger on port: " + port, e);
     }
   }
 
   /** Disable debugger */
+  @SuppressWarnings("unused")
   public void disableDebugger() {
     try (Arena arena = Arena.ofConfined()) {
       // Error handling
@@ -248,6 +258,8 @@ public class Script implements AutoCloseable {
       // Check for errors
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "disable debugger");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to disable debugger", e);
     }
@@ -320,15 +332,10 @@ public class Script implements AutoCloseable {
    * @return The result returned by the function
    */
   public Object exportsCall(String functionName, Object... args) {
-    CompletableFuture<Object> future = makeExportsCall(functionName, args);
-
     try {
-      return future.get();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new FridaException("RPC call was interrupted", e);
-    } catch (ExecutionException e) {
-      throw new FridaException("RPC call failed", e.getCause());
+      return exportsCallWithTimeout(functionName, Long.MAX_VALUE, args);
+    } catch (TimeoutException e) {
+      throw new FridaException("RPC call timed out", e);
     }
   }
 
@@ -341,6 +348,7 @@ public class Script implements AutoCloseable {
    * @return The result returned by the function
    * @throws FridaException if the context is cancelled
    */
+  @SuppressWarnings("unused")
   public Object exportsCallWithContext(
       CompletableFuture<Void> context, String functionName, Object... args) {
     CompletableFuture<Object> rpcFuture = makeExportsCall(functionName, args);
@@ -349,7 +357,8 @@ public class Script implements AutoCloseable {
     CompletableFuture<Object> result =
         rpcFuture.applyToEither(
             context.thenApply(
-                v -> {
+                ignored -> {
+                  log.trace("RPC cancellation context completed: {}", ignored);
                   throw new FridaException("RPC call was cancelled");
                 }),
             value -> value);
@@ -377,6 +386,7 @@ public class Script implements AutoCloseable {
    * @return The result returned by the function
    * @throws TimeoutException if the call times out
    */
+  @SuppressWarnings("unused")
   public Object exportsCallWithTimeout(String functionName, long timeoutMs, Object... args)
       throws TimeoutException {
     CompletableFuture<Object> future = makeExportsCall(functionName, args);

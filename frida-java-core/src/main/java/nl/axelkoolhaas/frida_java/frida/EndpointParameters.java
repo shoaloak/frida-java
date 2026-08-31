@@ -30,7 +30,6 @@ public final class EndpointParameters {
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_PORT;
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_CERTIFICATE;
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_ORIGIN;
-  private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_AUTH_SERVICE;
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_ASSET_ROOT;
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_SET_ASSET_ROOT;
   private static final MethodHandle FRIDA_STATIC_AUTHENTICATION_SERVICE_NEW;
@@ -66,10 +65,6 @@ public final class EndpointParameters {
     FRIDA_ENDPOINT_PARAMETERS_GET_ORIGIN =
         FridaLibraryLoader.findFunction(
             "frida_endpoint_parameters_get_origin",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-    FRIDA_ENDPOINT_PARAMETERS_GET_AUTH_SERVICE =
-        FridaLibraryLoader.findFunction(
-            "frida_endpoint_parameters_get_auth_service",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     FRIDA_ENDPOINT_PARAMETERS_GET_ASSET_ROOT =
         FridaLibraryLoader.findFunction(
@@ -225,6 +220,8 @@ public final class EndpointParameters {
         throw new FridaException("Failed to create EndpointParameters");
       }
       log.debug("EndpointParameters created");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to create EndpointParameters", t);
       throw new FridaException("Failed to create EndpointParameters", t);
@@ -316,6 +313,8 @@ public final class EndpointParameters {
       MemorySegment addressPtr =
           (MemorySegment) FRIDA_ENDPOINT_PARAMETERS_GET_ADDRESS.invokeExact(paramsPtr);
       return addressPtr.reinterpret(Long.MAX_VALUE).getString(0);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get address from EndpointParameters", t);
       throw new FridaException("Failed to get address from EndpointParameters", t);
@@ -330,6 +329,8 @@ public final class EndpointParameters {
   public int getPort() {
     try {
       return (short) FRIDA_ENDPOINT_PARAMETERS_GET_PORT.invokeExact(paramsPtr) & 0xFFFF;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get port from EndpointParameters", t);
       throw new FridaException("Failed to get port from EndpointParameters", t);
@@ -349,6 +350,8 @@ public final class EndpointParameters {
         return null;
       }
       return new Certificate(certPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get certificate from EndpointParameters", t);
       throw new FridaException("Failed to get certificate from EndpointParameters", t);
@@ -368,6 +371,8 @@ public final class EndpointParameters {
         return null;
       }
       return originPtr.reinterpret(Long.MAX_VALUE).getString(0);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get origin from EndpointParameters", t);
       throw new FridaException("Failed to get origin from EndpointParameters", t);
@@ -388,6 +393,8 @@ public final class EndpointParameters {
       }
       MemorySegment pathPtr = (MemorySegment) G_FILE_GET_PATH.invokeExact(assetRootPtr);
       return FridaNativeUtils.memorySegmentToStringAndFree(pathPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get asset root from EndpointParameters", t);
       throw new FridaException("Failed to get asset root from EndpointParameters", t);
@@ -399,6 +406,7 @@ public final class EndpointParameters {
    *
    * @param assetRoot Path to directory containing static assets to serve
    */
+  @SuppressWarnings("unused")
   public void setAssetRoot(final String assetRoot) {
     if (assetRoot == null || assetRoot.isEmpty()) {
       throw new IllegalArgumentException("assetRoot cannot be null or empty");
@@ -416,6 +424,8 @@ public final class EndpointParameters {
       final MemorySegment pathPtr = arena.allocateFrom(assetRoot);
       final MemorySegment gFilePtr = (MemorySegment) G_FILE_NEW_FOR_PATH.invokeExact(pathPtr);
       FRIDA_ENDPOINT_PARAMETERS_SET_ASSET_ROOT.invokeExact(paramsPtr, gFilePtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to set asset root for EndpointParameters", t);
       throw new FridaException("Failed to set asset root for EndpointParameters", t);

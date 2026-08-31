@@ -124,6 +124,8 @@ public class GHashTableUtil {
       // If not a GValue, try direct interpretation
       return convertDirectValue(valuePtr);
 
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       // If all else fails, return the raw memory address as a string
       return FridaNativeUtils.formatAddress(valuePtr);
@@ -164,7 +166,7 @@ public class GHashTableUtil {
         if (intValue >= -1000000 && intValue <= 1000000) {
           return intValue;
         }
-      } catch (Exception ignored) {
+      } catch (Throwable ignored) {
         // Not an integer
       }
 
@@ -174,13 +176,15 @@ public class GHashTableUtil {
         if (boolValue == 0 || boolValue == 1) {
           return boolValue == 1;
         }
-      } catch (Exception ignored) {
+      } catch (Throwable ignored) {
         // Not a boolean
       }
 
       // If all else fails, return the raw memory address as a string
       return FridaNativeUtils.formatAddress(valuePtr);
 
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       // Return a representation of the memory address if we can't interpret the value
       return FridaNativeUtils.formatAddress(valuePtr);

@@ -13,6 +13,7 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 
 /** Represents a GTlsCertificate from Frida. */
+@SuppressWarnings("unused")
 public final class Certificate {
   private static final Logger log = LoggerFactory.getLogger(Certificate.class);
   private final MemorySegment certPtr;
@@ -63,6 +64,8 @@ public final class Certificate {
       MemorySegment namePtr =
           (MemorySegment) G_TLS_CERTIFICATE_GET_ISSUER_NAME.invokeExact(certPtr);
       return FridaNativeUtils.memorySegmentToStringAndFree(namePtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get issuer name from Certificate", t);
       throw new FridaException("Failed to get issuer name from certificate", t);
@@ -75,6 +78,8 @@ public final class Certificate {
       MemorySegment namePtr =
           (MemorySegment) G_TLS_CERTIFICATE_GET_SUBJECT_NAME.invokeExact(certPtr);
       return FridaNativeUtils.memorySegmentToStringAndFree(namePtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get subject name from Certificate", t);
       throw new FridaException("Failed to get subject name from certificate", t);
@@ -93,6 +98,8 @@ public final class Certificate {
         String formatted = FridaNativeUtils.memorySegmentToStringAndFree(formattedPtr);
         return LocalDateTime.parse(formatted, JAVA_TIME_FORMAT);
       }
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get not valid before from Certificate", t);
       throw new FridaException("Failed to get not valid before from certificate", t);
@@ -111,6 +118,8 @@ public final class Certificate {
         String formatted = FridaNativeUtils.memorySegmentToStringAndFree(formattedPtr);
         return LocalDateTime.parse(formatted, JAVA_TIME_FORMAT);
       }
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to get not valid after from Certificate", t);
       throw new FridaException("Failed to get not valid after from certificate", t);

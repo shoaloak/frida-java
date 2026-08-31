@@ -27,6 +27,7 @@ import java.lang.invoke.MethodHandle;
 
 import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+import nl.axelkoolhaas.frida_java.frida.FridaException;
 
 /** Utility methods for working with GLib GBytes structures. */
 public class GBytesUtil {
@@ -99,8 +100,8 @@ public class GBytesUtil {
   /**
    * Extract byte array from GBytes pointer.
    *
-   * @param gBytesPtr Pointer to GBytes structure (may be null)
-   * @return Byte array containing the data, or empty array if null/empty
+   * @param gBytesPtr Pointer to GBytes structure
+   * @return Byte array containing the data, or empty array if the native payload is empty
    */
   public static byte[] toByteArray(MemorySegment gBytesPtr) {
     FridaNativeUtils.requireValidPointer(gBytesPtr, "GBytes pointer");
@@ -121,9 +122,10 @@ public class GBytesUtil {
 
       // Read the bytes from the native memory
       return dataPtr.reinterpret(size).toArray(ValueLayout.JAVA_BYTE);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
-      System.err.println("Failed to extract GBytes data: " + e.getMessage());
-      return new byte[0];
+      throw new FridaException("Failed to extract GBytes data", e);
     }
   }
 }

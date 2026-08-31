@@ -122,6 +122,8 @@ public class GValueUtil {
       // GValue struct has g_type as the first field (size_t/ulong)
       long typeValue = gvalue.get(ValueLayout.JAVA_LONG, 0);
       return GType.fromValue(typeValue);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to read GType from GValue", e);
       throw new FridaException("Failed to read GType from GValue", e);
@@ -157,6 +159,8 @@ public class GValueUtil {
                     + Long.toHexString(gtype.getValue())
                     + ")");
       };
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to convert GValue to Java object", e);
       throw new FridaException("Failed to convert GValue to Java object", e);
@@ -191,6 +195,8 @@ public class GValueUtil {
   public static MemorySegment extractPointer(MemorySegment gvalue) {
     try {
       return (MemorySegment) G_VALUE_GET_POINTER.invoke(gvalue);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       throw new FridaException("Failed to extract pointer from GValue", t);
     }
@@ -206,6 +212,8 @@ public class GValueUtil {
       String result = FridaNativeUtils.memorySegmentToString(strPtr);
       G_FREE.invoke(strPtr); // Free the string returned by g_variant_print
       return result;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError t) {
+      throw t;
     } catch (Throwable t) {
       log.debug("Failed to extract GVariant from GValue", t);
       throw new FridaException("Failed to extract GVariant from GValue", t);
@@ -285,6 +293,8 @@ public class GValueUtil {
         return new byte[0];
       }
       return GBytesUtil.toByteArray(gBytesPtr);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to extract bytes from GValue", e);
     }

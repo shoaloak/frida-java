@@ -88,6 +88,7 @@ public class PeerOptions implements AutoCloseable {
    *
    * @param optionsPtr Native FridaPeerOptions pointer
    */
+  @SuppressWarnings("unused")
   PeerOptions(MemorySegment optionsPtr) {
     this.optionsPtr = FridaNativeUtils.requireValidPointer(optionsPtr, "PeerOptions pointer");
     log.debug("PeerOptions created from native pointer");
@@ -206,6 +207,8 @@ public class PeerOptions implements AutoCloseable {
     try {
       FridaNativeUtils.fridaUnref(optionsPtr);
       log.debug("PeerOptions closed");
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to close PeerOptions: {}", e.getMessage());
       throw new FridaException("Failed to close PeerOptions", e);
@@ -219,7 +222,7 @@ public class PeerOptions implements AutoCloseable {
     }
     try {
       return String.format("PeerOptions{stunServer='%s'}", getStunServer());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       return "PeerOptions{error=" + e.getMessage() + "}";
     }
   }

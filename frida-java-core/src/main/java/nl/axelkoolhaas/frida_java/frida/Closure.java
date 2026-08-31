@@ -118,6 +118,8 @@ public class Closure {
 
       // Use global arena so the stub lives for the lifetime of the JVM
       return Linker.nativeLinker().upcallStub(marshalHandler, descriptor, Arena.global());
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       throw new FridaException("Failed to create marshal stub", e);
     }
@@ -130,11 +132,11 @@ public class Closure {
    */
   public static void handleMarshal(
       MemorySegment closurePtr,
-      MemorySegment returnValue,
+      @SuppressWarnings("unused") MemorySegment returnValue,
       int nParams,
       MemorySegment paramsPtr,
-      MemorySegment invocationHint,
-      MemorySegment marshalData) {
+      @SuppressWarnings("unused") MemorySegment invocationHint,
+      @SuppressWarnings("unused") MemorySegment marshalData) {
     // Look up the closure ID using the GClosure pointer
     long ptrAddr = closurePtr.address();
     Long closureId = CLOSURE_PTR_TO_ID.get(ptrAddr);
@@ -462,6 +464,8 @@ public class Closure {
           handlerId,
           closureId);
       return handlerId;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
     } catch (Throwable e) {
       log.debug("Failed to connect signal '{}': {}", signalName, e.getMessage(), e);
       throw new FridaException("Failed to connect script message signal", e);
@@ -504,6 +508,7 @@ public class Closure {
    *
    * @param gClosurePtr The GClosure pointer
    */
+  @SuppressWarnings("unused")
   public static void cleanupClosureByPointer(MemorySegment gClosurePtr) {
     if (gClosurePtr == null || gClosurePtr.equals(MemorySegment.NULL)) {
       return;
@@ -524,11 +529,15 @@ public class Closure {
    *
    * @return Set of all active closure IDs
    */
+  @SuppressWarnings("unused")
   public static java.util.Set<Long> getActiveClosureIds() {
     return new java.util.HashSet<>(ACTIVE_CLOSURES.keySet());
   }
 
   private static void reportMarshalError(String signalName, Throwable error) {
+    if (log.isTraceEnabled()) {
+      log.trace("Active closure IDs at marshal failure: {}", getActiveClosureIds());
+    }
     log.debug("Marshal failed for signal '{}': {}", signalName, error.getMessage(), error);
 
     SignalCallbacks.ErrorHandler handler = errorHandler;

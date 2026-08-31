@@ -265,24 +265,51 @@ public class PortalTest {
       Device localDevice = deviceManager.getLocalDevice().orElseThrow();
 
       int targetPid = spawnTestProcess(localDevice);
-      if (targetPid <= 0) {
-        System.out.println("Skipping PortalMembership test - could not spawn process");
-        return;
-      }
+      Assumptions.assumeTrue(
+          targetPid > 0, "Skipping PortalMembership test - could not spawn test process");
 
-      try (Session session = localDevice.attach(targetPid)) {
+      try (Session session = attachSessionOrSkip(localDevice, targetPid)) {
         // Would need a running portal to actually join
         // PortalMembership membership = session.joinPortal("127.0.0.1:27042", ...);
         // membership.terminate();
 
         assertNotNull(session, "Session should be attached for portal operations");
         System.out.println("PortalMembership API available (full test requires running portal)");
-      } catch (Exception e) {
-        System.err.println("PortalMembership test setup failed: " + e.getMessage());
       } finally {
         cleanupProcess(localDevice, targetPid);
       }
     }
+  }
+
+  private Session attachSessionOrSkip(Device device, int pid) {
+    try {
+      return device.attach(pid);
+    } catch (FridaException e) {
+      if (isPermissionDenied(e)) {
+        Assumptions.abort(
+            "Skipping PortalMembership test - process access denied in this environment: "
+                + e.getMessage());
+      }
+      throw e;
+    }
+  }
+
+  private boolean isPermissionDenied(FridaException e) {
+    Throwable current = e;
+    while (current != null) {
+      String message = current.getMessage();
+      if (message != null && !message.isBlank()) {
+        String normalized = message.toLowerCase();
+        if (normalized.contains("unable to access process")
+            || normalized.contains("permission denied")
+            || normalized.contains("access denied")
+            || normalized.contains("operation not permitted")) {
+          return true;
+        }
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   private int spawnTestProcess(Device device) {
