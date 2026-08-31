@@ -5,7 +5,6 @@ import java.lang.invoke.MethodHandle;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +120,6 @@ public final class EndpointParameters {
     private String certificatePath;
     private String origin;
     private String token;
-    private Function<String, String> authenticationCallback;
     private String assetRoot;
 
     private Builder() {}
@@ -172,27 +170,10 @@ public final class EndpointParameters {
     /**
      * Sets a static authentication token.
      *
-     * <p>If both token and authenticationCallback are set, the token takes precedence.
-     *
      * @param token Static authentication token
      */
     public Builder token(final String token) {
       this.token = token;
-      return this;
-    }
-
-    /**
-     * Sets an authentication callback function.
-     *
-     * <p>The callback receives a token string and should return a non-empty session info string if
-     * authenticated, or empty/null if authentication fails.
-     *
-     * <p>If both token and authenticationCallback are set, the static token takes precedence.
-     *
-     * @param authenticationCallback Function to validate authentication tokens
-     */
-    public Builder authenticationCallback(final Function<String, String> authenticationCallback) {
-      this.authenticationCallback = authenticationCallback;
       return this;
     }
 
@@ -227,7 +208,7 @@ public final class EndpointParameters {
       final MemorySegment originPtr =
           builder.origin != null ? arena.allocateFrom(builder.origin) : MemorySegment.NULL;
       final MemorySegment authServicePtr =
-          createAuthenticationServiceIfNeeded(builder.token, builder.authenticationCallback, arena);
+          createAuthenticationServiceIfNeeded(builder.token, arena);
       final MemorySegment assetRootPtr = createAssetRootIfNeeded(builder.assetRoot, arena);
 
       this.paramsPtr =
@@ -289,8 +270,7 @@ public final class EndpointParameters {
     return certPtr;
   }
 
-  private MemorySegment createAuthenticationServiceIfNeeded(
-      final String token, final Function<String, String> authCallback, final Arena arena) {
+  private MemorySegment createAuthenticationServiceIfNeeded(final String token, final Arena arena) {
     if (token != null && !token.isEmpty()) {
       try {
         final MemorySegment tokenPtr = arena.allocateFrom(token);
@@ -304,13 +284,6 @@ public final class EndpointParameters {
         throw new FridaException("Failed to create static authentication service", t);
       }
     }
-
-    if (authCallback != null) {
-      throw new FridaException(
-          "Authentication callback services are not supported by this Java binding yet. "
-              + "Use token-based authentication for now.");
-    }
-
     return MemorySegment.NULL;
   }
 
