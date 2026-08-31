@@ -245,7 +245,7 @@ public class Closure {
   private static void handleSessionDetachedMarshal(
       Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.SessionDetachedCallback cb && nParams >= 3) {
-      int reason = GValueUtil.extractInt(GValueUtil.getAt(params, 1));
+      int reason = GValueUtil.extractEnum(GValueUtil.getAt(params, 1));
       MemorySegment crashPtr = GValueUtil.extractPointer(GValueUtil.getAt(params, 2));
 
       // Crash is borrowed from the signal emitter; ref it so the wrapper can outlive the callback

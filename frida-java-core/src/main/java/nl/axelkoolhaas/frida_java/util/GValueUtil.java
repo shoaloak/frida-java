@@ -54,6 +54,8 @@ public class GValueUtil {
   private static final MethodHandle G_VALUE_GET_STRING;
   private static final MethodHandle G_VALUE_GET_INT;
   private static final MethodHandle G_VALUE_GET_UINT;
+  private static final MethodHandle G_VALUE_GET_ENUM;
+  private static final MethodHandle G_VALUE_GET_FLAGS;
   private static final MethodHandle G_VALUE_GET_BOOLEAN;
   private static final MethodHandle G_VALUE_GET_POINTER;
   private static final MethodHandle G_VALUE_GET_VARIANT;
@@ -70,6 +72,12 @@ public class GValueUtil {
     G_VALUE_GET_UINT =
         FridaLibraryLoader.findFunction(
             "g_value_get_uint", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    G_VALUE_GET_ENUM =
+        FridaLibraryLoader.findFunction(
+            "g_value_get_enum", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    G_VALUE_GET_FLAGS =
+        FridaLibraryLoader.findFunction(
+            "g_value_get_flags", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     G_VALUE_GET_BOOLEAN =
         FridaLibraryLoader.findFunction(
             "g_value_get_boolean",
@@ -137,6 +145,8 @@ public class GValueUtil {
         case GType.STRING -> extractStringTyped(gvalue);
         case GType.INT -> extractIntTyped(gvalue);
         case GType.UINT -> extractUintTyped(gvalue);
+        case GType.ENUM -> extractEnumTyped(gvalue);
+        case GType.FLAGS -> extractFlagsTyped(gvalue);
         case GType.BOOLEAN -> extractBoolean(gvalue);
         case GType.POINTER -> extractPointer(gvalue);
         case GType.VARIANT -> extractVariant(gvalue);
@@ -162,6 +172,14 @@ public class GValueUtil {
 
   private static Integer extractUintTyped(MemorySegment gvalue) throws Throwable {
     return (int) G_VALUE_GET_UINT.invoke(gvalue);
+  }
+
+  private static Integer extractEnumTyped(MemorySegment gvalue) throws Throwable {
+    return (int) G_VALUE_GET_ENUM.invoke(gvalue);
+  }
+
+  private static Integer extractFlagsTyped(MemorySegment gvalue) throws Throwable {
+    return (int) G_VALUE_GET_FLAGS.invoke(gvalue);
   }
 
   private static Boolean extractBoolean(MemorySegment gvalue) throws Throwable {
@@ -230,6 +248,24 @@ public class GValueUtil {
     throw new IllegalArgumentException(
         "Expected integer in GValue, got "
             + (value != null ? value.getClass().getSimpleName() : "null"));
+  }
+
+  /**
+   * Extract an enum integer value from a GValue.
+   *
+   * @param gvalue the GValue memory segment
+   * @return enum integer value
+   * @throws FridaException if enum extraction fails
+   */
+  public static int extractEnum(MemorySegment gvalue) {
+    FridaNativeUtils.requireValidPointer(gvalue, "GValue");
+    try {
+      return (int) G_VALUE_GET_ENUM.invoke(gvalue);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to extract enum value from GValue", e);
+    }
   }
 
   /**

@@ -45,6 +45,7 @@ import nl.axelkoolhaas.frida_java.feature.SessionOptionsTest;
 import nl.axelkoolhaas.frida_java.feature.SnapshotOptionsTest;
 import nl.axelkoolhaas.frida_java.feature.SpawnTest;
 import nl.axelkoolhaas.frida_java.feature.VersionTest;
+import nl.axelkoolhaas.frida_java.unit.GTypeTest;
 import nl.axelkoolhaas.frida_java.unit.OwnershipTest;
 
 /**
@@ -129,4 +130,7 @@ public class ClassNameOrderTest {
 
   @Nested
   class W_PortalTest extends PortalTest {}
+
+  @Nested
+  class X_GTypeTest extends GTypeTest {}
 }

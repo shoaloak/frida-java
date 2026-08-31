@@ -48,6 +48,8 @@ public enum GType {
   VARIANT(84); // G_TYPE_MAKE_FUNDAMENTAL(21)
 
   private final long value;
+  private static final long G_TYPE_FUNDAMENTAL_SHIFT = 2L;
+  private static final long G_TYPE_FUNDAMENTAL_MASK = 0xffL << G_TYPE_FUNDAMENTAL_SHIFT;
 
   GType(long value) {
     this.value = value;
@@ -63,6 +65,16 @@ public enum GType {
         return type;
       }
     }
+
+    // Runtime GTypes are often derived from a fundamental type (for example enums and objects).
+    // Fall back to the underlying fundamental type before failing.
+    long fundamentalValue = value & G_TYPE_FUNDAMENTAL_MASK;
+    for (GType type : values()) {
+      if (type.value == fundamentalValue) {
+        return type;
+      }
+    }
+
     throw new IllegalArgumentException("Unsupported GType value: " + value);
   }
 }
