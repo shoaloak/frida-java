@@ -82,17 +82,43 @@ public class RpcManager {
    */
   public static RpcResult extractRpcResult(String message) {
     try {
-      JsonNode node = OBJECT_MAPPER.readTree(message);
+      JsonNode root = OBJECT_MAPPER.readTree(message);
+      JsonNode rpcNode = extractRpcPayload(root);
 
-      if (node.isArray() && node.size() >= 4 && "frida:rpc".equals(node.get(0).stringValue())) {
-        String rpcId = node.get(1).stringValue();
-        Object result = node.get(3);
+      if (rpcNode != null && rpcNode.size() >= 4 && "frida:rpc".equals(rpcNode.get(0).asText())) {
+        String rpcId = rpcNode.get(1).asText(null);
+        if (rpcId == null || rpcId.isBlank()) {
+          return null;
+        }
+
+        Object result = parseJsonValue(rpcNode.get(3));
         log.trace("Extracted RPC result: rpcId={}", rpcId);
         return new RpcResult(rpcId, result);
       }
     } catch (Exception e) {
       // Not an RPC message
       log.trace("Message is not a valid RPC response: {}", e.getMessage());
+    }
+
+    return null;
+  }
+
+  private static JsonNode extractRpcPayload(JsonNode root) {
+    if (root == null) {
+      return null;
+    }
+
+    if (root.isArray()) {
+      return root;
+    }
+
+    if (!root.isObject()) {
+      return null;
+    }
+
+    JsonNode payload = root.get("payload");
+    if (payload != null && payload.isArray()) {
+      return payload;
     }
 
     return null;

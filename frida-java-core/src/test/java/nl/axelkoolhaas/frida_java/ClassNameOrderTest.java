@@ -47,6 +47,7 @@ import nl.axelkoolhaas.frida_java.feature.SpawnTest;
 import nl.axelkoolhaas.frida_java.feature.VersionTest;
 import nl.axelkoolhaas.frida_java.unit.GTypeTest;
 import nl.axelkoolhaas.frida_java.unit.OwnershipTest;
+import nl.axelkoolhaas.frida_java.unit.RpcManagerTest;
 
 /**
  * Test orchestrator using ClassOrderer.ClassName.class for deterministic execution order.
@@ -133,4 +134,7 @@ public class ClassNameOrderTest {
 
   @Nested
   class X_GTypeTest extends GTypeTest {}
+
+  @Nested
+  class Y_RpcManagerTest extends RpcManagerTest {}
 }
