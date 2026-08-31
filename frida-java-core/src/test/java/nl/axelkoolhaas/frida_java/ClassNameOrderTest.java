@@ -32,6 +32,7 @@ import nl.axelkoolhaas.frida_java.feature.DeviceManagerSignalTest;
 import nl.axelkoolhaas.frida_java.feature.DeviceTest;
 import nl.axelkoolhaas.frida_java.feature.FileMonitorTest;
 import nl.axelkoolhaas.frida_java.feature.PeerOptionsTest;
+import nl.axelkoolhaas.frida_java.feature.PortalOptionsTest;
 import nl.axelkoolhaas.frida_java.feature.PortalTest;
 import nl.axelkoolhaas.frida_java.feature.ProcessTest;
 import nl.axelkoolhaas.frida_java.feature.RelayTest;
@@ -137,4 +138,7 @@ public class ClassNameOrderTest {
 
   @Nested
   class Y_RpcManagerTest extends RpcManagerTest {}
+
+  @Nested
+  class Z_PortalOptionsTest extends PortalOptionsTest {}
 }

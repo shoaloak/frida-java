@@ -59,6 +59,9 @@ public class Closure {
 
   // Maps GClosure pointer address -> closure ID (for marshal dispatch)
   private static final ConcurrentHashMap<Long, Long> CLOSURE_PTR_TO_ID = new ConcurrentHashMap<>();
+  // Maps GLib signal handler ID -> closure ID (for deterministic disconnect)
+  private static final ConcurrentHashMap<Long, Long> HANDLER_ID_TO_CLOSURE_ID =
+      new ConcurrentHashMap<>();
 
   // Shared marshal function upcall stub (created once, reused for all closures)
   private static final MemorySegment MARSHAL_STUB;
@@ -136,16 +139,16 @@ public class Closure {
     long ptrAddr = closurePtr.address();
     Long closureId = CLOSURE_PTR_TO_ID.get(ptrAddr);
     if (closureId == null) {
-      log.trace("No closure ID found for pointer {}", ptrAddr);
-      // TODO: shouldn't we throw here?
+      reportMarshalError(
+          "unknown", new FridaException("No closure ID found for pointer " + ptrAddr));
       return;
     }
 
     // Look up the callback data using the closure ID
     ClosureData data = ACTIVE_CLOSURES.get(closureId);
     if (data == null) {
-      log.trace("No callback found for closure ID {}", closureId);
-      // TODO: shouldn't we throw here?
+      reportMarshalError(
+          "unknown", new FridaException("No callback found for closure ID " + closureId));
       return;
     }
 
@@ -214,17 +217,7 @@ public class Closure {
     } catch (Throwable t) {
       // CRITICAL: Nothing may cross the native-to-Java upcall boundary into C.
       // An exception propagating out of this method crashes the JVM.
-      log.error("Marshal failed for signal '{}': {}", data.signalName, t.getMessage(), t);
-
-      SignalCallbacks.ErrorHandler handler = errorHandler;
-      if (handler != null) {
-        try {
-          handler.onCallbackError(data.signalName, t);
-        } catch (Throwable handlerError) {
-          log.error(
-              "Error handler itself threw exception: {}", handlerError.getMessage(), handlerError);
-        }
-      }
+      reportMarshalError(data.signalName, t);
     }
   }
 
@@ -392,8 +385,6 @@ public class Closure {
     }
   }
 
-  // TODO process-added process-removed
-
   private static void handleCrashSignalMarshal(Object callback, int nParams, MemorySegment params) {
     if (callback instanceof SignalCallbacks.CrashCallback cb && nParams >= 2) {
       MemorySegment ptr = GValueUtil.extractPointer(GValueUtil.getAt(params, 1));
@@ -456,8 +447,14 @@ public class Closure {
       // Connect the closure to the signal (equivalent to Go's g_signal_connect_closure_by_id)
       long handlerId = GSignalUtil.connectClosureById(object, signalId, gClosure, true);
 
+      if (handlerId <= 0) {
+        CLOSURE_PTR_TO_ID.remove(gClosure.address());
+        return 0;
+      }
+
       // Now store the complete ClosureData with handler ID and GClosure pointer
       ACTIVE_CLOSURES.put(closureId, new ClosureData(callback, signalName, gClosure, handlerId));
+      HANDLER_ID_TO_CLOSURE_ID.put(handlerId, closureId);
 
       log.debug(
           "Connected signal '{}' with handler ID {}, closure ID {}",
@@ -465,26 +462,39 @@ public class Closure {
           handlerId,
           closureId);
       return handlerId;
-    } catch (Exception e) {
-      log.error("Failed to connect signal '{}': {}", signalName, e.getMessage(), e);
+    } catch (Throwable e) {
+      log.debug("Failed to connect signal '{}': {}", signalName, e.getMessage(), e);
       throw new FridaException("Failed to connect script message signal", e);
     }
   }
 
   /**
-   * Disconnect a closure by closure ID. This removes the closure from tracking maps but does not
-   * disconnect the signal handler (as GLib handles that when the object is destroyed).
+   * Disconnect a closure by signal handler ID.
    *
-   * @param closureId The closure ID to disconnect
+   * <p>The caller is responsible for disconnecting the native signal handler first.
+   *
+   * @param handlerId The signal handler ID to disconnect
    */
-  public static void disconnectClosure(long closureId) {
+  public static void disconnectClosure(long handlerId) {
+    Long closureId = HANDLER_ID_TO_CLOSURE_ID.remove(handlerId);
+    if (closureId == null && ACTIVE_CLOSURES.containsKey(handlerId)) {
+      // Backward-compatibility fallback for direct closure-id calls from tests.
+      closureId = handlerId;
+    }
+    if (closureId == null) {
+      return;
+    }
+
     ClosureData removed = ACTIVE_CLOSURES.remove(closureId);
     if (removed != null) {
+      if (removed.handlerId > 0) {
+        HANDLER_ID_TO_CLOSURE_ID.remove(removed.handlerId);
+      }
       // Remove the GClosure pointer mapping
       if (removed.gClosurePtr != null) {
         CLOSURE_PTR_TO_ID.remove(removed.gClosurePtr.address());
       }
-      log.debug("Disconnected closure {} for signal '{}'", closureId, removed.signalName);
+      log.debug("Disconnected handler {} for signal '{}'", handlerId, removed.signalName);
     }
   }
 
@@ -501,7 +511,10 @@ public class Closure {
 
     Long closureId = CLOSURE_PTR_TO_ID.remove(gClosurePtr.address());
     if (closureId != null) {
-      ACTIVE_CLOSURES.remove(closureId);
+      ClosureData removed = ACTIVE_CLOSURES.remove(closureId);
+      if (removed != null && removed.handlerId > 0) {
+        HANDLER_ID_TO_CLOSURE_ID.remove(removed.handlerId);
+      }
       log.debug("Cleaned up closure ID {} for GClosure pointer", closureId);
     }
   }
@@ -513,5 +526,22 @@ public class Closure {
    */
   public static java.util.Set<Long> getActiveClosureIds() {
     return new java.util.HashSet<>(ACTIVE_CLOSURES.keySet());
+  }
+
+  private static void reportMarshalError(String signalName, Throwable error) {
+    log.debug("Marshal failed for signal '{}': {}", signalName, error.getMessage(), error);
+
+    SignalCallbacks.ErrorHandler handler = errorHandler;
+    if (handler != null) {
+      try {
+        handler.onCallbackError(signalName, error);
+      } catch (Throwable handlerError) {
+        log.warn(
+            "Error handler threw exception for signal '{}': {}",
+            signalName,
+            handlerError.getMessage(),
+            handlerError);
+      }
+    }
   }
 }

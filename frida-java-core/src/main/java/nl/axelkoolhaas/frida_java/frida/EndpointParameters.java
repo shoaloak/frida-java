@@ -34,6 +34,7 @@ public final class EndpointParameters {
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_AUTH_SERVICE;
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_GET_ASSET_ROOT;
   private static final MethodHandle FRIDA_ENDPOINT_PARAMETERS_SET_ASSET_ROOT;
+  private static final MethodHandle FRIDA_STATIC_AUTHENTICATION_SERVICE_NEW;
   private static final MethodHandle G_TLS_CERTIFICATE_NEW_FROM_FILE;
   private static final MethodHandle G_FILE_NEW_FOR_PATH;
   private static final MethodHandle G_FILE_GET_PATH;
@@ -79,6 +80,10 @@ public final class EndpointParameters {
         FridaLibraryLoader.findFunction(
             "frida_endpoint_parameters_set_asset_root",
             FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+    FRIDA_STATIC_AUTHENTICATION_SERVICE_NEW =
+        FridaLibraryLoader.findFunction(
+            "frida_static_authentication_service_new",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     G_TLS_CERTIFICATE_NEW_FROM_FILE =
         FridaLibraryLoader.findFunction(
             "g_tls_certificate_new_from_file",
@@ -286,12 +291,26 @@ public final class EndpointParameters {
 
   private MemorySegment createAuthenticationServiceIfNeeded(
       final String token, final Function<String, String> authCallback, final Arena arena) {
-    // TODO: Implement authentication service support when needed
-    // For now, we don't support authentication services as they require
-    // complex GObject subclassing and callback marshalling
-    if (token != null || authCallback != null) {
-      log.debug("Authentication service requested but not yet implemented");
+    if (token != null && !token.isEmpty()) {
+      try {
+        final MemorySegment tokenPtr = arena.allocateFrom(token);
+        final MemorySegment authServicePtr =
+            (MemorySegment) FRIDA_STATIC_AUTHENTICATION_SERVICE_NEW.invokeExact(tokenPtr);
+        return FridaNativeUtils.requireValidPointer(
+            authServicePtr, "Static authentication service pointer");
+      } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+        throw e;
+      } catch (Throwable t) {
+        throw new FridaException("Failed to create static authentication service", t);
+      }
     }
+
+    if (authCallback != null) {
+      throw new FridaException(
+          "Authentication callback services are not supported by this Java binding yet. "
+              + "Use token-based authentication for now.");
+    }
+
     return MemorySegment.NULL;
   }
 

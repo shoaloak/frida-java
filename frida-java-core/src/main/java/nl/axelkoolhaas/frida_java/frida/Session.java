@@ -127,7 +127,6 @@ public class Session implements AutoCloseable {
                 ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS,
-                ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS));
     FRIDA_SESSION_JOIN_PORTAL_SYNC =
         FridaLibraryLoader.findFunction(
@@ -265,20 +264,32 @@ public class Session implements AutoCloseable {
    * @return Script object
    */
   public Script createScript(String script) {
+    return createScript(script, null);
+  }
+
+  /**
+   * Create a script in this session.
+   *
+   * @param script JavaScript source code
+   * @param options Script options, or null for defaults
+   * @return Script object
+   */
+  public Script createScript(String script, ScriptOptions options) {
     log.debug("Creating script ({} bytes)", script.length());
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment scriptPtr = arena.allocateFrom(script);
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
 
       // Error handling
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       log.trace("Native call: frida_session_create_script_sync()");
-      // Create script (session, script, options=NULL, cancellable=NULL, error)
+      // Create script (session, script, options, cancellable=NULL, error)
       MemorySegment scriptObjPtr =
           (MemorySegment)
-              FRIDA_SESSION_CREATE_SCRIPT_SYNC.invokeExact(
-                  sessionPtr, scriptPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+              FRIDA_SESSION_CREATE_SCRIPT_SYNC.invoke(
+                  sessionPtr, scriptPtr, optionsPtr, MemorySegment.NULL, errorPtr);
 
       // Check for errors
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
@@ -295,26 +306,36 @@ public class Session implements AutoCloseable {
   }
 
   /**
-   * Compile a script to bytecode Note: ScriptOptions parameter support will be added in a future
-   * update
-   *
    * @param source JavaScript or TypeScript source code
    * @return Compiled bytecode as byte array
    * @throws FridaException if compilation fails
    */
   public byte[] compileScript(String source) {
+    return compileScript(source, null);
+  }
+
+  /**
+   * Compile a script to bytecode.
+   *
+   * @param source JavaScript or TypeScript source code
+   * @param options Script options, or null for defaults
+   * @return Compiled bytecode as byte array
+   * @throws FridaException if compilation fails
+   */
+  public byte[] compileScript(String source, ScriptOptions options) {
     log.debug("Compiling script ({} bytes)", source.length());
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment sourcePtr = arena.allocateFrom(source);
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       log.trace("Native call: frida_session_compile_script_sync()");
-      // Compile script (session, source, options=NULL, cancellable=NULL, error)
+      // Compile script (session, source, options, cancellable=NULL, error)
       MemorySegment gBytesPtr =
           (MemorySegment)
-              FRIDA_SESSION_COMPILE_SCRIPT_SYNC.invokeExact(
-                  sessionPtr, sourcePtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+              FRIDA_SESSION_COMPILE_SCRIPT_SYNC.invoke(
+                  sessionPtr, sourcePtr, optionsPtr, MemorySegment.NULL, errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "compile script");
@@ -331,32 +352,36 @@ public class Session implements AutoCloseable {
   }
 
   /**
-   * Create a snapshot from a script Note: SnapshotOptions parameter support will be added in a
-   * future update
-   *
    * @param embedScript Script to embed in the snapshot
    * @return Snapshot data as byte array
    * @throws FridaException if snapshot creation fails
    */
   public byte[] snapshotScript(String embedScript) {
+    return snapshotScript(embedScript, null);
+  }
+
+  /**
+   * Create a snapshot from a script.
+   *
+   * @param embedScript Script to embed in the snapshot
+   * @param options Snapshot options, or null for defaults
+   * @return Snapshot data as byte array
+   * @throws FridaException if snapshot creation fails
+   */
+  public byte[] snapshotScript(String embedScript, SnapshotOptions options) {
     log.debug("Creating snapshot from script ({} bytes)", embedScript.length());
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment embedScriptPtr = arena.allocateFrom(embedScript);
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       log.trace("Native call: frida_session_snapshot_script_sync()");
-      // Snapshot script (session, embedScript, warmupScript=NULL, options=NULL, cancellable=NULL,
-      // error)
+      // Snapshot script (session, embedScript, options, cancellable=NULL, error)
       MemorySegment gBytesPtr =
           (MemorySegment)
-              FRIDA_SESSION_SNAPSHOT_SCRIPT_SYNC.invokeExact(
-                  sessionPtr,
-                  embedScriptPtr,
-                  MemorySegment.NULL,
-                  MemorySegment.NULL,
-                  MemorySegment.NULL,
-                  errorPtr);
+              FRIDA_SESSION_SNAPSHOT_SCRIPT_SYNC.invoke(
+                  sessionPtr, embedScriptPtr, optionsPtr, MemorySegment.NULL, errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "snapshot script");
@@ -373,26 +398,36 @@ public class Session implements AutoCloseable {
   }
 
   /**
-   * Create a script from compiled bytecode Note: ScriptOptions parameter support will be added in a
-   * future update
-   *
    * @param bytes Compiled script bytecode
    * @return Script object
    * @throws FridaException if script creation fails
    */
   public Script createScriptFromBytes(byte[] bytes) {
+    return createScriptFromBytes(bytes, null);
+  }
+
+  /**
+   * Create a script from compiled bytecode.
+   *
+   * @param bytes Compiled script bytecode
+   * @param options Script options, or null for defaults
+   * @return Script object
+   * @throws FridaException if script creation fails
+   */
+  public Script createScriptFromBytes(byte[] bytes, ScriptOptions options) {
     log.debug("Creating script from bytes ({} bytes)", bytes.length);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment gBytesData = GBytesUtil.fromByteArray(bytes, arena);
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       log.trace("Native call: frida_session_create_script_from_bytes_sync()");
-      // Create script from bytes (session, bytes, options=NULL, cancellable=NULL, error)
+      // Create script from bytes (session, bytes, options, cancellable=NULL, error)
       MemorySegment scriptObjPtr =
           (MemorySegment)
-              FRIDA_SESSION_CREATE_SCRIPT_FROM_BYTES_SYNC.invokeExact(
-                  sessionPtr, gBytesData, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+              FRIDA_SESSION_CREATE_SCRIPT_FROM_BYTES_SYNC.invoke(
+                  sessionPtr, gBytesData, optionsPtr, MemorySegment.NULL, errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "create script from bytes");
@@ -408,29 +443,33 @@ public class Session implements AutoCloseable {
   }
 
   /**
-   * Setup a peer connection for the session Note: PeerOptions parameter support will be added in a
-   * future update Note: This is an advanced feature for peer-to-peer Frida connections
-   *
    * @param stun STUN server address (e.g., "stun:stun.l.google.com:19302")
    * @throws FridaException if setup fails
    */
   public void setupPeerConnection(String stun) {
-    log.debug("Setting up peer connection with STUN server: {}", stun);
+    try (PeerOptions options = new PeerOptions()) {
+      options.setStunServer(stun);
+      setupPeerConnection(options);
+    }
+  }
+
+  /**
+   * Setup a peer connection for the session.
+   *
+   * @param options Peer options
+   * @throws FridaException if setup fails
+   */
+  public void setupPeerConnection(PeerOptions options) {
+    log.debug("Setting up peer connection");
     try (Arena arena = Arena.ofConfined()) {
-      MemorySegment stunPtr = arena.allocateFrom(stun);
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       log.trace("Native call: frida_session_setup_peer_connection_sync()");
-      // Setup peer connection (session, stun_server, relays=NULL, options=NULL, cancellable=NULL,
-      // error)
-      FRIDA_SESSION_SETUP_PEER_CONNECTION_SYNC.invokeExact(
-          sessionPtr,
-          stunPtr,
-          MemorySegment.NULL,
-          MemorySegment.NULL,
-          MemorySegment.NULL,
-          errorPtr);
+      // Setup peer connection (session, options, cancellable=NULL, error)
+      FRIDA_SESSION_SETUP_PEER_CONNECTION_SYNC.invoke(
+          sessionPtr, optionsPtr, MemorySegment.NULL, errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "setup peer connection");
@@ -447,27 +486,36 @@ public class Session implements AutoCloseable {
   /**
    * Join a portal for collaborative debugging
    *
-   * <p>Note: PortalOptions parameter support will be added in a future update
-   *
-   * <p>Note: This is an advanced feature for portal-based collaboration
-   *
    * @param address Portal address
    * @return PortalMembership object representing the active membership
    * @throws FridaException if joining portal fails
    */
   public PortalMembership joinPortal(String address) {
+    return joinPortal(address, null);
+  }
+
+  /**
+   * Join a portal for collaborative debugging.
+   *
+   * @param address Portal address
+   * @param options Portal options, or null for defaults
+   * @return PortalMembership object representing the active membership
+   * @throws FridaException if joining portal fails
+   */
+  public PortalMembership joinPortal(String address, PortalOptions options) {
     log.debug("Joining portal at address: {}", address);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment addressPtr = arena.allocateFrom(address);
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
       log.trace("Native call: frida_session_join_portal_sync()");
-      // Join portal (session, address, options=NULL, cancellable=NULL, error)
+      // Join portal (session, address, options, cancellable=NULL, error)
       MemorySegment membershipPtr =
           (MemorySegment)
-              FRIDA_SESSION_JOIN_PORTAL_SYNC.invokeExact(
-                  sessionPtr, addressPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+              FRIDA_SESSION_JOIN_PORTAL_SYNC.invoke(
+                  sessionPtr, addressPtr, optionsPtr, MemorySegment.NULL, errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "join portal");

@@ -45,23 +45,7 @@ import nl.axelkoolhaas.frida_java.util.GBytesUtil;
 import nl.axelkoolhaas.frida_java.util.GErrorUtils;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
-/**
- * Represents a device that Frida connects to
- *
- * <p><b>Note:</b> Some recently added methods have limited test coverage:
- *
- * <ul>
- *   <li>{@link #input(int, byte[])} - Input to spawned process
- *   <li>{@link #injectLibraryFile(int, String, String, String)} - Library file injection
- *   <li>{@link #injectLibraryBlob(int, byte[], String, String)} - Library blob injection
- *   <li>{@link #openChannel(String)} - I/O channel operations
- *   <li>{@link #openService(String)} - Service connection operations
- * </ul>
- *
- * These methods have basic tests verifying API availability, but comprehensive integration tests
- * (especially for Windows platform) are pending. The implementations follow the Frida C API
- * specifications and should work correctly, but edge cases may not be fully validated.
- */
+/** Represents a device that Frida connects to. */
 public class Device implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Device.class);
   private final MemorySegment devicePtr;
@@ -1633,7 +1617,6 @@ public class Device implements AutoCloseable {
       throw new IllegalArgumentException("Callback cannot be null");
     }
 
-    // TODO: do we need this check?
     // Validate callback type against the SignalCallbacks contract
     switch (signal) {
       case OUTPUT -> {

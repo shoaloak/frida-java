@@ -36,7 +36,6 @@ public class Frida {
   private static final Logger log = LoggerFactory.getLogger(Frida.class);
   private static final MethodHandle FRIDA_VERSION_STRING;
   private static final MethodHandle FRIDA_INIT;
-  private static final MethodHandle FRIDA_DEINIT; // Not used
 
   // Atomic state management to prevent init/deinit race conditions
   private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
@@ -47,7 +46,6 @@ public class Frida {
         FridaLibraryLoader.findFunction(
             "frida_version_string", FunctionDescriptor.of(ValueLayout.ADDRESS));
     FRIDA_INIT = FridaLibraryLoader.findFunction("frida_init", FunctionDescriptor.ofVoid());
-    FRIDA_DEINIT = FridaLibraryLoader.findFunction("frida_deinit", FunctionDescriptor.ofVoid());
 
     // Initialize Frida immediately when the class is loaded
     ensureInitialized();
@@ -92,7 +90,7 @@ public class Frida {
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {
-      log.error("Failed to get Frida version: {}", e.getMessage(), e);
+      log.debug("Failed to get Frida version: {}", e.getMessage(), e);
       throw new FridaException("Failed to get Frida version", e);
     }
   }

@@ -247,17 +247,29 @@ public class DeviceManager implements AutoCloseable {
    * @throws FridaException if adding the remote device fails
    */
   public Device addRemoteDevice(String address) {
+    return addRemoteDevice(address, null);
+  }
+
+  /**
+   * Add a remote device at the specified address with options.
+   *
+   * @param address Address of the remote device (e.g., "192.168.1.100:27042")
+   * @param options Remote device options, or null for defaults
+   * @return Device object representing the remote device
+   * @throws FridaException if adding the remote device fails
+   */
+  public Device addRemoteDevice(String address, RemoteDeviceOptions options) {
     log.debug("Adding remote device at address: {}", address);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment addressPtr = arena.allocateFrom(address);
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
-      // Call with NULL options for now (TODO: implement RemoteDeviceOptions)
+      MemorySegment optionsPtr = options != null ? options.getPointer() : MemorySegment.NULL;
       MemorySegment devicePtr =
           (MemorySegment)
               FRIDA_DEVICE_MANAGER_ADD_REMOTE_DEVICE_SYNC.invoke(
-                  managerPtr, addressPtr, MemorySegment.NULL, MemorySegment.NULL, errorPtr);
+                  managerPtr, addressPtr, optionsPtr, MemorySegment.NULL, errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "add remote device");

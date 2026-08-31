@@ -35,6 +35,7 @@ public class FridaNativeUtils {
 
   private static final MethodHandle FRIDA_UNREF;
   private static final MethodHandle G_OBJECT_REF;
+  private static final MethodHandle G_FREE;
 
   static {
     FRIDA_UNREF =
@@ -43,6 +44,8 @@ public class FridaNativeUtils {
     G_OBJECT_REF =
         FridaLibraryLoader.findFunction(
             "g_object_ref", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+    G_FREE =
+        FridaLibraryLoader.findFunction("g_free", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
   }
 
   /**
@@ -139,7 +142,13 @@ public class FridaNativeUtils {
    */
   public static String memorySegmentToStringAndFree(MemorySegment segment) {
     String result = memorySegmentToString(segment);
-    fridaUnref(segment);
+    try {
+      G_FREE.invoke(segment);
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new FridaException("Failed to free native string", e);
+    }
     return result;
   }
 

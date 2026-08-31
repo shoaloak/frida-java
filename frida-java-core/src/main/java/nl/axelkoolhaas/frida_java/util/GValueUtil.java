@@ -60,7 +60,7 @@ public class GValueUtil {
   private static final MethodHandle G_VALUE_GET_POINTER;
   private static final MethodHandle G_VALUE_GET_VARIANT;
   private static final MethodHandle G_VARIANT_PRINT;
-  private static final MethodHandle G_FREE; // needed?
+  private static final MethodHandle G_FREE;
 
   static {
     G_VALUE_GET_STRING =
@@ -141,7 +141,6 @@ public class GValueUtil {
       GType gtype = getType(gvalue);
 
       return switch (gtype) {
-        // TODO properly name methods...
         case GType.STRING -> extractStringTyped(gvalue);
         case GType.INT -> extractIntTyped(gvalue);
         case GType.UINT -> extractUintTyped(gvalue);
@@ -150,14 +149,17 @@ public class GValueUtil {
         case GType.BOOLEAN -> extractBoolean(gvalue);
         case GType.POINTER -> extractPointer(gvalue);
         case GType.VARIANT -> extractVariant(gvalue);
-        default -> {
-          log.debug("Unknown GValue type: {} (0x{})", gtype, Long.toHexString(gtype.getValue()));
-          yield null;
-        }
+        default ->
+            throw new FridaException(
+                "Unsupported GValue type: "
+                    + gtype
+                    + " (0x"
+                    + Long.toHexString(gtype.getValue())
+                    + ")");
       };
     } catch (Throwable e) {
       log.debug("Failed to convert GValue to Java object", e);
-      return null;
+      throw new FridaException("Failed to convert GValue to Java object", e);
     }
   }
 
@@ -190,7 +192,7 @@ public class GValueUtil {
     try {
       return (MemorySegment) G_VALUE_GET_POINTER.invoke(gvalue);
     } catch (Throwable t) {
-      return MemorySegment.NULL;
+      throw new FridaException("Failed to extract pointer from GValue", t);
     }
   }
 
@@ -203,12 +205,10 @@ public class GValueUtil {
       MemorySegment strPtr = (MemorySegment) G_VARIANT_PRINT.invoke(variantPtr, false);
       String result = FridaNativeUtils.memorySegmentToString(strPtr);
       G_FREE.invoke(strPtr); // Free the string returned by g_variant_print
-      // TODO: is a Variant always JSON? would it be smart to cast it to a jackson type and return
-      // that?
       return result;
     } catch (Throwable t) {
       log.debug("Failed to extract GVariant from GValue", t);
-      return null;
+      throw new FridaException("Failed to extract GVariant from GValue", t);
     }
   }
 
@@ -286,8 +286,7 @@ public class GValueUtil {
       }
       return GBytesUtil.toByteArray(gBytesPtr);
     } catch (Throwable e) {
-      log.trace("Failed to extract bytes from GValue: {}", e.getMessage());
-      return new byte[0];
+      throw new FridaException("Failed to extract bytes from GValue", e);
     }
   }
 }
