@@ -134,9 +134,13 @@ public class DeviceManager implements AutoCloseable {
         return new ArrayList<>();
       }
 
-      List<Device> devices = extractDevicesFromList(deviceList);
-      log.debug("Found {} device(s)", devices.size());
-      return devices;
+      try {
+        List<Device> devices = extractDevicesFromList(deviceList);
+        log.debug("Found {} device(s)", devices.size());
+        return devices;
+      } finally {
+        FridaNativeUtils.fridaUnref(deviceList);
+      }
     } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
       throw e;
     } catch (Throwable e) {
@@ -354,6 +358,8 @@ public class DeviceManager implements AutoCloseable {
     for (int i = 0; i < deviceCount; i++) {
       MemorySegment devicePtr = (MemorySegment) FRIDA_DEVICE_LIST_GET.invoke(deviceList, i);
       if (!devicePtr.equals(MemorySegment.NULL)) {
+        // Keep each device alive after releasing the list.
+        FridaNativeUtils.fridaRef(devicePtr);
         devices.add(new Device(devicePtr));
       }
     }
