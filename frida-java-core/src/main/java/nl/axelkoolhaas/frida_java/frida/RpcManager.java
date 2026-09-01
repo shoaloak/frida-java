@@ -85,8 +85,11 @@ public class RpcManager {
       JsonNode root = OBJECT_MAPPER.readTree(message);
       JsonNode rpcNode = extractRpcPayload(root);
 
-      if (rpcNode != null && rpcNode.size() >= 4 && "frida:rpc".equals(rpcNode.get(0).asText())) {
-        String rpcId = rpcNode.get(1).asText(null);
+      if (rpcNode != null
+          && rpcNode.size() >= 4
+          && "frida:rpc".equals(rpcNode.get(0).stringValue())) {
+        final JsonNode rpcIdNode = rpcNode.get(1);
+        final String rpcId = rpcIdNode == null ? null : rpcIdNode.stringValue();
         if (rpcId == null || rpcId.isBlank()) {
           return null;
         }
@@ -166,7 +169,7 @@ public class RpcManager {
     } else if (node.isDouble()) {
       return node.asDouble();
     } else if (node.isString()) {
-      return node.asString();
+      return node.stringValue();
     } else if (node.isArray()) {
       List<Object> list = new ArrayList<>();
       for (JsonNode element : node) {
@@ -175,8 +178,8 @@ public class RpcManager {
       return list;
     } else if (node.isObject()) {
       Map<String, Object> map = new HashMap<>();
-      for (String fieldName : node.propertyNames()) {
-        map.put(fieldName, parseJsonValue(node.get(fieldName)));
+      for (Map.Entry<String, JsonNode> field : node.properties()) {
+        map.put(field.getKey(), parseJsonValue(field.getValue()));
       }
       return map;
     }
