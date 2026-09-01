@@ -21,6 +21,8 @@
 
 # Set error action preference to stop on errors
 $ErrorActionPreference = "Stop"
+# Disable progress rendering to speed up Invoke-WebRequest in CI.
+$ProgressPreference = "SilentlyContinue"
 
 # Constants
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
