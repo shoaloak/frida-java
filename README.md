@@ -37,19 +37,26 @@ This project is organized as a multi-module Maven project:
 
 ### Frida Devkit
 
-The native Frida libraries must be placed in the `frida-java-core/native/` directory before building. You have two options:
+You can either download prebuilt native libraries from this project's
+[GitHub Actions](https://github.com/shoaloak/frida-java/actions), or build them locally with scripts:
 
-**Option 1: Download from frida-java GitHub Actions (Recommended)**
-* Go to this project's [GitHub Actions](https://github.com/shoaloak/frida-java/actions)
-* Download the pre-built artifacts for your platform
-* Extract the native libraries to `frida-java-core/native/`
+* Linux: `frida-java-core/scripts/build-frida-linux.sh`
+* macOS: `frida-java-core/scripts/build-frida-macos.sh`
+* Windows: `frida-java-core/scripts/build-frida-windows.ps1`
 
-**Option 2: Build Yourself**
-* Run the appropriate build script for your platform:
-  * Linux: `frida-java-core/scripts/build-frida-linux.sh`
-  * macOS: `frida-java-core/scripts/build-frida-macos.sh`
-  * Windows: `frida-java-core/scripts/build-frida-windows.ps1`
-* The script will automatically download the Frida devkit and build the native library
+When built locally, scripts download the Frida devkit and output native libraries to
+`frida-java-core/frida-devkit/`.
+
+Before running Maven, place the built libraries in `frida-java-core/native/`.
+For a full build, this directory must contain:
+
+* `libfrida-core.dylib`
+* `libfrida-core-arm64.so`
+* `libfrida-core-x86_64.so`
+* `libfrida-core-arm64.dll`
+* `libfrida-core-x86_64.dll`
+
+If you build only for one platform, you can put the specific platform binaries in `frida-java-core/native/`.
 
 ## Build
 
@@ -87,7 +94,7 @@ you need to enable native access when running your application:
 java --enable-native-access=ALL-UNNAMED -cp your-app.jar:frida-java-2.0.jar YourMainClass
 
 # Or set JVM arguments in your IDE/build tool
--Denable-native-access=ALL-UNNAMED
+--enable-native-access=ALL-UNNAMED
 ```
 
 ### Maven Configuration
@@ -149,7 +156,7 @@ KISS approach during active development.
 
 Instruction for both developers and LLMs are present at `.github/copilot-instructions.md`.
 To enable SLF4J logging, see `org.slf4j.simpleLogger.defaultLogLevel` inside the `pom.xml` of
-the `frida-java-core` module.
+the `frida-java-core` module. Surefire test reports are generated in `frida-java-core/target/surefire-reports/`.
 
 
 Development tracking lives in issues and pull requests.
