@@ -3,8 +3,10 @@ name: Build Frida
 on:
   push:
     branches:
-      - chore/expand
+      - develop
   pull_request:
+    branches:
+      - main
 
 jobs:
   build-frida-linux-arm64:
