@@ -26,7 +26,7 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>3.0.4</version>
+            <version>3.2.2</version>
             <scope>compile</scope>
         </dependency>
         <!-- SLF4J API for optional logging (no backend required) -->
