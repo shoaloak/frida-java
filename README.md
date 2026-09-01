@@ -137,6 +137,14 @@ java -jar target/frida-java-example-jar-with-dependencies.jar
 
 See the [examples README](frida-java-examples/README.md) for more details.
 
+### Portal authentication scope
+
+For v2, `EndpointParameters` supports **token-based authentication only**.
+
+Callback-based authentication is intentionally not implemented. This keeps the binding Java-first
+and avoids introducing extra native bridge code for GObject interface implementation, following a
+KISS approach during active development.
+
 ## Development
 
 Instruction for both developers and LLMs are present at `.github/copilot-instructions.md`.
@@ -144,4 +152,4 @@ To enable SLF4J logging, see `org.slf4j.simpleLogger.defaultLogLevel` inside the
 the `frida-java-core` module.
 
 
-
+Development tracking lives in issues and pull requests.

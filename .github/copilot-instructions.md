@@ -3,6 +3,10 @@
 These instructions guide Copilot to generate stable, Java idiomatic, production quality Frida bindings using the Foreign Function and Memory API (FFM).  
 The public API must feel like a native Java SDK, not a thin FFI wrapper.
 
+As of the signal/closure work, these bindings **do** bind GObject signals and closures. Anything touching threading, signals, closures, or native object lifetime must follow the "Architecture" section below, which is the most load-bearing part of this file and the main defence against JVM crashes.
+
+Written content (comments, docs, commit messages) uses British English spelling and no em dashes.
+
 ---
 
 ## Project Intent
@@ -15,6 +19,69 @@ The library must:
 - Remain ergonomic, predictable, and forward compatible
 
 Public APIs must not leak implementation details.
+
+---
+
+## Architecture: Threading Model, Signals & Native Object Lifetime
+
+This section supersedes any earlier guidance that said to avoid binding GObject signals. Getting these rules wrong is the primary cause of JVM crashes (SIGSEGV from use-after-free, refcount underflow, or exceptions crossing the native boundary).
+
+### Frida owns the main loop. We do not.
+
+- frida-core runs its **own** dedicated worker thread with its **own** private `GMainContext`, started by `frida_init()`. frida-core pumps that context itself.
+- Therefore the bindings **must not** run a host GLib main loop. Do not call `g_main_loop_new` / `g_main_loop_run` to "pump signals". The canonical bindings (frida-python, frida-go) run no loop of their own.
+- `internal/FridaEventLoop` is obsolete and should be removed or reduced to a no-op. Reasons:
+  - `g_main_loop_new(NULL, ...)` binds the **global-default** `GMainContext`, not the private context Frida dispatches signals on, so it does not pump Frida signals at all.
+  - It only adds a second thread that touches GLib state, which is a hazard, not a help.
+- Do **not** schedule work with `g_idle_add` on the global-default context (the old `executeBlocking` pattern): that runs on the wrong thread relative to frida-core. If you genuinely need to run code on frida-core's context, obtain it via `frida_get_main_context()` and use `g_main_context_invoke`. In almost all cases you do not need this.
+
+### Make Frida calls through the `*_sync` variants
+
+- Call the `*_sync` functions (`frida_device_attach_sync`, `frida_script_load_sync`, ...). They internally marshal the operation onto frida-core's context and block the calling thread until completion. This is the correct, thread-safe call pattern and needs no host loop or bespoke scheduler.
+- Do not build a custom blocking scheduler around `g_idle_add`.
+
+### Signal callbacks and the native to Java upcall boundary
+
+- Use one shared `GClosure` marshal upcall stub, bound to `Arena.global()` so it lives for the JVM lifetime. Never back the stub with a confined or auto arena: native code calling a freed stub crashes the VM.
+- Connect with `g_signal_connect_closure_by_id` using a single shared marshal stub, rather than per-signal C callbacks.
+- Signal callbacks arrive on **frida-core's worker thread**. The FFM runtime auto-attaches that native thread to the JVM for the upcall. Never assume a callback runs on an application-managed thread.
+- The marshal method is a native to Java boundary. Catch `Throwable`, not just `Exception`, and never let anything propagate out of the upcall into C. An exception crossing the upcall boundary crashes the JVM. Route failures to the registered error handler instead.
+- Keep marshal work short and non-blocking. Do **not** call blocking `*_sync` Frida APIs from inside a signal callback: you are already on frida-core's context thread, and a sync call that waits on that same context will deadlock. Hand off to a `java.util.concurrent` executor if heavier work or re-entrant Frida calls are needed.
+- Signals can add trailing parameters across minor versions, so marshal handlers should treat the parameter count as `>=` the expected minimum rather than an exact match.
+
+### Native object lifetime: borrowed vs owned
+
+Every Frida/GObject pointer arrives in one of two ownership modes. Deciding this per pointer is mandatory; ambiguity here is what crashes the VM.
+
+- **Owned**: returned by `*_sync` constructors and getters that transfer a reference to the caller (for example, the session returned by `frida_device_attach_sync` carries a +1 reference that is ours). The wrapper owns it and must release it exactly once via `frida_unref` / `g_object_unref` in `close()` / cleanup.
+- **Borrowed**: passed as signal/marshal parameters (for example the `Crash` in `detached`, the `Device` in `added`/`removed`, the `Child` in `child-added`, the `CompilerOptions` in `output`). These are owned by the emitter and valid **only** for the duration of the callback.
+
+Rules:
+- If a wrapper built from a borrowed pointer must outlive the callback, take a reference first (`g_object_ref`) and mark the wrapper as owned so it participates in normal cleanup.
+- If it does not outlive the callback, do not ref and do not unref, and do not retain the raw pointer past the callback. Treat it as a non-owning view.
+- `close()` / cleanup must unref only when the wrapper is owned. Never unref a borrowed object. Never unref twice.
+- Resolve every `// TODO: should we increase the ref count` in the marshaller by deciding owned vs borrowed per the above. For any object that escapes the callback into user code, ref it.
+- Make ownership explicit in wrapper constructors (for example an `owned` flag), rather than leaving it implicit.
+
+### Reference bindings
+
+Mirror the official bindings for anything involving init, threading, signals, or closures. When in doubt, match what they do:
+- frida-python, `frida/_frida/extension.c`: `frida_init` once at module load; `PyGObjectSignalClosure_marshal` acquires the runtime lock (`PyGILState_Ensure`) because callbacks arrive on a foreign thread; blocking calls are wrapped in `Py_BEGIN_ALLOW_THREADS`; no host main loop.
+- frida-go, `frida/closure.go` and `frida/frida.go`: GClosure plus `g_signal_connect_closure_by_id`; no host main loop.
+
+---
+
+## GLib Interop
+
+Convert the GLib data structures that Frida's C API returns into Java types:
+- `GHashTable*` -> `Map<String, Object>` (system parameters, etc.)
+- `GBytes*` -> `byte[]` (binary data)
+- `GVariant*` -> Java objects (structured data)
+- `GError*` -> domain exceptions
+
+GObject signals and closures are now part of the binding surface (see the Architecture section). This replaces the earlier "do not bind signals" guidance. Prefer converting GLib data structures at the boundary and returning plain Java types from public APIs; never expose `GHashTable`, `GBytes`, or `GVariant` in public signatures.
+
+Also derive or validate native struct sizes rather than hardcoding them. For example, `SIZEOF_GCLOSURE` must match the target ABI; validate it rather than assuming 32 bytes.
 
 ---
 
@@ -72,6 +139,8 @@ Let propagate:
 - `AssertionError`
 
 These indicate programming mistakes and should not be wrapped.
+
+Note the one exception to "let propagate": inside the GClosure marshal upcall, nothing may cross back into native code. There, catch `Throwable` and divert to the error handler (see the Architecture section).
 
 ---
 
@@ -202,40 +271,6 @@ This keeps the primary API clean.
 
 ---
 
-## Strategic GLib Usage
-
-### Core Principle
-
-Avoid GLib complexity while handling unavoidable GLib data structures that Frida returns.
-
-**Handle GLib data structures that Frida API returns:**
-- `GHashTable*` → `Map<String, Object>` (system parameters, etc.)
-- `GBytes*` → `byte[]` (binary data)
-- `GVariant*` → Java objects (structured data)
-- `GError*` → domain exceptions
-
-**Do NOT bind GLib's signal/object system:**
-- No `g_signal_connect_data`, `g_signal_lookup`, `G_OBJECT_GET_TYPE`
-- No `g_signal_handler_disconnect`, `G_TYPE_FROM_INSTANCE`
-- No manual GObject introspection or signal management
-
----
-
-### Why This Approach
-
-**GLib data structures are unavoidable** because Frida's C API returns them:
-```c
-// Frida API returns GHashTable - we must convert it
-GHashTable* frida_device_query_system_parameters_sync(...);
-```
-
-**GLib signals are avoidable** and add unnecessary complexity:
-- Go's Frida bindings succeed by avoiding signal complexity
-- Simple function callbacks are more reliable than GObject signals
-- Signal binding increases surface area for native function failures
-
----
-
 ## Optional and Absence Handling
 
 For API methods where absence is a normal, expected outcome (such as looking up a process by PID, device by ID, etc.), prefer returning `Optional<T>` rather than throwing an exception. This allows users to check for presence without handling exceptions for normal control flow.
@@ -292,6 +327,7 @@ APIs must feel idiomatic in Java:
 - Prefer simple, explicit control flow in low-level FFM code
 - Use streams or lambdas only when they clearly improve readability
 - **NO EMOJIS** in code, comments, commit messages, or documentation - use clear, professional text
+- Written content uses British English spelling and no em dashes
 
 ---
 
@@ -305,30 +341,23 @@ APIs must feel idiomatic in Java:
 
 ## Concurrency & Threading
 
-### Thread safety
+See the Architecture section for the authoritative threading model. In summary:
 
-- Public API components should be thread-safe unless documented otherwise
-- Native Frida handles are often not thread-safe
-- Synchronize access to shared native state
-- Prefer `java.util.concurrent` utilities over manual locking
-
----
+- frida-core owns its worker thread and main context. The bindings do not run a host main loop.
+- Public API components should be thread-safe unless documented otherwise.
+- Native Frida handles are often not thread-safe; synchronise access to shared native state.
+- Prefer `java.util.concurrent` utilities over manual locking.
 
 ### Native callback safety
 
-- Never assume native callbacks run on Java-managed threads
-- Avoid blocking Frida callback threads
-- Offload heavy work to dedicated executors
-
----
+- Signal callbacks run on frida-core's worker thread, auto-attached to the JVM. Never assume they run on an application thread.
+- Never block the callback thread, and never call blocking `*_sync` Frida APIs from within a callback (deadlock risk on frida-core's own context).
+- Offload heavy work, or any re-entrant Frida calls, to a dedicated executor.
+- Catch `Throwable` at the upcall boundary so nothing propagates into native code.
 
 ### Asynchronous operations
 
-Use:
-- `CompletableFuture`
-- Callback-based async APIs
-
-Avoid blocking long-running native threads.
+Use `CompletableFuture` or callback-based async APIs at the public layer. Do not block long-running native threads.
 
 ---
 
@@ -349,6 +378,7 @@ Avoid blocking long-running native threads.
 - Unit tests should not require a running Frida instance when possible
 - Integration tests should validate real native interactions
 - Use `assertThrows` to validate exception behavior
+- Add integration coverage for signal lifecycle: connect a handler, emit/trigger it, and confirm no crash across GC and `close()`. Ownership regressions surface here, not in unit tests.
 
 ---
 

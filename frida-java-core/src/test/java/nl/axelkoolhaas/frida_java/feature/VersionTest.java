@@ -19,25 +19,22 @@
 
 package nl.axelkoolhaas.frida_java.feature;
 
-import nl.axelkoolhaas.frida_java.frida.Frida;
-import org.junit.jupiter.api.*;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test class for Frida version-related functionality.
- */
+import org.junit.jupiter.api.*;
+
+import nl.axelkoolhaas.frida_java.frida.Frida;
+
+/** Test class for Frida version-related functionality. */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class VersionTest {
 
-
-    @Test
-    @Order(1)
-    void testGetVersionString() {
-        String version = Frida.getVersion();
-        assertNotNull(version);
-        assertFalse(version.isEmpty());
-        System.out.println("Frida version string: " + version);
-    }
-
+  @Test
+  @Order(1)
+  void testGetVersionString() {
+    String version = Frida.getVersion();
+    assertNotNull(version);
+    assertFalse(version.isEmpty());
+    System.out.println("Frida version string: " + version);
+  }
 }

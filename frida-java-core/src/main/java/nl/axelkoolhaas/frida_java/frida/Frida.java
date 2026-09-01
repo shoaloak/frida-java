@@ -19,103 +19,101 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
-import nl.axelkoolhaas.frida_java.FridaNativeUtils;
-import nl.axelkoolhaas.frida_java.internal.FridaEventLoop;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.lang.foreign.*;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Main Frida class with safe initialization/deinitialization
- */
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
+import nl.axelkoolhaas.frida_java.FridaNativeUtils;
+
+/** Main Frida class with safe initialization/deinitialization */
 public class Frida {
-    private static final Logger log = LoggerFactory.getLogger(Frida.class);
-    private static final MethodHandle FRIDA_VERSION_STRING;
-    private static final MethodHandle FRIDA_INIT;
-    private static final MethodHandle FRIDA_DEINIT; // Not used
+  private static final Logger log = LoggerFactory.getLogger(Frida.class);
+  private static final MethodHandle FRIDA_VERSION_STRING;
+  private static final MethodHandle FRIDA_INIT;
 
-    // Atomic state management to prevent init/deinit race conditions
-    private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
-    private static final Object initLock = new Object();
+  // Atomic state management to prevent init/deinit race conditions
+  private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
+  private static final Object initLock = new Object();
 
-    static {
-        FRIDA_VERSION_STRING = FridaLibraryLoader.findFunction("frida_version_string",
-                FunctionDescriptor.of(ValueLayout.ADDRESS));
-        FRIDA_INIT = FridaLibraryLoader.findFunction("frida_init",
-                FunctionDescriptor.ofVoid());
-        FRIDA_DEINIT = FridaLibraryLoader.findFunction("frida_deinit",
-                FunctionDescriptor.ofVoid());
+  static {
+    FRIDA_VERSION_STRING =
+        FridaLibraryLoader.findFunction(
+            "frida_version_string", FunctionDescriptor.of(ValueLayout.ADDRESS));
+    FRIDA_INIT = FridaLibraryLoader.findFunction("frida_init", FunctionDescriptor.ofVoid());
 
-        // Initialize Frida immediately when the class is loaded
-        ensureInitialized();
-    }
+    // Initialize Frida immediately when the class is loaded
+    ensureInitialized();
+  }
 
-    /**
-     * Ensure Frida is initialized. This method is thread-safe and idempotent.
-     * Called automatically when the class is loaded and by other Frida classes.
-     */
-    static void ensureInitialized() {
+  /**
+   * Ensure Frida is initialized. This method is thread-safe and idempotent. Called automatically
+   * when the class is loaded and by other Frida classes.
+   */
+  static void ensureInitialized() {
+    if (!isInitialized.get()) {
+      synchronized (initLock) {
         if (!isInitialized.get()) {
-            synchronized (initLock) {
-                if (!isInitialized.get()) {
-                    log.debug("Initializing Frida library");
-                    try {
-                        FRIDA_INIT.invoke();
-                        FridaEventLoop.start();
-                        isInitialized.set(true);
-                        log.debug("Frida library initialized successfully");
+          log.debug("Initializing Frida library");
+          try {
+            FRIDA_INIT.invoke();
+            isInitialized.set(true);
+            log.debug("Frida library initialized successfully");
 
-                    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
-                        throw e;
-                    } catch (Throwable e) {
-                        log.error("Failed to initialize Frida: {}", e.getMessage(), e);
-                        throw new FridaException("Failed to initialize Frida", e);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Get the Frida version components.
-     * @return A String representing the Frida version.
-     */
-    public static String getVersion() {
-        try {
-            log.trace("Getting Frida version");
-            MemorySegment versionPtr = (MemorySegment) FRIDA_VERSION_STRING.invoke();
-            String version = FridaNativeUtils.memorySegmentToString(versionPtr);
-            log.debug("Frida version: {}", version);
-            return version;
-        } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+          } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
             throw e;
-        } catch (Throwable e) {
-            log.error("Failed to get Frida version: {}", e.getMessage(), e);
-            throw new FridaException("Failed to get Frida version", e);
+          } catch (Throwable e) {
+            throw new FridaException("Failed to initialize Frida", e);
+          }
         }
+      }
     }
+  }
 
-    /**
-     * Explicitly deinitialize Frida. This is mainly for testing purposes.
-     * This method is thread-safe and idempotent.
-     */
-//    public static void deinit() {
-//        if (isInitialized.compareAndSet(true, false)) {
-//            synchronized (initLock) {
-//                try {
-//                    FRIDA_DEINIT.invoke();
-//                    // Note that frida_deinit calls frida_shutdown internally
-//                    System.err.println("");
-//                } catch (Throwable e) {
-//                    // Reset the flag if deinit failed
-//                    isInitialized.set(true);
-//                    throw new RuntimeException("Failed to deinitialize Frida", e);
-//                }
-//            }
-//        }
-//    }
+  /**
+   * Get the Frida version components.
+   *
+   * @return A String representing the Frida version.
+   */
+  public static String getVersion() {
+    try {
+      log.trace("Getting Frida version");
+      MemorySegment versionPtr = (MemorySegment) FRIDA_VERSION_STRING.invoke();
+      String version = FridaNativeUtils.memorySegmentToString(versionPtr);
+      log.debug("Frida version: {}", version);
+      return version;
+    } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+      throw e;
+    } catch (Throwable e) {
+      log.debug("Failed to get Frida version: {}", e.getMessage(), e);
+      throw new FridaException("Failed to get Frida version", e);
+    }
+  }
+
+  /*
+   * Explicitly deinitialize Frida. This is mainly for testing purposes. This method is thread-safe
+   * and idempotent.
+   */
+  //    public static void deinit() {
+  //        if (isInitialized.compareAndSet(true, false)) {
+  //            synchronized (initLock) {
+  //                try {
+  //                    FRIDA_DEINIT.invoke();
+  //                    // Note that frida_deinit calls frida_shutdown internally
+  //                    System.err.println("");
+  //                } catch (NullPointerException | IllegalArgumentException | AssertionError e) {
+  //                    throw e;
+  //                } catch (Throwable e) {
+  //                    // Reset the flag if deinit failed
+  //                    isInitialized.set(true);
+  //                    throw new RuntimeException("Failed to deinitialize Frida", e);
+  //                }
+  //            }
+  //        }
+  //    }
 }

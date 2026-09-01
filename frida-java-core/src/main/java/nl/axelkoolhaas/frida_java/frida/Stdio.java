@@ -19,29 +19,27 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
-/**
- * Standard input/output options for spawned processes
- */
+/** Standard input/output options for spawned processes */
 public enum Stdio {
-    INHERIT(0),
-    PIPE(1);
+  INHERIT(0),
+  PIPE(1);
 
-    private final int value;
+  private final int value;
 
-    Stdio(int value) {
-        this.value = value;
+  Stdio(int value) {
+    this.value = value;
+  }
+
+  public int getValue() {
+    return value;
+  }
+
+  public static Stdio fromValue(int value) {
+    for (Stdio stdio : values()) {
+      if (stdio.value == value) {
+        return stdio;
+      }
     }
-
-    public int getValue() {
-        return value;
-    }
-
-    public static Stdio fromValue(int value) {
-        for (Stdio stdio : values()) {
-            if (stdio.value == value) {
-                return stdio;
-            }
-        }
-        throw new IllegalArgumentException("Unknown Stdio value: " + value);
-    }
+    throw new IllegalArgumentException("Unknown Stdio value: " + value);
+  }
 }

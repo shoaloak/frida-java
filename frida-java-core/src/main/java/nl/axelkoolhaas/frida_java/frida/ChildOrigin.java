@@ -20,26 +20,26 @@
 package nl.axelkoolhaas.frida_java.frida;
 
 public enum ChildOrigin {
-    FORK(0),
-    EXEC(1),
-    SPAWN(2);
+  FORK(0),
+  EXEC(1),
+  SPAWN(2);
 
-    private final int value;
+  private final int value;
 
-    ChildOrigin(int value) {
-        this.value = value;
+  ChildOrigin(int value) {
+    this.value = value;
+  }
+
+  public int getValue() {
+    return value;
+  }
+
+  public static ChildOrigin fromValue(int value) {
+    for (ChildOrigin origin : values()) {
+      if (origin.value == value) {
+        return origin;
+      }
     }
-
-    public int getValue() {
-        return value;
-    }
-
-    public static ChildOrigin fromValue(int value) {
-        for (ChildOrigin origin : values()) {
-            if (origin.value == value) {
-                return origin;
-            }
-        }
-        throw new IllegalArgumentException("Unknown child origin: " + value);
-    }
+    throw new IllegalArgumentException("Unknown child origin: " + value);
+  }
 }

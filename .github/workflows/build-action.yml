@@ -3,7 +3,7 @@ name: Build Frida
 on:
   push:
     branches:
-      - FFM-API
+      - chore/expand
   pull_request:
 
 jobs:
@@ -13,13 +13,13 @@ jobs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build Linux so
         run: ./frida-java-core/scripts/build-frida-linux.sh
 
       - name: Upload library artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frida-core-linux-arm64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.so
@@ -30,13 +30,13 @@ jobs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build Linux so
         run: ./frida-java-core/scripts/build-frida-linux.sh
 
       - name: Upload library artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frida-core-linux-x64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.so
@@ -47,13 +47,13 @@ jobs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build universal macOS dylib
         run: ./frida-java-core/scripts/build-frida-macos.sh
 
       - name: Upload universal dylib artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frida-core-macos-universal
           path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
@@ -64,14 +64,14 @@ jobs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build windows dll
         shell: powershell
         run: ./frida-java-core/scripts/build-frida-windows.ps1
 
       - name: Upload library artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frida-core-windows-arm64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.dll
@@ -82,14 +82,14 @@ jobs:
       artifact-path: ${{ steps.upload-frida.outputs.artifact-path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build windows dll
         shell: powershell
         run: ./frida-java-core/scripts/build-frida-windows.ps1
 
       - name: Upload library artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frida-core-windows-x64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
@@ -99,40 +99,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'
 
       - name: Download Linux ARM64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frida-core-linux-arm64
           path: ./frida-java-core/native/
 
       - name: Download Linux x64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frida-core-linux-x64
           path: ./frida-java-core/native/
 
       - name: Download macOS artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frida-core-macos-universal
           path: ./frida-java-core/native/
 
       - name: Download Windows ARM64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frida-core-windows-arm64
           path: ./frida-java-core/native/
 
       - name: Download Windows x64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frida-core-windows-x64
           path: ./frida-java-core/native/
@@ -143,8 +143,16 @@ jobs:
       - name: Build bindings with Maven and package JAR
         run: mvn --batch-mode --no-transfer-progress --projects frida-java-core --also-make clean compile package
 
+      - name: Upload Surefire test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-reports
+          path: ./frida-java-core/target/surefire-reports/
+          if-no-files-found: warn
+
       - name: Upload JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frida-java-core
           path: |

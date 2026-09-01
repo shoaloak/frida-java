@@ -19,124 +19,140 @@
 
 package nl.axelkoolhaas.frida_java.feature;
 
-import nl.axelkoolhaas.frida_java.frida.*;
-import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.*;
 
-/**
- * Test class for Frida Application enumeration.
- */
+import nl.axelkoolhaas.frida_java.frida.*;
+
+/** Test class for Frida Application enumeration. */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ApplicationTest {
 
-    @Test
-    @Order(1)
-    void testEnumerateApplications() {
-        try (DeviceManager deviceManager = new DeviceManager()) {
-            try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
-                List<Application> appList = localDevice.enumerateApplications();
-                if (appList == null) {
-                    System.err.println("Failed to enumerate applications");
-                    return;
-                }
-
-                System.out.println("Enumerated " + appList.size() + " applications");
-
-                // Test individual application properties if we have any apps
-                if (!appList.isEmpty()) {
-                    Application firstApp = appList.getFirst();
-                    assertNotNull(firstApp, "Application should not be null");
-                    assertNotNull(firstApp.getIdentifier(), "Application identifier should not be null");
-                    assertNotNull(firstApp.getName(), "Application name should not be null");
-                    System.out.println("First app: " + firstApp.getName() + " (" + firstApp.getIdentifier() + ")");
-                }
-            }
+  @Test
+  @Order(1)
+  void testEnumerateApplications() {
+    try (DeviceManager deviceManager = new DeviceManager()) {
+      try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
+        List<Application> appList = localDevice.enumerateApplications();
+        if (appList == null) {
+          System.err.println("Failed to enumerate applications");
+          return;
         }
-    }
 
-    @Test
-    @Order(2)
-    void testEnumerateApplicationsWithScope() {
-        try (DeviceManager deviceManager = new DeviceManager()) {
-            try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
-                // Test with different scopes
-                List<Application> minimalApps = localDevice.enumerateApplications(null, Scope.MINIMAL);
-                List<Application> fullApps = localDevice.enumerateApplications(null, Scope.FULL);
+        System.out.println("Enumerated " + appList.size() + " applications");
 
-                if (minimalApps != null) {
-                    System.out.println("Minimal scope: " + minimalApps.size() + " applications");
-                }
-
-                if (fullApps != null) {
-                    System.out.println("Full scope: " + fullApps.size() + " applications");
-                }
-            }
+        // Test individual application properties if we have any apps
+        if (!appList.isEmpty()) {
+          Application firstApp = appList.getFirst();
+          assertNotNull(firstApp, "Application should not be null");
+          assertNotNull(firstApp.getIdentifier(), "Application identifier should not be null");
+          assertNotNull(firstApp.getName(), "Application name should not be null");
+          System.out.println(
+              "First app: " + firstApp.getName() + " (" + firstApp.getIdentifier() + ")");
         }
+
+        // Close all applications
+        appList.forEach(Application::close);
+      }
     }
+  }
 
-    @Test
-    @Order(3)
-    void testApplicationProperties() {
-        try (DeviceManager deviceManager = new DeviceManager()) {
-            try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
-                List<Application> appList = localDevice.enumerateApplications();
-                if (appList == null) {
-                    System.err.println("Failed to enumerate applications");
-                    return;
-                }
+  @Test
+  @Order(2)
+  void testEnumerateApplicationsWithScope() {
+    try (DeviceManager deviceManager = new DeviceManager()) {
+      try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
+        // Test with different scopes
+        List<Application> minimalApps = localDevice.enumerateApplications(null, Scope.MINIMAL);
+        List<Application> fullApps = localDevice.enumerateApplications(null, Scope.FULL);
 
-                if (!appList.isEmpty()) {
-                    // Test first few applications
-                    int testCount = Math.min(3, appList.size());
-                    for (int i = 0; i < testCount; i++) {
-                        Application app = appList.get(i);
-
-                        String identifier = app.getIdentifier();
-                        String name = app.getName();
-                        int pid = app.getPid();
-
-                        assertNotNull(identifier, "Application identifier should not be null");
-                        assertNotNull(name, "Application name should not be null");
-                        assertFalse(identifier.isEmpty(), "Application identifier should not be empty");
-                        assertFalse(name.isEmpty(), "Application name should not be empty");
-
-                        System.out.printf("App %d: %s (%s) PID: %d%n", i, name, identifier, pid);
-                    }
-                }
-            }
+        if (minimalApps != null) {
+          System.out.println("Minimal scope: " + minimalApps.size() + " applications");
+          minimalApps.forEach(Application::close);
         }
-    }
 
-    @Test
-    @Order(4)
-    void testEnumerateSpecificApplication() {
-        try (DeviceManager deviceManager = new DeviceManager()) {
-            try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
-                // First get all apps to find a valid identifier
-                List<Application> allApps = localDevice.enumerateApplications();
-                if (allApps == null || allApps.isEmpty()) {
-                    System.out.println("No applications found to test specific enumeration");
-                    return;
-                }
-
-                String testIdentifier = allApps.getFirst().getIdentifier();
-                System.out.println("Testing enumeration with identifier: " + testIdentifier);
-
-                // Now test specific enumeration
-                List<Application> specificApps = localDevice.enumerateApplications(testIdentifier, Scope.MINIMAL);
-                if (specificApps != null) {
-                    System.out.println("Found " + specificApps.size() + " applications matching identifier");
-
-                    if (!specificApps.isEmpty()) {
-                        assertEquals(testIdentifier, specificApps.getFirst().getIdentifier(),
-                                "Returned application should match requested identifier");
-                    }
-                }
-            }
+        if (fullApps != null) {
+          System.out.println("Full scope: " + fullApps.size() + " applications");
+          fullApps.forEach(Application::close);
         }
+      }
     }
+  }
+
+  @Test
+  @Order(3)
+  void testApplicationProperties() {
+    try (DeviceManager deviceManager = new DeviceManager()) {
+      try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
+        List<Application> appList = localDevice.enumerateApplications();
+        if (appList == null) {
+          System.err.println("Failed to enumerate applications");
+          return;
+        }
+
+        if (!appList.isEmpty()) {
+          // Test first few applications
+          int testCount = Math.min(3, appList.size());
+          for (int i = 0; i < testCount; i++) {
+            Application app = appList.get(i);
+
+            String identifier = app.getIdentifier();
+            String name = app.getName();
+            int pid = app.getPid();
+
+            assertNotNull(identifier, "Application identifier should not be null");
+            assertNotNull(name, "Application name should not be null");
+            assertFalse(identifier.isEmpty(), "Application identifier should not be empty");
+            assertFalse(name.isEmpty(), "Application name should not be empty");
+
+            System.out.printf("App %d: %s (%s) PID: %d%n", i, name, identifier, pid);
+          }
+        }
+
+        // Close all applications
+        appList.forEach(Application::close);
+      }
+    }
+  }
+
+  @Test
+  @Order(4)
+  void testEnumerateSpecificApplication() {
+    try (DeviceManager deviceManager = new DeviceManager()) {
+      try (Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
+        // First get all apps to find a valid identifier
+        List<Application> allApps = localDevice.enumerateApplications();
+        if (allApps == null || allApps.isEmpty()) {
+          System.out.println("No applications found to test specific enumeration");
+          return;
+        }
+
+        String testIdentifier = allApps.getFirst().getIdentifier();
+        System.out.println("Testing enumeration with identifier: " + testIdentifier);
+
+        // Close the first batch
+        allApps.forEach(Application::close);
+
+        // Now test specific enumeration
+        List<Application> specificApps =
+            localDevice.enumerateApplications(testIdentifier, Scope.MINIMAL);
+        if (specificApps != null) {
+          System.out.println("Found " + specificApps.size() + " applications matching identifier");
+
+          if (!specificApps.isEmpty()) {
+            assertEquals(
+                testIdentifier,
+                specificApps.getFirst().getIdentifier(),
+                "Returned application should match requested identifier");
+          }
+
+          // Close the second batch
+          specificApps.forEach(Application::close);
+        }
+      }
+    }
+  }
 }
-

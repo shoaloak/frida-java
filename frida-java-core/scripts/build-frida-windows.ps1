@@ -21,6 +21,8 @@
 
 # Set error action preference to stop on errors
 $ErrorActionPreference = "Stop"
+# Disable progress rendering to speed up Invoke-WebRequest in CI.
+$ProgressPreference = "SilentlyContinue"
 
 # Constants
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -218,6 +220,8 @@ function Build-DLL {
 
     $OutputDLL = "libfrida-core-$Arch.dll"
     $DefFile = "frida-core-$Arch.def"
+    $StubSource = "frida-core-link-stub-$Arch.c"
+    $StubObject = "frida-core-link-stub-$Arch.obj"
 
     Write-Host "Building DLL using Microsoft Visual C++ compiler..."
 
@@ -244,6 +248,7 @@ function Build-DLL {
         "/DLL"
         "/OUT:$OutputDLL"
         "/MACHINE:$machineType"
+        "$StubObject"
         "$LibPath"
     )
 
@@ -283,8 +288,7 @@ function Build-DLL {
         "msvcrt.lib"
     )
 
-    ## Optimization and security flags
-    # /O2:                 Maximize speed optimization
+    ## Linker optimisation and security flags
     # /GL:                 Whole program optimization
     # /LTCG:               Link-time code generation
     # /SUBSYSTEM:WINDOWS:  Target Windows subsystem
@@ -295,7 +299,6 @@ function Build-DLL {
     # /OPT:REF:            Remove unreferenced functions and data
     # /OPT:ICF:            Enable COMDAT folding for smaller size
     $optimizationFlags = @(
-        "/O2"
 #        "/GL"      # TODO test
 #        "/LTCG"    # TODO test
         "/SUBSYSTEM:WINDOWS"
@@ -316,6 +319,14 @@ function Build-DLL {
     }
 
     try {
+        # Compile a tiny object so the linker has at least one object file input.
+        # This avoids LNK4001 when linking primarily from static libraries.
+        Set-Content -Path $StubSource -Value "void __frida_java_link_anchor(void) {}" -Encoding ASCII
+        & cl.exe /nologo /c /O2 "/Fo$StubObject" "$StubSource"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Compile command failed with exit code $LASTEXITCODE"
+        }
+
         Write-Host "Executing: link.exe $($linkArgs -join ' ')"
         & link.exe @linkArgs
 
@@ -333,6 +344,12 @@ function Build-DLL {
         # Clean up DEF file
         if ($defPath -and (Test-Path $defPath)) {
             Remove-Item $defPath -Force
+        }
+        if (Test-Path $StubSource) {
+            Remove-Item $StubSource -Force
+        }
+        if (Test-Path $StubObject) {
+            Remove-Item $StubObject -Force
         }
     }
 }
