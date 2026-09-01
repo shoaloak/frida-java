@@ -257,7 +257,11 @@ public class Device implements AutoCloseable {
         FridaLibraryLoader.findFunction(
             "frida_device_enable_spawn_gating_sync",
             FunctionDescriptor.ofVoid(
-                ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                ValueLayout.ADDRESS, // FridaDevice* self
+                ValueLayout.ADDRESS, // FridaSpawnGatingOptions* options
+                ValueLayout.ADDRESS, // GCancellable* cancellable
+                ValueLayout.ADDRESS // GError** error
+                ));
     FRIDA_DEVICE_DISABLE_SPAWN_GATING_SYNC =
         FridaLibraryLoader.findFunction(
             "frida_device_disable_spawn_gating_sync",
@@ -1211,7 +1215,11 @@ public class Device implements AutoCloseable {
       MemorySegment errorPtr = arena.allocate(ValueLayout.ADDRESS);
       errorPtr.set(ValueLayout.ADDRESS, 0, MemorySegment.NULL);
 
-      FRIDA_DEVICE_ENABLE_SPAWN_GATING_SYNC.invoke(devicePtr, MemorySegment.NULL, errorPtr);
+      FRIDA_DEVICE_ENABLE_SPAWN_GATING_SYNC.invoke(
+          devicePtr,
+          MemorySegment.NULL, // options
+          MemorySegment.NULL, // cancellable
+          errorPtr);
 
       MemorySegment error = errorPtr.get(ValueLayout.ADDRESS, 0);
       GErrorUtils.handleError(error, "enable spawn gating");
