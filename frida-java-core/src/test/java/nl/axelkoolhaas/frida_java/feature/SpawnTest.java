@@ -38,18 +38,18 @@ public class SpawnTest {
   @Test
   @Order(1)
   void testSpawnSimpleProcess() {
-    try (DeviceManager deviceManager = new DeviceManager()) {
-      Device localDevice = deviceManager.getLocalDevice().orElseThrow();
+    try (DeviceManager deviceManager = new DeviceManager();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
 
       // Try to spawn a simple command that exists on most systems
-      // TODO expand to Windows equivalents
-      String[] testPrograms = {"sleep", "cmd.exe"};
+      final String[] testPrograms =
+          isWindows() ? new String[] {"cmd.exe"} : new String[] {"cat", "sh"};
       int spawnedPid = -1;
       String usedProgram = null;
 
       for (String program : testPrograms) {
         try {
-          spawnedPid = localDevice.spawnName(program);
+          spawnedPid = localDevice.spawnName(program, List.of());
           if (spawnedPid > 0) {
             usedProgram = program;
             break;
@@ -79,14 +79,11 @@ public class SpawnTest {
   @Test
   @Order(2)
   void testSpawnProcessWithArgs() {
-    try (DeviceManager deviceManager = new DeviceManager()) {
-      Device localDevice = deviceManager.getLocalDevice().orElseThrow();
+    try (DeviceManager deviceManager = new DeviceManager();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
 
       try {
-        String program = "/bin/sleep";
-        List<String> args = List.of("5"); // Sleep for 5 seconds
-
-        int spawnedPid = localDevice.spawn(program, args);
+        final int spawnedPid = spawnLongRunningProcess(localDevice, 5);
         assertTrue(spawnedPid > 0, "Spawned PID should be positive");
         System.out.println("Successfully spawned process with args. PID: " + spawnedPid);
 
@@ -107,12 +104,11 @@ public class SpawnTest {
   @Test
   @Order(3)
   void testSpawnAndResume() {
-    try (DeviceManager deviceManager = new DeviceManager()) {
-      Device localDevice = deviceManager.getLocalDevice().orElseThrow();
+    try (DeviceManager deviceManager = new DeviceManager();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
 
       try {
-        String program = "/bin/sleep";
-        int spawnedPid = localDevice.spawn(program);
+        final int spawnedPid = spawnLongRunningProcess(localDevice, 5);
         assertTrue(spawnedPid > 0, "Spawned PID should be positive");
 
         // Resume the spawned process
@@ -142,12 +138,11 @@ public class SpawnTest {
   @Test
   @Order(4)
   void testAttachToSpawnedProcess() {
-    try (DeviceManager deviceManager = new DeviceManager()) {
-      Device localDevice = deviceManager.getLocalDevice().orElseThrow();
+    try (DeviceManager deviceManager = new DeviceManager();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
 
       try {
-        String program = "/bin/sleep";
-        int spawnedPid = localDevice.spawn(program);
+        final int spawnedPid = spawnLongRunningProcess(localDevice, 5);
         assertTrue(spawnedPid > 0, "Spawned PID should be positive");
 
         // Try to attach to the spawned process
@@ -182,14 +177,11 @@ public class SpawnTest {
   @Test
   @Order(5)
   void testKillProcess() {
-    try (DeviceManager deviceManager = new DeviceManager()) {
-      Device localDevice = deviceManager.getLocalDevice().orElseThrow();
+    try (DeviceManager deviceManager = new DeviceManager();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
 
       try {
-        String program = "/bin/sleep";
-        List<String> args = List.of("10"); // Sleep for 10 seconds
-
-        int spawnedPid = localDevice.spawn(program, args);
+        final int spawnedPid = spawnLongRunningProcess(localDevice, 10);
         assertTrue(spawnedPid > 0, "Spawned PID should be positive");
 
         // Resume it first
@@ -214,8 +206,8 @@ public class SpawnTest {
   @Test
   @Order(6)
   void testInvalidSpawn() {
-    try (DeviceManager deviceManager = new DeviceManager()) {
-      Device localDevice = deviceManager.getLocalDevice().orElseThrow();
+    try (DeviceManager deviceManager = new DeviceManager();
+        Device localDevice = deviceManager.getLocalDevice().orElseThrow()) {
 
       // Try to spawn a non-existent program
       assertThrows(
@@ -225,5 +217,24 @@ public class SpawnTest {
 
       System.out.println("Correctly threw exception for invalid spawn");
     }
+  }
+
+  private int spawnLongRunningProcess(final Device device, final int durationSeconds) {
+    final String[] command = getPlatformLongRunningCommand(durationSeconds);
+    return device.spawn(command[0], List.of(command).subList(1, command.length));
+  }
+
+  private String[] getPlatformLongRunningCommand(final int durationSeconds) {
+    if (isWindows()) {
+      return new String[] {
+        "cmd.exe", "/c", "timeout", "/t", Integer.toString(durationSeconds), "/nobreak"
+      };
+    }
+
+    return new String[] {"/bin/sleep", Integer.toString(durationSeconds)};
+  }
+
+  private boolean isWindows() {
+    return System.getProperty("os.name").toLowerCase().contains("win");
   }
 }
