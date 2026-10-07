@@ -207,3 +207,6 @@ Use either:
 
 The release workflow includes a hard pre-publish gate that fails unless both artefacts exist:
 `frida-java-<version>-sources.jar` and `frida-java-<version>-javadoc.jar`.
+
+For `v*` tag pushes, the same workflow also creates a GitHub Release automatically and attaches
+the built JAR assets (base, platform classifiers, sources, and Javadoc).
