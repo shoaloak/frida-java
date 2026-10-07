@@ -1,5 +1,13 @@
 # Frida Java Bindings
 
+> [!WARNING]
+> This branch contains the 1.0 implementation using JNI.
+> Version 2.0 switched to the Foreign Function and Memory API (FFM),
+> which offers significantly better maintainability.
+> For new projects, use version 2.0 unless you require support for Java versions below 21.
+> This branch doesn't work well and is retained for archival purposes,
+> in case someone ever needs to support a lower Java versions.
+
 Java bindings for [Frida](https://github.com/frida/frida) dynamic instrumentation toolkit.
 
 ## Project Structure
