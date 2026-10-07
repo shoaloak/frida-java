@@ -48,7 +48,7 @@ When built locally, scripts download the Frida devkit and output native librarie
 `frida-java-core/frida-devkit/`.
 
 Before running Maven, place the built libraries in `frida-java-core/native/`.
-For a full build, this directory must contain:
+For a full classifier build, this directory must contain:
 
 * `libfrida-core.dylib`
 * `libfrida-core-arm64.so`
@@ -56,7 +56,14 @@ For a full build, this directory must contain:
 * `libfrida-core-arm64.dll`
 * `libfrida-core-x86_64.dll`
 
-If you build only for one platform, you can put the specific platform binaries in `frida-java-core/native/`.
+Maven now produces:
+
+* `frida-java-<version>.jar` (Java classes only)
+* `frida-java-<version>-linux-x86_64.jar`
+* `frida-java-<version>-linux-aarch64.jar`
+* `frida-java-<version>-windows-x86_64.jar`
+* `frida-java-<version>-windows-aarch64.jar`
+* `frida-java-<version>-macos-universal.jar`
 
 ## Build
 
@@ -81,6 +88,18 @@ Add the core library as a dependency to your Maven project:
     <groupId>nl.axelkoolhaas</groupId>
     <artifactId>frida-java</artifactId>
     <version>2.0</version>
+</dependency>
+```
+
+Add one platform-specific native classifier dependency at runtime, for example:
+
+```xml
+<dependency>
+    <groupId>nl.axelkoolhaas</groupId>
+    <artifactId>frida-java</artifactId>
+    <version>2.0</version>
+    <classifier>linux-x86_64</classifier>
+    <scope>runtime</scope>
 </dependency>
 ```
 

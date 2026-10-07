@@ -42,12 +42,13 @@ public class FridaLibraryLoader {
 
   /** Load the Frida library and return a symbol lookup. */
   private static SymbolLookup loadFridaLibrary() {
-    String osName = System.getProperty("os.name").toLowerCase();
-    String arch = System.getProperty("os.arch").toLowerCase();
-    String libName = getLibraryNameAndSetOs(osName, arch);
+    final String osName = System.getProperty("os.name").toLowerCase();
+    final String arch = System.getProperty("os.arch").toLowerCase();
+    final String libName = getLibraryNameAndSetOs(osName, arch);
+    final String classifier = getClassifier(osName, arch);
 
     // Try to load from bins directory first
-    Path binsPath = Path.of("bins", libName);
+    final Path binsPath = Path.of("bins", libName);
     if (Files.exists(binsPath)) {
       try {
         return SymbolLookup.libraryLookup(binsPath, Arena.global());
@@ -61,11 +62,11 @@ public class FridaLibraryLoader {
     }
 
     // Try to load from JAR resources
-    String resourcePath = "/native/" + libName;
+    final String resourcePath = "/native/" + libName;
     try (InputStream is = Frida.class.getResourceAsStream(resourcePath)) {
       if (is != null) {
-        String extension = libName.substring(libName.lastIndexOf('.'));
-        Path tempFile = Files.createTempFile("libfrida-core", extension);
+        final String extension = libName.substring(libName.lastIndexOf('.'));
+        final Path tempFile = Files.createTempFile("libfrida-core", extension);
         Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
         tempFile.toFile().deleteOnExit();
 
@@ -89,12 +90,40 @@ public class FridaLibraryLoader {
               + "/"
               + arch
               + ". "
-              + "Make sure the library is available in the system path, bins directory, or bundled in the JAR as "
+              + "Expected Maven classifier artefact: nl.axelkoolhaas:frida-java:<version>:"
+              + classifier
+              + ". "
+              + "Make sure the library is available in the system path, bins directory, or packaged in a classifier JAR at "
               + resourcePath
               + ". "
               + "Original error: "
               + e.getMessage());
     }
+  }
+
+  private static String getClassifier(String osName, String arch) {
+    if (osName.contains("mac")) {
+      return "macos-universal";
+    }
+    if (osName.contains("linux")) {
+      if (arch.contains("amd64") || arch.contains("x86_64")) {
+        return "linux-x86_64";
+      }
+      if (arch.contains("aarch64") || arch.contains("arm64")) {
+        return "linux-aarch64";
+      }
+      throw new UnsatisfiedLinkError("Unsupported Linux architecture: " + arch);
+    }
+    if (osName.contains("windows")) {
+      if (arch.contains("amd64") || arch.contains("x86_64")) {
+        return "windows-x86_64";
+      }
+      if (arch.contains("aarch64") || arch.contains("arm64")) {
+        return "windows-aarch64";
+      }
+      throw new UnsatisfiedLinkError("Unsupported Windows architecture: " + arch);
+    }
+    throw new UnsatisfiedLinkError("Unsupported operating system: " + osName);
   }
 
   /** Get the platform and architecture-specific library name. */

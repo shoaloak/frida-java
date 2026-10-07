@@ -143,8 +143,11 @@ jobs:
       - name: Verify library artifacts
         run: ls -l ./frida-java-core/native/
 
-      - name: Build bindings with Maven and package JAR
-        run: mvn --batch-mode --no-transfer-progress --projects frida-java-core --also-make clean compile package
+      - name: Build bindings with Maven and package classifier JARs
+        run: mvn --batch-mode --no-transfer-progress --projects frida-java-core --also-make clean package
+
+      - name: Verify packaged artefacts
+        run: ls -l ./frida-java-core/target/frida-java-*.jar
 
       - name: Upload Surefire test reports
         if: always()
@@ -154,7 +157,7 @@ jobs:
           path: ./frida-java-core/target/surefire-reports/
           if-no-files-found: warn
 
-      - name: Upload JAR
+      - name: Upload JAR artefacts
         uses: actions/upload-artifact@v7
         with:
           name: frida-java-core
