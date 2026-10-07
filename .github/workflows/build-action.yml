@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - chore/*
   pull_request:
     branches:
       - main
