@@ -204,3 +204,6 @@ Use either:
 
 * a manual run of the `Release to Maven Central` workflow, or
 * pushing a tag matching `v*`.
+
+The release workflow includes a hard pre-publish gate that fails unless both artefacts exist:
+`frida-java-<version>-sources.jar` and `frida-java-<version>-javadoc.jar`.

@@ -88,14 +88,13 @@ jobs:
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
 
   publish:
-    environment:
-      name: release
     needs:
       - build-frida-linux-arm64
       - build-frida-linux-x64
       - build-frida-macos
       - build-frida-windows-arm64
       - build-frida-windows-x64
+    environment: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -145,6 +144,34 @@ jobs:
       - name: Verify native artifacts
         run: ls -l ./frida-java-core/native/
 
+      - name: Build release artifacts
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -f ./frida-java-core/pom.xml \
+            -Prelease \
+            -DskipTests \
+            -Dgpg.skip=true \
+            clean package
+
+      - name: Verify sources and Javadoc artifacts exist
+        run: |
+          set -euo pipefail
+          ls -l ./frida-java-core/target/
+          SOURCES_COUNT=$(find ./frida-java-core/target -maxdepth 1 -type f -name 'frida-java-*-sources.jar' | wc -l | tr -d ' ')
+          JAVADOC_COUNT=$(find ./frida-java-core/target -maxdepth 1 -type f -name 'frida-java-*-javadoc.jar' | wc -l | tr -d ' ')
+          if [ "${SOURCES_COUNT}" -lt 1 ]; then
+            echo "Missing sources JAR: frida-java-*-sources.jar"
+            exit 1
+          fi
+          if [ "${JAVADOC_COUNT}" -lt 1 ]; then
+            echo "Missing Javadoc JAR: frida-java-*-javadoc.jar"
+            exit 1
+          fi
+
       - name: Publish frida-java-core to Maven Central
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
@@ -156,4 +183,4 @@ jobs:
             -Prelease \
             -DskipTests \
             -Dgpg.passphrase="${MAVEN_GPG_PASSPHRASE}" \
-            clean deploy
+            deploy
