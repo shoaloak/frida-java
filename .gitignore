@@ -3,6 +3,7 @@ target/
 */target/
 **/target/
 dependency-reduced-pom.xml
+**/.flattened-pom.xml
 
 # Python
 .venv/

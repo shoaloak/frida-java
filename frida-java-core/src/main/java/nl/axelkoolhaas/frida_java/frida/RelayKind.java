@@ -31,10 +31,22 @@ public enum RelayKind {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link RelayKind}.
+   *
+   * @param value native enum value
+   * @return matching relay kind
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static RelayKind fromValue(int value) {
     for (RelayKind kind : values()) {
       if (kind.value == value) {

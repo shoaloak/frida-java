@@ -125,6 +125,7 @@ public class SpawnOptions implements AutoCloseable {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /** Create spawn options with Frida defaults. */
   public SpawnOptions() {
     try {
       this.optionsPtr = (MemorySegment) FRIDA_SPAWN_OPTIONS_NEW.invoke();
@@ -391,6 +392,7 @@ public class SpawnOptions implements AutoCloseable {
     return optionsPtr;
   }
 
+  /** Release native resources held by these spawn options. */
   public void clean() {
     try {
       FridaNativeUtils.fridaUnref(optionsPtr);
@@ -401,6 +403,7 @@ public class SpawnOptions implements AutoCloseable {
     }
   }
 
+  /** Close this options wrapper and release native resources. */
   @Override
   public void close() {
     clean();

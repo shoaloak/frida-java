@@ -64,6 +64,11 @@ public class Service implements AutoCloseable {
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a Service wrapper around a native service pointer.
+   *
+   * @param servicePtr native service pointer
+   */
   public Service(MemorySegment servicePtr) {
     this.servicePtr = FridaNativeUtils.requireValidPointer(servicePtr, "Service pointer");
   }
@@ -143,6 +148,7 @@ public class Service implements AutoCloseable {
     }
   }
 
+  /** Close this service wrapper and release native resources. */
   @Override
   public void close() {
     clean();

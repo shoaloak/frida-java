@@ -496,6 +496,7 @@ public final class PortalService {
     FridaNativeUtils.fridaUnref(portalPtr);
   }
 
+  /** Return a diagnostic string for this portal service wrapper. */
   @Override
   public String toString() {
     return String.format("<PortalService: %s>", Objects.toIdentityString(portalPtr));

@@ -11,11 +11,18 @@
     <name>Frida Java Parent</name>
     <description>Parent project for Frida Java bindings and examples</description>
     <url>https://github.com/shoaloak/frida-java</url>
+    <licenses>
+        <license>
+            <name>GNU Lesser General Public License v3.0 or later</name>
+            <url>https://www.gnu.org/licenses/lgpl-3.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
     <developers>
         <developer>
             <id>shoaloak</id>
             <name>Axel Koolhaas</name>
-            <email>dev@axelkoolhaas.nl</email>
+            <email>releases@axelkoolhaas.nl</email>
             <url>https://axelkoolhaas.nl</url>
             <roles>
                 <role>developer</role>
@@ -23,6 +30,12 @@
             </roles>
         </developer>
     </developers>
+    <scm>
+        <connection>scm:git:https://github.com/shoaloak/frida-java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/shoaloak/frida-java.git</developerConnection>
+        <url>https://github.com/shoaloak/frida-java</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>frida-java-core</module>

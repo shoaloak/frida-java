@@ -140,11 +140,13 @@ public class Process implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string containing core process details. */
   @Override
   public String toString() {
     return String.format("Process{pid=%d, name='%s'}", getPid(), getName());
   }
 
+  /** Close this wrapper and release the native reference when owned. */
   @Override
   public void close() {
     if (!closed) {

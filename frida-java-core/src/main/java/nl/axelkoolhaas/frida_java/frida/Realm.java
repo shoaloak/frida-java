@@ -30,10 +30,22 @@ public enum Realm {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link Realm}.
+   *
+   * @param value native enum value
+   * @return matching realm
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static Realm fromValue(int value) {
     for (Realm realm : values()) {
       if (realm.value == value) {

@@ -15,6 +15,31 @@
     <name>Frida Java</name>
     <description>Java bindings for Frida dynamic instrumentation toolkit</description>
     <url>https://github.com/shoaloak/frida-java</url>
+    <licenses>
+        <license>
+            <name>GNU Lesser General Public License v3.0 or later</name>
+            <url>https://www.gnu.org/licenses/lgpl-3.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>shoaloak</id>
+            <name>Axel Koolhaas</name>
+            <email>releases@axelkoolhaas.nl</email>
+            <url>https://axelkoolhaas.nl</url>
+            <roles>
+                <role>developer</role>
+                <role>maintainer</role>
+            </roles>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:https://github.com/shoaloak/frida-java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/shoaloak/frida-java.git</developerConnection>
+        <url>https://github.com/shoaloak/frida-java</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <native.libs.dir>${project.basedir}/native</native.libs.dir>
@@ -26,7 +51,7 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>3.2.2</version>
+            <version>3.2.3</version>
             <scope>compile</scope>
         </dependency>
         <!-- SLF4J API for optional logging (no backend required) -->
@@ -185,6 +210,94 @@ For local development:
                     <execution>
                         <id>default-jar</id>
                         <configuration>
+                            <excludes>
+                                <exclude>native/**</exclude>
+                            </excludes>
+                            <archive>
+                                <addMavenDescriptor>false</addMavenDescriptor>
+                            </archive>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>linux-x86_64-native-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>linux-x86_64</classifier>
+                            <includes>
+                                <include>native/libfrida-core-x86_64.so</include>
+                                <include>META-INF/LICENSE</include>
+                            </includes>
+                            <archive>
+                                <addMavenDescriptor>false</addMavenDescriptor>
+                            </archive>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>linux-aarch64-native-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>linux-aarch64</classifier>
+                            <includes>
+                                <include>native/libfrida-core-arm64.so</include>
+                                <include>META-INF/LICENSE</include>
+                            </includes>
+                            <archive>
+                                <addMavenDescriptor>false</addMavenDescriptor>
+                            </archive>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>windows-x86_64-native-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>windows-x86_64</classifier>
+                            <includes>
+                                <include>native/libfrida-core-x86_64.dll</include>
+                                <include>META-INF/LICENSE</include>
+                            </includes>
+                            <archive>
+                                <addMavenDescriptor>false</addMavenDescriptor>
+                            </archive>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>windows-aarch64-native-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>windows-aarch64</classifier>
+                            <includes>
+                                <include>native/libfrida-core-arm64.dll</include>
+                                <include>META-INF/LICENSE</include>
+                            </includes>
+                            <archive>
+                                <addMavenDescriptor>false</addMavenDescriptor>
+                            </archive>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>macos-universal-native-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>macos-universal</classifier>
+                            <includes>
+                                <include>native/libfrida-core.dylib</include>
+                                <include>META-INF/LICENSE</include>
+                            </includes>
                             <archive>
                                 <addMavenDescriptor>false</addMavenDescriptor>
                             </archive>
@@ -231,4 +344,100 @@ For local development:
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.8.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>flatten-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <configuration>
+                            <updatePomFile>true</updatePomFile>
+                            <flattenMode>oss</flattenMode>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>flatten</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>flatten</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>flatten-clean</id>
+                                <phase>clean</phase>
+                                <goals>
+                                    <goal>clean</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

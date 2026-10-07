@@ -209,6 +209,13 @@ public class Compiler implements AutoCloseable {
     }
   }
 
+  /**
+   * Register a callback for a compiler signal.
+   *
+   * @param signal compiler signal to subscribe to
+   * @param callback callback implementation compatible with the signal contract
+   * @throws IllegalArgumentException if callback is null or has an incompatible type
+   */
   public void on(CompilerSignal signal, Object callback) {
     if (callback == null) throw new IllegalArgumentException("Callback cannot be null");
 
@@ -243,6 +250,11 @@ public class Compiler implements AutoCloseable {
     log.debug("Registered callback for signal '{}', handlerId: {}", signal.getName(), handlerId);
   }
 
+  /**
+   * Unregister the callback for a compiler signal.
+   *
+   * @param signal compiler signal to unsubscribe from
+   */
   public void off(CompilerSignal signal) {
     callbacks.remove(signal);
     Long handlerId = handlerIds.remove(signal);
@@ -268,6 +280,7 @@ public class Compiler implements AutoCloseable {
     }
   }
 
+  /** Disconnect registered signal handlers and release native resources. */
   public void clean() {
     if (closed) return;
 
@@ -288,6 +301,7 @@ public class Compiler implements AutoCloseable {
     closed = true;
   }
 
+  /** Close this compiler instance and free its resources. */
   @Override
   public void close() {
     clean();

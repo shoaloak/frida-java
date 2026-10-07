@@ -30,10 +30,22 @@ public enum Stdio {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link Stdio}.
+   *
+   * @param value native enum value
+   * @return matching stdio mode
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static Stdio fromValue(int value) {
     for (Stdio stdio : values()) {
       if (stdio.value == value) {

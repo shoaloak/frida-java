@@ -74,6 +74,7 @@ public class PortalOptions implements AutoCloseable {
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
   }
 
+  /** Create portal connection options with Frida defaults. */
   public PortalOptions() {
     try {
       this.optionsPtr = (MemorySegment) FRIDA_PORTAL_OPTIONS_NEW.invoke();
@@ -85,6 +86,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Get the configured TLS certificate.
+   *
+   * @return configured certificate, or {@code null} when unset
+   */
   public Certificate getCertificate() {
     try {
       MemorySegment certPtr =
@@ -100,6 +106,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Get the configured access token.
+   *
+   * @return access token
+   */
   public String getToken() {
     try {
       MemorySegment tokenPtr = (MemorySegment) FRIDA_PORTAL_OPTIONS_GET_TOKEN.invoke(optionsPtr);
@@ -111,6 +122,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Get the configured access control list.
+   *
+   * @return immutable list of ACL entries
+   */
   public List<String> getAcl() {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment lengthPtr = arena.allocate(ValueLayout.JAVA_INT);
@@ -131,6 +147,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Set the TLS certificate to use for portal authentication.
+   *
+   * @param certificate certificate to use
+   */
   public void setCertificate(Certificate certificate) {
     if (certificate == null) {
       throw new IllegalArgumentException("Certificate cannot be null");
@@ -144,6 +165,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Set the token used for portal authentication.
+   *
+   * @param token authentication token
+   */
   public void setToken(String token) {
     if (token == null) {
       throw new IllegalArgumentException("Token cannot be null");
@@ -158,6 +184,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Set the access control list for portal authorisation.
+   *
+   * @param acl list of ACL entries
+   */
   public void setAcl(List<String> acl) {
     if (acl == null) {
       throw new IllegalArgumentException("ACL cannot be null");
@@ -179,6 +210,11 @@ public class PortalOptions implements AutoCloseable {
     }
   }
 
+  /**
+   * Set the access control list for portal authorisation.
+   *
+   * @param acl ACL entries
+   */
   public void setAcl(String... acl) {
     setAcl(List.of(acl));
   }
@@ -187,6 +223,7 @@ public class PortalOptions implements AutoCloseable {
     return optionsPtr;
   }
 
+  /** Close this options wrapper and release native resources. */
   @Override
   public void close() {
     FridaNativeUtils.fridaUnref(optionsPtr);

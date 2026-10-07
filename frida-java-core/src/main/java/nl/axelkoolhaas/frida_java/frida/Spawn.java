@@ -53,6 +53,11 @@ public class Spawn implements AutoCloseable {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a Spawn wrapper that owns the native reference.
+   *
+   * @param spawnPtr native spawn pointer
+   */
   public Spawn(MemorySegment spawnPtr) {
     this(spawnPtr, true);
   }
@@ -69,6 +74,7 @@ public class Spawn implements AutoCloseable {
     log.debug("Spawn created (owned={})", owned);
   }
 
+  /** Close this wrapper and release the native reference when owned. */
   @Override
   public void close() {
     if (!closed) {

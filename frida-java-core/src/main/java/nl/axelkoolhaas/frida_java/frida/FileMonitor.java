@@ -187,6 +187,7 @@ public class FileMonitor implements AutoCloseable {
     log.trace("Registered callback for file monitor signal '{}'", signalName);
   }
 
+  /** Close this monitor and release its native resources. */
   @Override
   public void close() {
     try {

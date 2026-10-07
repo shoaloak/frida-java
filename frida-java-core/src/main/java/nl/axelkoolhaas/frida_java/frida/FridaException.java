@@ -21,10 +21,21 @@ package nl.axelkoolhaas.frida_java.frida;
 
 /** Base exception for all Frida-related errors. */
 public class FridaException extends RuntimeException {
+  /**
+   * Create a Frida exception with a descriptive message.
+   *
+   * @param message failure description
+   */
   public FridaException(String message) {
     super(message);
   }
 
+  /**
+   * Create a Frida exception with message and cause.
+   *
+   * @param message failure description
+   * @param cause underlying cause
+   */
   public FridaException(String message, Throwable cause) {
     super(message, cause);
   }

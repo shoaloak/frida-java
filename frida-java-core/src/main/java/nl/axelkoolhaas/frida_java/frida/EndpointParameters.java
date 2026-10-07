@@ -446,6 +446,7 @@ public final class EndpointParameters {
     FridaNativeUtils.fridaUnref(paramsPtr);
   }
 
+  /** Return a concise host and port representation of these endpoint parameters. */
   @Override
   public String toString() {
     return String.format("<EndpointParameters: %s:%d>", getAddress(), getPort());

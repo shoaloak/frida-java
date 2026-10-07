@@ -108,6 +108,7 @@ public class PortalMembership implements AutoCloseable {
     }
   }
 
+  /** Close this membership wrapper and release owned native resources. */
   @Override
   public void close() {
     if (closed) {
@@ -132,6 +133,7 @@ public class PortalMembership implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string for this portal membership instance. */
   @Override
   public String toString() {
     if (closed) {

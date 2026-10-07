@@ -123,6 +123,11 @@ public class CompilerOptions implements AutoCloseable {
       this.value = value;
     }
 
+    /**
+     * Get the native integer value used by Frida.
+     *
+     * @return native enum value
+     */
     public int getValue() {
       return value;
     }
@@ -137,6 +142,11 @@ public class CompilerOptions implements AutoCloseable {
       this.value = value;
     }
 
+    /**
+     * Get the native integer value used by Frida.
+     *
+     * @return native enum value
+     */
     public int getValue() {
       return value;
     }
@@ -151,6 +161,11 @@ public class CompilerOptions implements AutoCloseable {
       this.value = value;
     }
 
+    /**
+     * Get the native integer value used by Frida.
+     *
+     * @return native enum value
+     */
     public int getValue() {
       return value;
     }
@@ -165,6 +180,11 @@ public class CompilerOptions implements AutoCloseable {
       this.value = value;
     }
 
+    /**
+     * Get the native integer value used by Frida.
+     *
+     * @return native enum value
+     */
     public int getValue() {
       return value;
     }
@@ -179,6 +199,11 @@ public class CompilerOptions implements AutoCloseable {
       this.value = value;
     }
 
+    /**
+     * Get the native integer value used by Frida.
+     *
+     * @return native enum value
+     */
     public int getValue() {
       return value;
     }
@@ -308,6 +333,7 @@ public class CompilerOptions implements AutoCloseable {
     }
   }
 
+  /** Close this wrapper and release the native reference when owned. */
   @Override
   public void close() {
     if (!closed) {

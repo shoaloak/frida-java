@@ -219,6 +219,7 @@ public class Relay implements AutoCloseable {
     }
   }
 
+  /** Close this relay wrapper and release owned native resources. */
   @Override
   public void close() {
     if (closed) {
@@ -243,6 +244,7 @@ public class Relay implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string for this relay instance. */
   @Override
   public String toString() {
     if (closed) {
