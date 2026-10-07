@@ -1,0 +1,58 @@
+/*
+ * Copyright (C) 2025 Axel Koolhaas
+ *
+ * This file is part of frida-java.
+ *
+ * frida-java is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * frida-java is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with frida-java.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package nl.axelkoolhaas.frida_java.frida;
+
+/** Describes how a child process was created. */
+public enum ChildOrigin {
+  FORK(0),
+  EXEC(1),
+  SPAWN(2);
+
+  private final int value;
+
+  ChildOrigin(int value) {
+    this.value = value;
+  }
+
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
+  public int getValue() {
+    return value;
+  }
+
+  /**
+   * Convert a native integer value to {@link ChildOrigin}.
+   *
+   * @param value native enum value
+   * @return matching origin
+   * @throws IllegalArgumentException if the value is unknown
+   */
+  public static ChildOrigin fromValue(int value) {
+    for (ChildOrigin origin : values()) {
+      if (origin.value == value) {
+        return origin;
+      }
+    }
+    throw new IllegalArgumentException("Unknown child origin: " + value);
+  }
+}

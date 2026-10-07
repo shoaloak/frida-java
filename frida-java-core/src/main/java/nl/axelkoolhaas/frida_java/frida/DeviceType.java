@@ -1,0 +1,58 @@
+/*
+ * Copyright (C) 2025 Axel Koolhaas
+ *
+ * This file is part of frida-java.
+ *
+ * frida-java is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * frida-java is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with frida-java.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package nl.axelkoolhaas.frida_java.frida;
+
+/** Identifies the category of a Frida device. */
+public enum DeviceType {
+  LOCAL(0),
+  REMOTE(1),
+  USB(2);
+
+  private final int value;
+
+  DeviceType(int value) {
+    this.value = value;
+  }
+
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
+  public int getValue() {
+    return value;
+  }
+
+  /**
+   * Convert a native integer value to {@link DeviceType}.
+   *
+   * @param value native enum value
+   * @return matching device type
+   * @throws IllegalArgumentException if the value is unknown
+   */
+  public static DeviceType fromValue(int value) {
+    for (DeviceType type : values()) {
+      if (type.value == value) {
+        return type;
+      }
+    }
+    throw new IllegalArgumentException("Unknown device type: " + value);
+  }
+}

@@ -3,9 +3,13 @@ target/
 */target/
 **/target/
 dependency-reduced-pom.xml
+**/.flattened-pom.xml
+
+# Python
+.venv/
 
 # Dependency directories
-frida-java-core/frida-devkit/
+**/frida-devkit/
 
 # IntelliJ IDEA
 .idea/
@@ -21,3 +25,6 @@ frida-java-core/frida-devkit/
 
 # Logs
 *.log
+
+# Reference
+frida-go
