@@ -13,6 +13,7 @@ Java bindings for [Frida](https://github.com/frida/frida) dynamic instrumentatio
   - [Maven Configuration](#maven-configuration)
   - [Running Examples](#running-examples)
 - [Development](#development)
+- [Publishing](#publishing)
 
 ## Project Structure
 
@@ -184,3 +185,22 @@ the `frida-java-core` module. Surefire test reports are generated in `frida-java
 
 
 Development tracking lives in issues and pull requests.
+
+## Publishing
+
+Publishing is configured for the `frida-java-core` module (`nl.axelkoolhaas:frida-java`) through
+the dedicated GitHub Actions workflow `.github/workflows/release-central.yml`.
+
+### Required GitHub repository secrets
+
+* `CENTRAL_USERNAME` - Sonatype Central user token username
+* `CENTRAL_PASSWORD` - Sonatype Central user token password
+* `GPG_PRIVATE_KEY` - ASCII-armoured private key
+* `GPG_PASSPHRASE` - passphrase for the private key
+
+### Triggering a release
+
+Use either:
+
+* a manual run of the `Release to Maven Central` workflow, or
+* pushing a tag matching `v*`.
