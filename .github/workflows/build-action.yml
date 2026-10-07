@@ -21,10 +21,10 @@ jobs:
       - name: Build Linux so
         run: ./frida-java-core/scripts/build-frida-linux.sh
 
-      - name: Upload library artifacts
+      - name: Upload native staging artefact
         uses: actions/upload-artifact@v7
         with:
-          name: frida-core-linux-arm64
+          name: native-staging-linux-arm64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.so
 
   build-frida-linux-x64:
@@ -38,10 +38,10 @@ jobs:
       - name: Build Linux so
         run: ./frida-java-core/scripts/build-frida-linux.sh
 
-      - name: Upload library artifacts
+      - name: Upload native staging artefact
         uses: actions/upload-artifact@v7
         with:
-          name: frida-core-linux-x64
+          name: native-staging-linux-x64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.so
 
   build-frida-macos:
@@ -55,10 +55,10 @@ jobs:
       - name: Build universal macOS dylib
         run: ./frida-java-core/scripts/build-frida-macos.sh
 
-      - name: Upload universal dylib artifact
+      - name: Upload native staging artefact
         uses: actions/upload-artifact@v7
         with:
-          name: frida-core-macos-universal
+          name: native-staging-macos-universal
           path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
 
   build-frida-windows-arm64:
@@ -73,10 +73,10 @@ jobs:
         shell: powershell
         run: ./frida-java-core/scripts/build-frida-windows.ps1
 
-      - name: Upload library artifacts
+      - name: Upload native staging artefact
         uses: actions/upload-artifact@v7
         with:
-          name: frida-core-windows-arm64
+          name: native-staging-windows-arm64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.dll
 
   build-frida-windows-x64:
@@ -91,10 +91,10 @@ jobs:
         shell: powershell
         run: ./frida-java-core/scripts/build-frida-windows.ps1
 
-      - name: Upload library artifacts
+      - name: Upload native staging artefact
         uses: actions/upload-artifact@v7
         with:
-          name: frida-core-windows-x64
+          name: native-staging-windows-x64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
 
   build-frida-java:
@@ -113,31 +113,31 @@ jobs:
       - name: Download Linux ARM64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: frida-core-linux-arm64
+          name: native-staging-linux-arm64
           path: ./frida-java-core/native/
 
       - name: Download Linux x64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: frida-core-linux-x64
+          name: native-staging-linux-x64
           path: ./frida-java-core/native/
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v7
         with:
-          name: frida-core-macos-universal
+          name: native-staging-macos-universal
           path: ./frida-java-core/native/
 
       - name: Download Windows ARM64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: frida-core-windows-arm64
+          name: native-staging-windows-arm64
           path: ./frida-java-core/native/
 
       - name: Download Windows x64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: frida-core-windows-x64
+          name: native-staging-windows-x64
           path: ./frida-java-core/native/
 
       - name: Verify library artifacts
@@ -149,6 +149,22 @@ jobs:
       - name: Verify packaged artefacts
         run: ls -l ./frida-java-core/target/frida-java-*.jar
 
+      - name: Verify base JAR excludes native binaries
+        run: |
+          BASE_JAR=$(find ./frida-java-core/target -maxdepth 1 -type f -name "frida-java-*.jar" \
+            ! -name "*-linux-*.jar" \
+            ! -name "*-windows-*.jar" \
+            ! -name "*-macos-*.jar" | head -n 1)
+          if [ -z "$BASE_JAR" ]; then
+            echo "Base JAR not found"
+            exit 1
+          fi
+          if jar tf "$BASE_JAR" | grep -E '^native/' >/dev/null; then
+            echo "Base JAR still contains native binaries"
+            exit 1
+          fi
+          ls -lh "$BASE_JAR"
+
       - name: Upload Surefire test reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -157,10 +173,42 @@ jobs:
           path: ./frida-java-core/target/surefire-reports/
           if-no-files-found: warn
 
-      - name: Upload JAR artefacts
+      - name: Upload frida-java base artefact
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java-core
+          name: frida-java
           path: |
             ./frida-java-core/target/frida-java-*.jar
-            ./frida-java-core/target/frida-java-*.pom
+            !./frida-java-core/target/frida-java-*-linux-*.jar
+            !./frida-java-core/target/frida-java-*-windows-*.jar
+            !./frida-java-core/target/frida-java-*-macos-*.jar
+
+      - name: Upload frida-java Linux x86_64 classifier artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frida-java-linux-x86_64
+          path: ./frida-java-core/target/frida-java-*-linux-x86_64.jar
+
+      - name: Upload frida-java Linux aarch64 classifier artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frida-java-linux-aarch64
+          path: ./frida-java-core/target/frida-java-*-linux-aarch64.jar
+
+      - name: Upload frida-java Windows x86_64 classifier artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frida-java-windows-x86_64
+          path: ./frida-java-core/target/frida-java-*-windows-x86_64.jar
+
+      - name: Upload frida-java Windows aarch64 classifier artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frida-java-windows-aarch64
+          path: ./frida-java-core/target/frida-java-*-windows-aarch64.jar
+
+      - name: Upload frida-java macOS universal classifier artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frida-java-macos-universal
+          path: ./frida-java-core/target/frida-java-*-macos-universal.jar
