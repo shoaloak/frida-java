@@ -191,6 +191,7 @@ public class PeerOptions implements AutoCloseable {
     }
   }
 
+  /** Close this options wrapper and release owned native resources. */
   @Override
   public void close() {
     if (closed) {
@@ -215,6 +216,7 @@ public class PeerOptions implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string for this peer options instance. */
   @Override
   public String toString() {
     if (closed) {

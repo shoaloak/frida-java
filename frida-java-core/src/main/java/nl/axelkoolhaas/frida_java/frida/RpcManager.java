@@ -191,15 +191,31 @@ public class RpcManager {
     private final String rpcId;
     private final Object result;
 
+    /**
+     * Create an RPC result container.
+     *
+     * @param rpcId unique RPC request identifier
+     * @param result decoded RPC result payload
+     */
     public RpcResult(String rpcId, Object result) {
       this.rpcId = rpcId;
       this.result = result;
     }
 
+    /**
+     * Get the RPC request identifier associated with this result.
+     *
+     * @return RPC request identifier
+     */
     public String getRpcId() {
       return rpcId;
     }
 
+    /**
+     * Get the decoded result payload.
+     *
+     * @return RPC result payload
+     */
     public Object getResult() {
       return result;
     }

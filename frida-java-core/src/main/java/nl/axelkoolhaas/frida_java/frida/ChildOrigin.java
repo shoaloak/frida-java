@@ -19,6 +19,7 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
+/** Describes how a child process was created. */
 public enum ChildOrigin {
   FORK(0),
   EXEC(1),
@@ -30,10 +31,22 @@ public enum ChildOrigin {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link ChildOrigin}.
+   *
+   * @param value native enum value
+   * @return matching origin
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static ChildOrigin fromValue(int value) {
     for (ChildOrigin origin : values()) {
       if (origin.value == value) {

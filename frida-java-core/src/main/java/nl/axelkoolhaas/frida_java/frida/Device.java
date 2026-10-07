@@ -409,6 +409,11 @@ public class Device implements AutoCloseable {
                 ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a Device wrapper that owns the native reference.
+   *
+   * @param devicePtr native device pointer
+   */
   public Device(MemorySegment devicePtr) {
     this(devicePtr, true);
   }
@@ -1109,6 +1114,12 @@ public class Device implements AutoCloseable {
     return spawn(programPath, options);
   }
 
+  /**
+   * Search {@code PATH} for an executable by name.
+   *
+   * @param name executable file name
+   * @return absolute path to the executable, or {@code null} when not found
+   */
   public static String findBinary(String name) {
     String pathEnv = System.getenv("PATH");
     if (pathEnv == null) {
@@ -1602,6 +1613,7 @@ public class Device implements AutoCloseable {
     }
   }
 
+  /** Release resources associated with this device wrapper. */
   public void clean() {
     try {
       if (owned) {
@@ -1698,6 +1710,7 @@ public class Device implements AutoCloseable {
     }
   }
 
+  /** Close this wrapper and release the native reference when owned. */
   @Override
   public void close() {
     clean();

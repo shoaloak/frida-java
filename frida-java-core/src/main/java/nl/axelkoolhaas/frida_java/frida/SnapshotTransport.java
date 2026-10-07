@@ -30,10 +30,22 @@ public enum SnapshotTransport {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link SnapshotTransport}.
+   *
+   * @param value native enum value
+   * @return matching transport
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static SnapshotTransport fromValue(int value) {
     for (SnapshotTransport transport : values()) {
       if (transport.value == value) {

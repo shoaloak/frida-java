@@ -19,6 +19,7 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
+/** Identifies the category of a Frida device. */
 public enum DeviceType {
   LOCAL(0),
   REMOTE(1),
@@ -30,10 +31,22 @@ public enum DeviceType {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link DeviceType}.
+   *
+   * @param value native enum value
+   * @return matching device type
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static DeviceType fromValue(int value) {
     for (DeviceType type : values()) {
       if (type.value == value) {

@@ -140,6 +140,11 @@ public class Session implements AutoCloseable {
                 ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a Session wrapper around a native session pointer.
+   *
+   * @param sessionPtr native session pointer
+   */
   public Session(MemorySegment sessionPtr) {
     this.sessionPtr = FridaNativeUtils.requireValidPointer(sessionPtr, "Session pointer");
     log.debug("Session created");

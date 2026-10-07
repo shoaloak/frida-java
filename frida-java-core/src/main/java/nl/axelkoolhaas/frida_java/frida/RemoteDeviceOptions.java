@@ -253,6 +253,7 @@ public class RemoteDeviceOptions implements AutoCloseable {
     return optionsPtr;
   }
 
+  /** Close this options wrapper and release native resources. */
   @Override
   public void close() {
     try {

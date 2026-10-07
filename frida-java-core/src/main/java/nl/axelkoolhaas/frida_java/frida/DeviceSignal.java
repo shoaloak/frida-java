@@ -38,6 +38,11 @@ public enum DeviceSignal {
     this.name = name;
   }
 
+  /**
+   * Get the native signal name used by Frida.
+   *
+   * @return native signal name
+   */
   public String getName() {
     return name;
   }

@@ -117,6 +117,11 @@ public class IOStream implements AutoCloseable {
                 ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create an IOStream wrapper around a native stream pointer.
+   *
+   * @param streamPtr native stream pointer
+   */
   public IOStream(MemorySegment streamPtr) {
     this.streamPtr = FridaNativeUtils.requireValidPointer(streamPtr, "IOStream pointer");
     log.trace("Creating IOStream from native pointer");

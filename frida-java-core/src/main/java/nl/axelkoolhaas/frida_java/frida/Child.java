@@ -102,6 +102,7 @@ public class Child implements AutoCloseable {
     log.debug("Child created (owned={})", owned);
   }
 
+  /** Close this wrapper and release the native reference when owned. */
   @Override
   public void close() {
     if (!closed) {
@@ -279,6 +280,7 @@ public class Child implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string containing core child process details. */
   @Override
   public String toString() {
     return String.format(

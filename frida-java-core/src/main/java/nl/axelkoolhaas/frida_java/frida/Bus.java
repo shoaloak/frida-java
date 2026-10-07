@@ -266,11 +266,13 @@ public class Bus implements AutoCloseable {
     log.debug("Bus cleaned");
   }
 
+  /** Close this bus wrapper and release native resources. */
   @Override
   public void close() {
     clean();
   }
 
+  /** Return a diagnostic string for this bus instance. */
   @Override
   public String toString() {
     if (cleaned) {

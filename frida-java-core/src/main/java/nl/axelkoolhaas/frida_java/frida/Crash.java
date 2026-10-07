@@ -72,6 +72,11 @@ public final class Crash implements AutoCloseable {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a Crash wrapper that owns the native reference.
+   *
+   * @param ptr native crash pointer
+   */
   public Crash(final MemorySegment ptr) {
     this(ptr, true);
   }
@@ -164,6 +169,7 @@ public final class Crash implements AutoCloseable {
     }
   }
 
+  /** Close this wrapper and release the native reference when owned. */
   @Override
   public void close() {
     if (!closed) {
@@ -173,6 +179,7 @@ public final class Crash implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string for this crash wrapper instance. */
   @Override
   public String toString() {
     return String.format("<FridaCrash>: <%s>", Objects.toIdentityString(crashPtr));

@@ -32,6 +32,7 @@ import nl.axelkoolhaas.frida_java.FridaLibraryLoader;
 import nl.axelkoolhaas.frida_java.FridaNativeUtils;
 import nl.axelkoolhaas.frida_java.util.GHashTableUtil;
 
+/** Represents an application discovered on a Frida device. */
 public class Application implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(Application.class);
   private final MemorySegment applicationPtr;
@@ -73,6 +74,11 @@ public class Application implements AutoCloseable {
     log.debug("Application created");
   }
 
+  /**
+   * Get the stable native identifier for this application.
+   *
+   * @return application identifier
+   */
   public String getIdentifier() {
     ensureNotClosed();
     try {
@@ -89,6 +95,11 @@ public class Application implements AutoCloseable {
     }
   }
 
+  /**
+   * Get the display name for this application.
+   *
+   * @return application name
+   */
   public String getName() {
     ensureNotClosed();
     try {
@@ -104,6 +115,11 @@ public class Application implements AutoCloseable {
     }
   }
 
+  /**
+   * Get the process identifier associated with this application.
+   *
+   * @return process identifier
+   */
   public int getPid() {
     ensureNotClosed();
     try {
@@ -139,12 +155,14 @@ public class Application implements AutoCloseable {
     }
   }
 
+  /** Return a diagnostic string containing core application details. */
   @Override
   public String toString() {
     return String.format(
         "Application{identifier='%s', name='%s', pid=%d}", getIdentifier(), getName(), getPid());
   }
 
+  /** Close this wrapper and release the owned native reference. */
   @Override
   public void close() {
     if (!closed) {

@@ -95,6 +95,7 @@ public class DeviceManager implements AutoCloseable {
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /** Create a device manager instance for device discovery and management. */
   public DeviceManager() {
     log.debug("Creating DeviceManager");
     try {
@@ -159,6 +160,11 @@ public class DeviceManager implements AutoCloseable {
     return devices.stream().filter(device -> device.getType() == DeviceType.LOCAL).findFirst();
   }
 
+  /**
+   * Get the first connected USB device.
+   *
+   * @return optional USB device
+   */
   @SuppressWarnings("unused")
   public Optional<Device> getUsbDevice() {
     List<Device> devices = enumerateDevices();
@@ -317,6 +323,7 @@ public class DeviceManager implements AutoCloseable {
     }
   }
 
+  /** Close the underlying native device manager handle. */
   public void clean() {
     log.debug("Closing DeviceManager");
     try (Arena arena = Arena.ofConfined()) {
@@ -337,6 +344,7 @@ public class DeviceManager implements AutoCloseable {
     }
   }
 
+  /** Close this device manager and release native resources. */
   @Override
   public void close() {
     clean();

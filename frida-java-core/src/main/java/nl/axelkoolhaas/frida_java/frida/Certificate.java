@@ -53,6 +53,11 @@ public final class Certificate {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a certificate wrapper around a native certificate pointer.
+   *
+   * @param ptr native certificate pointer
+   */
   public Certificate(final MemorySegment ptr) {
     this.certPtr = FridaNativeUtils.requireValidPointer(ptr, "Certificate pointer");
     log.debug("Certificate created");
@@ -140,6 +145,7 @@ public final class Certificate {
     FridaNativeUtils.fridaUnref(certPtr);
   }
 
+  /** Return a diagnostic string containing this certificate wrapper identity. */
   @Override
   public String toString() {
     return String.format("<Certificate>: <%s>", Objects.toIdentityString(certPtr));

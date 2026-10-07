@@ -252,6 +252,7 @@ public class ScriptOptions implements AutoCloseable {
     return optionsPtr;
   }
 
+  /** Close this options wrapper and release native resources. */
   @Override
   public void close() {
     try {

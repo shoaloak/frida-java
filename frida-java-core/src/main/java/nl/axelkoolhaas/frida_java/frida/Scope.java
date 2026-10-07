@@ -19,6 +19,7 @@
 
 package nl.axelkoolhaas.frida_java.frida;
 
+/** Controls the level of process state captured when creating a snapshot. */
 public enum Scope {
   MINIMAL(0),
   BASIC(1),
@@ -30,6 +31,11 @@ public enum Scope {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }

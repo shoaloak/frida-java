@@ -92,6 +92,11 @@ public class Script implements AutoCloseable {
                 ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
   }
 
+  /**
+   * Create a script wrapper around a native script pointer.
+   *
+   * @param scriptPtr native script pointer
+   */
   public Script(MemorySegment scriptPtr) {
     this.scriptPtr = FridaNativeUtils.requireValidPointer(scriptPtr, "Script pointer");
     log.debug("Script object created");
@@ -441,6 +446,7 @@ public class Script implements AutoCloseable {
     }
   }
 
+  /** Disconnect callbacks and release native resources held by this script. */
   public void clean() {
     if (closed) {
       return; // Already cleaned up

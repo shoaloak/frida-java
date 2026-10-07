@@ -158,6 +158,7 @@ public class SnapshotOptions implements AutoCloseable {
     return optionsPtr;
   }
 
+  /** Close this options wrapper and release native resources. */
   @Override
   public void close() {
     try {

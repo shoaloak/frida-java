@@ -31,10 +31,22 @@ public enum ScriptRuntime {
     this.value = value;
   }
 
+  /**
+   * Get the native integer value used by Frida.
+   *
+   * @return native enum value
+   */
   public int getValue() {
     return value;
   }
 
+  /**
+   * Convert a native integer value to {@link ScriptRuntime}.
+   *
+   * @param value native enum value
+   * @return matching script runtime
+   * @throws IllegalArgumentException if the value is unknown
+   */
   public static ScriptRuntime fromValue(int value) {
     for (ScriptRuntime runtime : values()) {
       if (runtime.value == value) {
