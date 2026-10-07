@@ -21,10 +21,10 @@ jobs:
       - name: Build Linux so
         run: ./frida-java-core/scripts/build-frida-linux.sh
 
-      - name: Upload native staging artefact
+      - name: Upload raw native binary
         uses: actions/upload-artifact@v7
         with:
-          name: native-staging-linux-arm64
+          name: native-raw-linux-aarch64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.so
 
   build-frida-linux-x64:
@@ -38,10 +38,10 @@ jobs:
       - name: Build Linux so
         run: ./frida-java-core/scripts/build-frida-linux.sh
 
-      - name: Upload native staging artefact
+      - name: Upload raw native binary
         uses: actions/upload-artifact@v7
         with:
-          name: native-staging-linux-x64
+          name: native-raw-linux-x86_64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.so
 
   build-frida-macos:
@@ -55,10 +55,10 @@ jobs:
       - name: Build universal macOS dylib
         run: ./frida-java-core/scripts/build-frida-macos.sh
 
-      - name: Upload native staging artefact
+      - name: Upload raw native binary
         uses: actions/upload-artifact@v7
         with:
-          name: native-staging-macos-universal
+          name: native-raw-macos-universal
           path: "./frida-java-core/frida-devkit/libfrida-core.dylib"
 
   build-frida-windows-arm64:
@@ -73,10 +73,10 @@ jobs:
         shell: powershell
         run: ./frida-java-core/scripts/build-frida-windows.ps1
 
-      - name: Upload native staging artefact
+      - name: Upload raw native binary
         uses: actions/upload-artifact@v7
         with:
-          name: native-staging-windows-arm64
+          name: native-raw-windows-aarch64
           path: ./frida-java-core/frida-devkit/libfrida-core-arm64.dll
 
   build-frida-windows-x64:
@@ -91,10 +91,10 @@ jobs:
         shell: powershell
         run: ./frida-java-core/scripts/build-frida-windows.ps1
 
-      - name: Upload native staging artefact
+      - name: Upload raw native binary
         uses: actions/upload-artifact@v7
         with:
-          name: native-staging-windows-x64
+          name: native-raw-windows-x86_64
           path: ./frida-java-core/frida-devkit/libfrida-core-x86_64.dll
 
   build-frida-java:
@@ -113,31 +113,31 @@ jobs:
       - name: Download Linux ARM64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: native-staging-linux-arm64
+          name: native-raw-linux-aarch64
           path: ./frida-java-core/native/
 
       - name: Download Linux x64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: native-staging-linux-x64
+          name: native-raw-linux-x86_64
           path: ./frida-java-core/native/
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v7
         with:
-          name: native-staging-macos-universal
+          name: native-raw-macos-universal
           path: ./frida-java-core/native/
 
       - name: Download Windows ARM64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: native-staging-windows-arm64
+          name: native-raw-windows-aarch64
           path: ./frida-java-core/native/
 
       - name: Download Windows x64 artifact
         uses: actions/download-artifact@v7
         with:
-          name: native-staging-windows-x64
+          name: native-raw-windows-x86_64
           path: ./frida-java-core/native/
 
       - name: Verify library artifacts
@@ -173,42 +173,42 @@ jobs:
           path: ./frida-java-core/target/surefire-reports/
           if-no-files-found: warn
 
-      - name: Upload frida-java base artefact
+      - name: Upload maven-release base JAR
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java
+          name: maven-release-frida-java-base
           path: |
             ./frida-java-core/target/frida-java-*.jar
             !./frida-java-core/target/frida-java-*-linux-*.jar
             !./frida-java-core/target/frida-java-*-windows-*.jar
             !./frida-java-core/target/frida-java-*-macos-*.jar
 
-      - name: Upload frida-java Linux x86_64 classifier artefact
+      - name: Upload maven-release Linux x86_64 classifier JAR
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java-linux-x86_64
+          name: maven-release-frida-java-classifier-linux-x86_64
           path: ./frida-java-core/target/frida-java-*-linux-x86_64.jar
 
-      - name: Upload frida-java Linux aarch64 classifier artefact
+      - name: Upload maven-release Linux aarch64 classifier JAR
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java-linux-aarch64
+          name: maven-release-frida-java-classifier-linux-aarch64
           path: ./frida-java-core/target/frida-java-*-linux-aarch64.jar
 
-      - name: Upload frida-java Windows x86_64 classifier artefact
+      - name: Upload maven-release Windows x86_64 classifier JAR
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java-windows-x86_64
+          name: maven-release-frida-java-classifier-windows-x86_64
           path: ./frida-java-core/target/frida-java-*-windows-x86_64.jar
 
-      - name: Upload frida-java Windows aarch64 classifier artefact
+      - name: Upload maven-release Windows aarch64 classifier JAR
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java-windows-aarch64
+          name: maven-release-frida-java-classifier-windows-aarch64
           path: ./frida-java-core/target/frida-java-*-windows-aarch64.jar
 
-      - name: Upload frida-java macOS universal classifier artefact
+      - name: Upload maven-release macOS universal classifier JAR
         uses: actions/upload-artifact@v7
         with:
-          name: frida-java-macos-universal
+          name: maven-release-frida-java-classifier-macos-universal
           path: ./frida-java-core/target/frida-java-*-macos-universal.jar

@@ -47,6 +47,11 @@ You can either download prebuilt native libraries from this project's
 When built locally, scripts download the Frida devkit and output native libraries to
 `frida-java-core/frida-devkit/`.
 
+In GitHub Actions, artefact names are split by purpose:
+
+* `maven-release-*` = JAR artefacts intended for Maven release consumption
+* `native-raw-*` = raw `.so` / `.dll` / `.dylib` binaries for local development staging
+
 Before running Maven, place the built libraries in `frida-java-core/native/`.
 For a full classifier build, this directory must contain:
 
